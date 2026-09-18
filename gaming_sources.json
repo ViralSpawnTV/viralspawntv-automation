@@ -1,0 +1,91 @@
+{
+  "version": 1,
+  "channel": "ViralSpawnTV",
+  "niche": "gaming",
+
+  "global_rules": {
+    "gaming_only": true,
+    "require_creator_permission": true,
+    "require_commercial_use_permission": true,
+    "require_authorized_acquisition": true,
+    "require_source_attribution": true,
+    "reject_gambling": true,
+    "reject_casino": true,
+    "reject_slots": true,
+    "reject_sports_betting": true,
+    "reject_paid_content": true,
+    "reject_members_only_content": true,
+    "reject_unlicensed_music_focus": true,
+    "reject_duplicate_clips": true
+  },
+
+  "sources": [
+    {
+      "id": "yume_kuzukawa",
+      "creator": "Yume Kuzukawa",
+      "organization": null,
+      "category": "gaming_creator",
+      "permission_url": "https://yuyukawa.co/",
+      "creator_clipping_allowed": true,
+      "platform_monetization_allowed": true,
+      "commercial_use_allowed": true,
+      "attribution_required": true,
+      "waiting_period_hours": 0,
+      "third_party_game_rights_check": true,
+      "authorized_acquisition_method": null,
+      "production_enabled": false,
+      "notes": "Published clipping policy permits compliant monetized clips. Production remains disabled until an authorized automated media-acquisition method is configured."
+    },
+
+    {
+      "id": "hololive",
+      "creator": null,
+      "organization": "hololive production",
+      "category": "gaming_creator_network",
+      "permission_url": "https://hololivepro.com/en/terms/",
+      "creator_clipping_allowed": true,
+      "platform_monetization_allowed": true,
+      "commercial_use_allowed": true,
+      "attribution_required": true,
+      "waiting_period_hours": 0,
+      "third_party_game_rights_check": true,
+      "authorized_acquisition_method": null,
+      "production_enabled": false,
+      "notes": "Compliant clips may use platform monetization. Individual content and third-party game/IP restrictions still apply. Paid/member-only content must not enter production."
+    },
+
+    {
+      "id": "first_stage_production",
+      "creator": null,
+      "organization": "FIRST STAGE PRODUCTION",
+      "category": "gaming_creator_network",
+      "permission_url": "https://firststage-pro.com/en/guideline/",
+      "creator_clipping_allowed": true,
+      "platform_monetization_allowed": true,
+      "commercial_use_allowed": true,
+      "attribution_required": true,
+      "waiting_period_hours": 0,
+      "third_party_game_rights_check": true,
+      "authorized_acquisition_method": null,
+      "production_enabled": false,
+      "notes": "Published derivative-work guidelines permit compliant monetized clipping subject to their rules and third-party rights."
+    },
+
+    {
+      "id": "club_toebeans",
+      "creator": null,
+      "organization": "Club Toebeans",
+      "category": "gaming_creator_network",
+      "permission_url": "https://www.clubtoebeans.com/docs/Derivative-Works",
+      "creator_clipping_allowed": true,
+      "platform_monetization_allowed": true,
+      "commercial_use_allowed": true,
+      "attribution_required": true,
+      "waiting_period_hours": 24,
+      "third_party_game_rights_check": true,
+      "authorized_acquisition_method": null,
+      "production_enabled": false,
+      "notes": "Transformative clipping/monetization permitted under published guidelines. Enforce 24-hour delay before production."
+    }
+  ]
+}
