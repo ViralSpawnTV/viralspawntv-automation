@@ -10,32 +10,33 @@ from openai import OpenAI
 from playwright.sync_api import sync_playwright
 
 
-# ============================================================
-# PATHS / SETTINGS
-# ============================================================
-
 ROOT = pathlib.Path(__file__).resolve().parent
 WORK = ROOT / "work" / "production"
 FRAMES = WORK / "frames"
+VOICE_DIR = WORK / "voices"
 
 WORK.mkdir(parents=True, exist_ok=True)
 FRAMES.mkdir(parents=True, exist_ok=True)
+VOICE_DIR.mkdir(parents=True, exist_ok=True)
 
 CHANNEL = "ayezee"
 CREATOR_NAME = "AyeZee"
 CLIPS_URL = f"https://kick.com/{CHANNEL}/clips"
+FINAL_VIDEO = WORK / "ViralSpawnTV_Short_V2.mp4"
 
-FINAL_VIDEO = WORK / "ViralSpawnTV_Short.mp4"
+FONT = (
+    "/usr/share/fonts/truetype/"
+    "dejavu/DejaVuSans-Bold.ttf"
+)
 
 
 # ============================================================
-# COMMAND HELPER
+# COMMAND HELPERS
 # ============================================================
 
 def run(command):
 
-    print()
-    print("RUNNING:")
+    print("\nRUNNING:")
     print(" ".join(str(x) for x in command))
 
     result = subprocess.run(
@@ -45,46 +46,50 @@ def run(command):
     )
 
     if result.returncode != 0:
-
-        print()
-        print("STDERR:")
-        print(result.stderr[-8000:])
-
-        raise RuntimeError(
-            "Command failed."
-        )
+        print(result.stderr[-10000:])
+        raise RuntimeError("Command failed.")
 
     return result
 
 
 def encode_image(path):
-
     return base64.b64encode(
         path.read_bytes()
     ).decode("utf-8")
 
 
+def media_duration(path):
+
+    result = run([
+        "ffprobe",
+        "-v", "error",
+        "-show_entries", "format=duration",
+        "-of",
+        "default=noprint_wrappers=1:nokey=1",
+        str(path),
+    ])
+
+    return float(result.stdout.strip())
+
+
 # ============================================================
-# ACQUIRE AUTHORIZED KICK CLIP
+# ACQUIRE AUTHORIZED CLIP
 # ============================================================
 
 def acquire_clip():
 
-    print()
-    print("=" * 60)
-    print("ACQUIRING KICK CLIP")
+    print("\n" + "=" * 60)
+    print("ACQUIRING AUTHORIZED KICK CLIP")
     print("=" * 60)
 
     with sync_playwright() as p:
 
-        browser = p.chromium.launch(
-            headless=True
-        )
+        browser = p.chromium.launch(headless=True)
 
         context = browser.new_context(
             viewport={
                 "width": 1440,
-                "height": 1000,
+                "height": 1000
             }
         )
 
@@ -103,33 +108,20 @@ def acquire_clip():
         )
 
         if links.count() == 0:
-
             links = page.locator(
                 'a[href*="/clips/clip_"]'
             )
 
-        count = links.count()
-
-        print(
-            f"Found {count} clips."
-        )
-
-        if count == 0:
-
+        if links.count() == 0:
             raise RuntimeError(
-                "No Kick clips discovered."
+                "No clips discovered."
             )
 
-        href = (
-            links
-            .first
-            .get_attribute("href")
-        )
+        href = links.first.get_attribute("href")
 
         if not href:
-
             raise RuntimeError(
-                "Selected clip has no href."
+                "Clip URL missing."
             )
 
         match = re.search(
@@ -138,9 +130,8 @@ def acquire_clip():
         )
 
         if not match:
-
             raise RuntimeError(
-                "Could not identify clip ID."
+                "Clip ID missing."
             )
 
         clip_id = match.group(1)
@@ -151,8 +142,7 @@ def acquire_clip():
             else href
         )
 
-        print("Selected clip:")
-        print(clip_url)
+        print("Selected:", clip_url)
 
         page.goto(
             clip_url,
@@ -173,30 +163,20 @@ def acquire_clip():
 
         playlists = list(
             dict.fromkeys(
-                re.findall(
-                    pattern,
-                    html
-                )
+                re.findall(pattern, html)
             )
         )
 
         if not playlists:
-
             raise RuntimeError(
-                "Clip media playlist not found."
+                "Selected clip playlist not found."
             )
 
-        playlist = playlists[0]
-
-        video = (
-            WORK /
-            f"{clip_id}.mp4"
-        )
+        video = WORK / f"{clip_id}.mp4"
 
         run([
             "ffmpeg",
             "-y",
-
             "-user_agent",
             (
                 "Mozilla/5.0 "
@@ -205,22 +185,15 @@ def acquire_clip():
                 "(KHTML, like Gecko) "
                 "Chrome/140.0 Safari/537.36"
             ),
-
             "-headers",
             (
                 "Referer: https://kick.com/\r\n"
                 "Origin: https://kick.com\r\n"
             ),
-
             "-i",
-            playlist,
-
-            "-c",
-            "copy",
-
-            "-movflags",
-            "+faststart",
-
+            playlists[0],
+            "-c", "copy",
+            "-movflags", "+faststart",
             str(video),
         ])
 
@@ -235,148 +208,73 @@ def acquire_clip():
 
 
 # ============================================================
-# VIDEO INFO
-# ============================================================
-
-def duration(video):
-
-    result = run([
-        "ffprobe",
-        "-v",
-        "error",
-        "-show_entries",
-        "format=duration",
-        "-of",
-        "default=noprint_wrappers=1:nokey=1",
-        str(video),
-    ])
-
-    return float(
-        result.stdout.strip()
-    )
-
-
-# ============================================================
-# FRAME EXTRACTION
+# FRAMES
 # ============================================================
 
 def extract_frames(video):
 
-    print()
-    print("=" * 60)
-    print("EXTRACTING FRAMES")
-    print("=" * 60)
-
-    seconds = duration(video)
+    seconds = media_duration(video)
 
     timestamps = []
 
-    current = 1.0
+    t = 1.0
 
-    while current < seconds:
+    while t < seconds:
+        timestamps.append(t)
+        t += 4.0
 
-        timestamps.append(current)
-
-        current += 5.0
-
-    timestamps = timestamps[:16]
+    timestamps = timestamps[:20]
 
     frames = []
 
-    for index, timestamp in enumerate(
-        timestamps
-    ):
+    for index, timestamp in enumerate(timestamps):
 
         path = (
             FRAMES /
-            f"frame_{index:02d}.jpg"
+            f"frame_{index:02d}_{timestamp:.1f}.jpg"
         )
 
         run([
             "ffmpeg",
             "-y",
-
-            "-ss",
-            str(timestamp),
-
-            "-i",
-            str(video),
-
-            "-frames:v",
-            "1",
-
-            "-vf",
-            "scale=640:-2",
-
-            "-q:v",
-            "4",
-
+            "-ss", str(timestamp),
+            "-i", str(video),
+            "-frames:v", "1",
+            "-vf", "scale=640:-2",
+            "-q:v", "4",
             str(path),
         ])
 
-        frames.append(
-            (
-                timestamp,
-                path
-            )
-        )
+        frames.append((timestamp, path))
 
-    return (
-        seconds,
-        frames
-    )
-
-
-# ============================================================
-# AUDIO EXTRACTION
-# ============================================================
-
-def extract_audio(video):
-
-    audio = (
-        WORK /
-        "source_audio.mp3"
-    )
-
-    run([
-        "ffmpeg",
-        "-y",
-
-        "-i",
-        str(video),
-
-        "-vn",
-
-        "-ac",
-        "1",
-
-        "-ar",
-        "16000",
-
-        "-b:a",
-        "64k",
-
-        str(audio),
-    ])
-
-    return audio
+    return seconds, frames
 
 
 # ============================================================
 # TRANSCRIPTION
 # ============================================================
 
+def extract_audio(video):
+
+    audio = WORK / "source_audio.mp3"
+
+    run([
+        "ffmpeg",
+        "-y",
+        "-i", str(video),
+        "-vn",
+        "-ac", "1",
+        "-ar", "16000",
+        "-b:a", "64k",
+        str(audio),
+    ])
+
+    return audio
+
+
 def transcribe(client, audio):
 
-    print()
-    print("=" * 60)
-    print("TRANSCRIBING CLIP")
-    print("=" * 60)
-
-    with open(
-        audio,
-        "rb"
-    ) as file:
+    with open(audio, "rb") as file:
 
         response = (
             client.audio.transcriptions.create(
@@ -387,10 +285,7 @@ def transcribe(client, audio):
 
     transcript = response.text
 
-    (
-        WORK /
-        "transcript.txt"
-    ).write_text(
+    (WORK / "transcript.txt").write_text(
         transcript,
         encoding="utf-8",
     )
@@ -399,10 +294,10 @@ def transcribe(client, audio):
 
 
 # ============================================================
-# AI VIDEO ANALYSIS
+# V2 EDIT PLAN
 # ============================================================
 
-def analyze_clip(
+def create_edit_plan(
     client,
     clip,
     seconds,
@@ -410,76 +305,95 @@ def analyze_clip(
     transcript
 ):
 
-    print()
-    print("=" * 60)
-    print("ANALYZING VIDEO")
+    print("\n" + "=" * 60)
+    print("BUILDING V2 EDIT PLAN")
     print("=" * 60)
 
     content = []
 
     prompt = f"""
-You are producing a YouTube Short for ViralSpawnTV.
+You are the editor of ViralSpawnTV.
 
-Analyze this actual streamer clip.
+Create a highly engaging YouTube Shorts edit from this
+actual streamer clip.
 
-Creator:
-{clip["creator"]}
+Creator: {clip["creator"]}
+Source: {clip["clip_url"]}
+Duration: {seconds:.2f} seconds
 
-Source:
-{clip["clip_url"]}
-
-Duration:
-{seconds:.2f} seconds
-
-Transcript:
-
+TRANSCRIPT:
 {transcript}
 
-Representative video frames are supplied below.
+Representative frames follow this prompt.
 
-Choose the strongest continuous 20-45 second segment.
+Choose ONE continuous source segment between 25 and
+45 seconds long.
 
-It should contain the most entertaining, surprising,
-funny, interesting, or noteworthy portion.
+Do not invent events, dialogue, dollar amounts, or context.
 
-Do not invent dialogue or events.
+The finished video should feel like an original commentary
+Short rather than narration simply covering the entire clip.
 
-Write original commentary that adds context,
-observation, explanation, or humor.
+Use this structure when the footage supports it:
 
-If gambling appears in the footage, describe what happens
-rather than encouraging viewers to gamble.
+1. Very short ViralSpawnTV hook.
+2. Let the creator's original audio/reaction play.
+3. Brief ViralSpawnTV context/commentary.
+4. Let the important source payoff play.
+5. Optional short closing commentary.
 
-Return ONLY valid JSON.
+Commentary should be concise. Preserve important streamer
+dialogue and reactions.
 
-Exactly these keys:
+For gambling footage, report what occurs without encouraging
+gambling or presenting the activity as a way to make money.
 
-segment_start
-segment_end
-hook
-narration
-title
-description
-caption_top
+Return ONLY valid JSON using exactly this structure:
 
-segment_start and segment_end must be numbers.
+{{
+  "segment_start": 0,
+  "segment_end": 0,
+  "headline": "MAXIMUM 6 WORD HEADLINE",
+  "title": "YouTube title",
+  "description": "YouTube description including creator credit and source URL",
+  "commentary": [
+    {{
+      "time": 0.5,
+      "text": "short narration"
+    }},
+    {{
+      "time": 10.0,
+      "text": "short narration"
+    }}
+  ]
+}}
 
-hook:
-Maximum 8 words.
+IMPORTANT:
 
-narration:
-25-50 words.
-Natural young American gaming-commentary style.
+"time" is seconds AFTER the selected segment begins,
+not seconds in the original video.
 
-title:
-YouTube Shorts title.
+Use 2 or 3 commentary beats.
 
-description:
-Credit the creator and include:
-{clip["clip_url"]}
+Each commentary beat should normally be 5-18 words.
 
-caption_top:
-Maximum 7 words in uppercase.
+The first commentary beat should start between
+0 and 1.5 seconds.
+
+Leave meaningful gaps between commentary beats so viewers
+can hear the creator.
+
+Do not narrate continuously.
+
+Do not place commentary over the most important creator
+reaction if it can reasonably be avoided.
+
+The headline must create curiosity without making a false
+claim.
+
+Description must include:
+Creator: {clip["creator"]}
+Source: {clip["clip_url"]}
 """
 
     content.append({
@@ -492,7 +406,7 @@ Maximum 7 words in uppercase.
         content.append({
             "type": "input_text",
             "text": (
-                f"Video frame at "
+                f"Frame at approximately "
                 f"{timestamp:.1f} seconds:"
             ),
         })
@@ -510,68 +424,68 @@ Maximum 7 words in uppercase.
             "OPENAI_MODEL",
             "gpt-5.6"
         ),
-
         input=[{
             "role": "user",
             "content": content,
         }],
     )
 
-    text = (
-        response
-        .output_text
-        .strip()
-    )
+    text = response.output_text.strip()
 
     if text.startswith("```"):
-
         text = (
-            text
-            .split("\n", 1)[1]
+            text.split("\n", 1)[1]
             .rsplit("```", 1)[0]
         )
 
-    package = json.loads(text)
+    plan = json.loads(text)
 
-    # Safety bounds.
-    start = float(
-        package["segment_start"]
-    )
-
-    end = float(
-        package["segment_end"]
-    )
+    start = float(plan["segment_start"])
+    end = float(plan["segment_end"])
 
     start = max(
-        0.0,
-        min(
-            start,
-            seconds - 5
-        )
+        0,
+        min(start, seconds - 10)
     )
 
-    end = max(
-        start + 5,
-        min(
-            end,
-            seconds
-        )
+    end = min(
+        seconds,
+        max(end, start + 10)
     )
 
-    # Keep the final Short reasonable.
     if end - start > 45:
-
         end = start + 45
 
-    package["segment_start"] = start
-    package["segment_end"] = end
+    plan["segment_start"] = start
+    plan["segment_end"] = end
 
-    (
-        WORK /
-        "analysis.json"
-    ).write_text(
+    clip_length = end - start
+
+    valid_beats = []
+
+    for beat in plan["commentary"]:
+
+        beat_time = float(
+            beat["time"]
+        )
+
+        if (
+            beat_time >= 0
+            and
+            beat_time < clip_length - 1
+        ):
+            valid_beats.append({
+                "time": beat_time,
+                "text": str(
+                    beat["text"]
+                ).strip(),
+            })
+
+    plan["commentary"] = valid_beats[:3]
+
+    (WORK / "edit_plan.json").write_text(
         json.dumps(
-            package,
+            plan,
             indent=2
         ),
         encoding="utf-8",
@@ -579,256 +493,324 @@ Maximum 7 words in uppercase.
 
     print(
         json.dumps(
-            package,
+            plan,
             indent=2
         )
     )
 
-    return package
+    return plan
 
 
 # ============================================================
-# VOICEOVER
+# TTS
 # ============================================================
 
-def create_voice(
+def generate_voice_beats(
     client,
-    package
+    plan
 ):
 
-    print()
+    print("\n" + "=" * 60)
+    print("GENERATING TIMED COMMENTARY")
     print("=" * 60)
-    print("GENERATING VOICE")
-    print("=" * 60)
 
-    narration = (
-        package["hook"].strip()
-        + " "
-        + package["narration"].strip()
-    )
+    beats = []
 
-    output = (
-        WORK /
-        "viralspawntv_voice.mp3"
-    )
+    for index, beat in enumerate(
+        plan["commentary"]
+    ):
 
-    with (
-        client.audio.speech
-        .with_streaming_response
-        .create(
-            model=os.getenv(
-                "TTS_MODEL",
-                "gpt-4o-mini-tts"
-            ),
-
-            voice=os.getenv(
-                "TTS_VOICE",
-                "onyx"
-            ),
-
-            input=narration,
-
-            instructions=(
-                "Young adult American male. "
-                "Neutral United States accent. "
-                "Very clear pronunciation. "
-                "Natural gaming commentary. "
-                "Medium-fast conversational pace. "
-                "Energetic but not exaggerated. "
-                "Sound like a normal American streamer "
-                "telling a friend about the clip. "
-                "Do not sound like a radio announcer."
-            ),
+        output = (
+            VOICE_DIR /
+            f"voice_{index:02d}.mp3"
         )
-    ) as response:
 
-        response.stream_to_file(
+        with (
+            client.audio.speech
+            .with_streaming_response
+            .create(
+                model=os.getenv(
+                    "TTS_MODEL",
+                    "gpt-4o-mini-tts"
+                ),
+
+                voice=os.getenv(
+                    "TTS_VOICE",
+                    "onyx"
+                ),
+
+                input=beat["text"],
+
+                instructions=(
+                    "Young adult American male. "
+                    "Neutral United States accent. "
+                    "Clear natural pronunciation. "
+                    "Conversational gaming commentary. "
+                    "Medium-fast pace. "
+                    "Confident and energetic without shouting. "
+                    "Do not sound like a commercial, radio "
+                    "announcer, or documentary narrator. "
+                    "Sound like an American streamer reacting "
+                    "naturally to a clip."
+                ),
+            )
+        ) as response:
+
+            response.stream_to_file(
+                output
+            )
+
+        beat["file"] = output
+        beat["duration"] = media_duration(
             output
         )
 
-    return output
+        beats.append(beat)
+
+        print(
+            f"Beat {index}: "
+            f"{beat['time']:.2f}s / "
+            f"{beat['duration']:.2f}s"
+        )
+
+    return beats
 
 
 # ============================================================
-# CREATE TEXT FILES FOR FFMPEG
+# TEXT
 # ============================================================
 
-def prepare_text(package):
+def prepare_text(plan):
 
-    hook = package[
-        "caption_top"
-    ].upper()
+    headline = str(
+        plan["headline"]
+    ).upper()
 
-    hook = "\n".join(
+    headline = "\n".join(
         textwrap.wrap(
-            hook,
-            width=20
+            headline,
+            width=18
         )
     )
 
-    hook_file = (
+    headline_file = (
         WORK /
-        "hook.txt"
+        "headline.txt"
     )
 
-    hook_file.write_text(
-        hook,
-        encoding="utf-8",
+    headline_file.write_text(
+        headline,
+        encoding="utf-8"
     )
 
-    creator_file = (
+    credit_file = (
         WORK /
-        "creator.txt"
+        "credit.txt"
     )
 
-    creator_file.write_text(
-        f"@{CHANNEL} • VIRALSPAWNTV",
-        encoding="utf-8",
+    credit_file.write_text(
+        f"@{CHANNEL}  •  VIRALSPAWNTV",
+        encoding="utf-8"
     )
 
     return (
-        hook_file,
-        creator_file
+        headline_file,
+        credit_file
     )
 
 
 # ============================================================
-# RENDER VERTICAL SHORT
+# AUDIO MIX
 # ============================================================
 
-def render_short(
+def build_audio_filter(beats):
+
+    filters = []
+
+    #
+    # Source audio begins at full volume.
+    # Each narration window ducks source audio.
+    #
+
+    volume_expression = "1"
+
+    for beat in beats:
+
+        start = float(
+            beat["time"]
+        )
+
+        end = (
+            start +
+            float(beat["duration"]) +
+            0.15
+        )
+
+        volume_expression += (
+            f"*if(between(t,{start:.3f},"
+            f"{end:.3f}),0.22,1)"
+        )
+
+    filters.append(
+        f"[0:a]volume='{volume_expression}'"
+        f"[sourceaudio]"
+    )
+
+    mix_inputs = [
+        "[sourceaudio]"
+    ]
+
+    for index, beat in enumerate(beats):
+
+        delay_ms = int(
+            float(beat["time"]) * 1000
+        )
+
+        filters.append(
+            f"[{index + 1}:a]"
+            f"adelay={delay_ms}|{delay_ms},"
+            f"volume=1.30"
+            f"[voice{index}]"
+        )
+
+        mix_inputs.append(
+            f"[voice{index}]"
+        )
+
+    joined = "".join(
+        mix_inputs
+    )
+
+    filters.append(
+        f"{joined}"
+        f"amix=inputs={len(mix_inputs)}:"
+        f"duration=first:"
+        f"dropout_transition=0"
+        f"[finalaudio]"
+    )
+
+    return ";".join(filters)
+
+
+# ============================================================
+# RENDER
+# ============================================================
+
+def render(
     clip,
-    package,
-    voice,
-    hook_file,
-    creator_file
+    plan,
+    beats,
+    headline_file,
+    credit_file
 ):
 
-    print()
-    print("=" * 60)
-    print("RENDERING VIRALSPAWNTV SHORT")
+    print("\n" + "=" * 60)
+    print("RENDERING V2 SHORT")
     print("=" * 60)
 
     start = float(
-        package["segment_start"]
+        plan["segment_start"]
     )
 
     end = float(
-        package["segment_end"]
+        plan["segment_end"]
     )
 
-    clip_length = (
-        end -
-        start
-    )
-
-    # Font supplied by Ubuntu.
-    font = (
-        "/usr/share/fonts/truetype/"
-        "dejavu/DejaVuSans-Bold.ttf"
-    )
+    length = end - start
 
     #
-    # VIDEO:
-    #
-    # Background = enlarged blurred 16:9 video.
-    # Foreground = original 16:9 video centered.
-    #
-    # This avoids stretching the source.
+    # Background fills vertical screen.
+    # Main 16:9 video remains uncropped.
     #
 
-    filter_complex = (
+    video_filter = (
         "[0:v]"
         "scale=1080:1920:"
         "force_original_aspect_ratio=increase,"
         "crop=1080:1920,"
-        "boxblur=20:10"
+        "boxblur=25:12"
         "[bg];"
 
         "[0:v]"
         "scale=1080:-2"
-        "[fg];"
+        "[main];"
 
-        "[bg][fg]"
-        "overlay="
-        "(W-w)/2:"
-        "(H-h)/2,"
-        
+        "[bg][main]"
+        "overlay=(W-w)/2:(H-h)/2,"
+
         "drawbox="
         "x=0:y=0:"
-        "w=iw:h=240:"
-        "color=black@0.50:"
+        "w=iw:h=250:"
+        "color=black@0.48:"
         "t=fill,"
 
         f"drawtext="
-        f"fontfile={font}:"
-        f"textfile={hook_file}:"
+        f"fontfile={FONT}:"
+        f"textfile={headline_file}:"
         "fontcolor=white:"
         "fontsize=64:"
-        "line_spacing=10:"
+        "line_spacing=8:"
         "x=(w-text_w)/2:"
-        "y=65:"
+        "y=58:"
         "borderw=4:"
         "bordercolor=black:"
-        "enable='between(t,0,5)',"
+        "enable='between(t,0,4.5)',"
 
         f"drawtext="
-        f"fontfile={font}:"
-        f"textfile={creator_file}:"
+        f"fontfile={FONT}:"
+        f"textfile={credit_file}:"
         "fontcolor=white:"
-        "fontsize=34:"
+        "fontsize=32:"
         "x=(w-text_w)/2:"
-        "y=h-105:"
+        "y=h-95:"
         "borderw=3:"
         "bordercolor=black"
-        "[video];"
-
-        # Original clip audio reduced underneath commentary.
-        "[0:a]"
-        "volume=0.38"
-        "[original];"
-
-        # Voice starts immediately.
-        "[1:a]"
-        "volume=1.35"
-        "[voice];"
-
-        # Mix original audio and commentary.
-        "[original][voice]"
-        "amix="
-        "inputs=2:"
-        "duration=first:"
-        "dropout_transition=2"
-        "[audio]"
+        "[finalvideo]"
     )
 
-    run([
+    audio_filter = build_audio_filter(
+        beats
+    )
+
+    filter_complex = (
+        video_filter
+        + ";"
+        + audio_filter
+    )
+
+    command = [
         "ffmpeg",
         "-y",
 
-        # Start at AI-selected segment.
         "-ss",
         str(start),
 
         "-t",
-        str(clip_length),
+        str(length),
 
         "-i",
-        str(
-            clip["video"]
-        ),
+        str(clip["video"]),
+    ]
 
-        "-i",
-        str(voice),
+    #
+    # Each commentary beat becomes another FFmpeg input.
+    #
 
+    for beat in beats:
+        command.extend([
+            "-i",
+            str(beat["file"])
+        ])
+
+    command.extend([
         "-filter_complex",
         filter_complex,
 
         "-map",
-        "[video]",
+        "[finalvideo]",
 
         "-map",
-        "[audio]",
+        "[finalaudio]",
 
         "-c:v",
         "libx264",
@@ -857,36 +839,25 @@ def render_short(
         "-movflags",
         "+faststart",
 
-        "-shortest",
+        "-t",
+        str(length),
 
-        str(
-            FINAL_VIDEO
-        ),
+        str(FINAL_VIDEO),
     ])
 
-    if not FINAL_VIDEO.exists():
+    run(command)
 
+    if not FINAL_VIDEO.exists():
         raise RuntimeError(
-            "Final video was not created."
+            "V2 video wasn't created."
         )
 
-    size_mb = (
-        FINAL_VIDEO
-        .stat()
-        .st_size
-        /
-        1_000_000
-    )
-
-    print()
-    print("=" * 60)
-    print("FINAL SHORT CREATED")
-    print("=" * 60)
-
+    print("\nFINAL VIDEO:")
     print(FINAL_VIDEO)
 
     print(
-        f"Size: {size_mb:.2f} MB"
+        f"Duration: "
+        f"{media_duration(FINAL_VIDEO):.2f}s"
     )
 
 
@@ -896,9 +867,8 @@ def render_short(
 
 def main():
 
-    print()
-    print("=" * 60)
-    print("VIRALSPAWNTV FULL PRODUCTION")
+    print("\n" + "=" * 60)
+    print("VIRALSPAWNTV V2")
     print("=" * 60)
 
     client = OpenAI()
@@ -918,7 +888,7 @@ def main():
         audio
     )
 
-    package = analyze_clip(
+    plan = create_edit_plan(
         client,
         clip,
         seconds,
@@ -926,42 +896,33 @@ def main():
         transcript
     )
 
-    voice = create_voice(
+    beats = generate_voice_beats(
         client,
-        package
+        plan
     )
 
-    hook_file, creator_file = (
-        prepare_text(
-            package
-        )
+    headline, credit = prepare_text(
+        plan
     )
 
-    render_short(
+    render(
         clip,
-        package,
-        voice,
-        hook_file,
-        creator_file
+        plan,
+        beats,
+        headline,
+        credit
     )
 
-    print()
+    print("\n" + "=" * 60)
+    print("V2 COMPLETE")
     print("=" * 60)
-    print("VIRALSPAWNTV SHORT READY")
-    print("=" * 60)
 
-    print()
     print(
-        "Finished video:"
+        "\nViralSpawnTV_Short_V2.mp4"
     )
 
     print(
-        "ViralSpawnTV_Short.mp4"
-    )
-
-    print()
-    print(
-        "YouTube upload remains OFF."
+        "\nYouTube publishing remains OFF."
     )
 
 
