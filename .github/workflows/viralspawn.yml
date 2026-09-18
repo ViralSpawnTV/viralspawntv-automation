@@ -1,30 +1,45 @@
-name: ViralSpawnTV pipeline
+name: ViralSpawnTV Pipeline
+
 on:
   workflow_dispatch:
   schedule:
-    # Ten runs/day. GitHub cron is UTC and may start with slight delay.
-    - cron: '17 0,2,4,7,9,12,14,16,19,22 * * *'
+    - cron: "17 0,2,4,7,9,12,14,16,19,22 * * *"
+
 permissions:
   contents: write
+
 jobs:
   short:
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with: {python-version: '3.12'}
-      - run: sudo apt-get update && sudo apt-get install -y ffmpeg
-      - run: pip install -r requirements.txt
-      - name: Run pipeline
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install FFmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run ViralSpawnTV pipeline
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           YOUTUBE_TOKEN_JSON: ${{ secrets.YOUTUBE_TOKEN_JSON }}
           AUTO_UPLOAD: ${{ vars.AUTO_UPLOAD || 'false' }}
-        run: python src/main.py
+        run: python main.py
+
       - name: Persist duplicate history
         run: |
-          git config user.name viralspawntv-bot
-          git config user.email actions@users.noreply.github.com
-          git add data/history.json
+          git config user.name "viralspawntv-bot"
+          git config user.email "actions@users.noreply.github.com"
+          git add history.json
           git diff --cached --quiet || git commit -m "Update processed clip history"
           git push
