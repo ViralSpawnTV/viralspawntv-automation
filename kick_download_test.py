@@ -1,21 +1,44 @@
 import pathlib
+import re
+import subprocess
+
 from playwright.sync_api import sync_playwright
 
+
 ROOT = pathlib.Path(__file__).resolve().parent
-DOWNLOAD_DIR = ROOT / "work" / "kick_downloads"
-DOWNLOAD_DIR.mkdir(parents=True, exist_ok=True)
+
+DOWNLOAD_DIR = (
+    ROOT /
+    "work" /
+    "kick_downloads"
+)
+
+DOWNLOAD_DIR.mkdir(
+    parents=True,
+    exist_ok=True
+)
 
 CHANNEL = "ayezee"
-CLIPS_URL = f"https://kick.com/{CHANNEL}/clips"
+
+CLIPS_URL = (
+    f"https://kick.com/{CHANNEL}/clips"
+)
 
 
 def save_debug(page, name):
+
     page.screenshot(
-        path=str(DOWNLOAD_DIR / f"{name}.png"),
+        path=str(
+            DOWNLOAD_DIR /
+            f"{name}.png"
+        ),
         full_page=True,
     )
 
-    (DOWNLOAD_DIR / f"{name}.html").write_text(
+    (
+        DOWNLOAD_DIR /
+        f"{name}.html"
+    ).write_text(
         page.content(),
         encoding="utf-8",
     )
@@ -24,7 +47,7 @@ def save_debug(page, name):
 def main():
 
     print("=" * 60)
-    print("VIRALSPAWNTV KICK DOWNLOAD TEST")
+    print("VIRALSPAWNTV KICK ACQUISITION TEST")
     print("=" * 60)
 
     with sync_playwright() as p:
@@ -34,17 +57,16 @@ def main():
         )
 
         context = browser.new_context(
-            accept_downloads=True,
             viewport={
                 "width": 1440,
-                "height": 1000
-            },
+                "height": 1000,
+            }
         )
 
         page = context.new_page()
 
         print()
-        print("Opening clips page:")
+        print("Opening:")
         print(CLIPS_URL)
 
         page.goto(
@@ -55,43 +77,22 @@ def main():
 
         page.wait_for_timeout(6000)
 
-        print("Page title:", page.title())
-        print("Current URL:", page.url)
-
         save_debug(
             page,
             "01_clips_page"
         )
 
-        # --------------------------------------------------
-        # KICK'S CURRENT CLIP URL FORMAT
-        #
-        # Example:
-        # /ayezee/clips/clip_01M2BQ8Y19MQ890YK9MBPRPP6B
-        # --------------------------------------------------
+        # ---------------------------------------------
+        # FIND PUBLIC CLIP LINKS
+        # ---------------------------------------------
 
-        selector = (
+        links = page.locator(
             f'a[href^="/{CHANNEL}/clips/clip_"]'
         )
 
-        links = page.locator(selector)
-
         count = links.count()
 
-        print()
-        print(
-            f"Found {count} Kick clip links."
-        )
-
         if count == 0:
-
-            print(
-                "Primary selector failed."
-            )
-
-            print(
-                "Trying broader Kick clip selector..."
-            )
 
             links = page.locator(
                 'a[href*="/clips/clip_"]'
@@ -99,43 +100,20 @@ def main():
 
             count = links.count()
 
-            print(
-                f"Broad selector found {count} links."
-            )
+        print()
+        print(
+            f"Found {count} Kick clips."
+        )
 
         if count == 0:
 
             raise RuntimeError(
-                "No Kick clip links were found."
+                "No Kick clips discovered."
             )
 
-        # --------------------------------------------------
-        # PRINT FIRST FEW CLIPS
-        # --------------------------------------------------
-
-        print()
-        print("First clips discovered:")
-
-        max_print = min(
-            count,
-            10
-        )
-
-        for i in range(max_print):
-
-            href = (
-                links
-                .nth(i)
-                .get_attribute("href")
-            )
-
-            print(
-                f"{i + 1}. {href}"
-            )
-
-        # --------------------------------------------------
+        # ---------------------------------------------
         # SELECT FIRST CLIP
-        # --------------------------------------------------
+        # ---------------------------------------------
 
         clip_href = (
             links
@@ -146,30 +124,44 @@ def main():
         if not clip_href:
 
             raise RuntimeError(
-                "Clip link did not contain href."
+                "Selected clip had no href."
             )
 
-        if clip_href.startswith("/"):
+        clip_match = re.search(
+            r"(clip_[A-Za-z0-9]+)",
+            clip_href
+        )
 
-            clip_url = (
-                "https://kick.com"
-                + clip_href
+        if not clip_match:
+
+            raise RuntimeError(
+                "Could not determine Kick clip ID."
             )
 
-        else:
+        clip_id = clip_match.group(1)
 
-            clip_url = clip_href
+        clip_url = (
+            "https://kick.com"
+            + clip_href
+            if clip_href.startswith("/")
+            else clip_href
+        )
 
         print()
         print("=" * 60)
-        print("SELECTED KICK CLIP")
+        print("SELECTED CLIP")
         print("=" * 60)
 
+        print("Clip ID:")
+        print(clip_id)
+
+        print()
+        print("Clip URL:")
         print(clip_url)
 
-        # --------------------------------------------------
-        # OPEN CLIP
-        # --------------------------------------------------
+        # ---------------------------------------------
+        # OPEN SELECTED CLIP
+        # ---------------------------------------------
 
         page.goto(
             clip_url,
@@ -179,305 +171,160 @@ def main():
 
         page.wait_for_timeout(6000)
 
-        print()
-        print(
-            "Clip page title:",
-            page.title()
-        )
-
-        print(
-            "Clip page URL:",
-            page.url
-        )
-
         save_debug(
             page,
-            "02_clip_page"
+            "02_selected_clip"
         )
 
-        # --------------------------------------------------
-        # FIND DOWNLOAD CONTROL
-        # --------------------------------------------------
+        html = page.content()
+
+        # ---------------------------------------------
+        # FIND ONLY THE SELECTED CLIP'S MEDIA PLAYLIST
+        #
+        # We deliberately require the selected clip ID
+        # so we don't accidentally grab the channel's
+        # live-stream playlist.
+        # ---------------------------------------------
+
+        pattern = (
+            r'https://clips\.kick\.com/'
+            r'clips/[^"\'\\<>\s]+/'
+            + re.escape(clip_id)
+            + r'/playlist\.m3u8'
+        )
+
+        matches = re.findall(
+            pattern,
+            html
+        )
+
+        # Remove duplicates while retaining order.
+        playlists = list(
+            dict.fromkeys(matches)
+        )
 
         print()
         print(
-            "Searching for Kick Download control..."
+            "Matching clip playlists found:",
+            len(playlists)
         )
 
-        download_button = page.get_by_role(
-            "button",
-            name="Download",
-        )
-
-        download_link = page.get_by_role(
-            "link",
-            name="Download",
-        )
-
-        text_download = page.get_by_text(
-            "Download",
-            exact=True,
-        )
-
-        print(
-            "Download buttons:",
-            download_button.count()
-        )
-
-        print(
-            "Download links:",
-            download_link.count()
-        )
-
-        print(
-            "Download text matches:",
-            text_download.count()
-        )
-
-        control = None
-
-        if download_button.count() > 0:
-
-            control = download_button.first
-
-            print(
-                "Using Download button."
-            )
-
-        elif download_link.count() > 0:
-
-            control = download_link.first
-
-            print(
-                "Using Download link."
-            )
-
-        elif text_download.count() > 0:
-
-            control = text_download.first
-
-            print(
-                "Using Download text control."
-            )
-
-        # --------------------------------------------------
-        # IF DOWNLOAD ISN'T IMMEDIATELY VISIBLE,
-        # LOOK FOR MENU BUTTONS
-        # --------------------------------------------------
-
-        if control is None:
-
-            print()
-            print(
-                "Download control not immediately visible."
-            )
-
-            print(
-                "Checking buttons for menus..."
-            )
-
-            buttons = page.locator("button")
-
-            button_count = buttons.count()
-
-            print(
-                "Buttons on page:",
-                button_count
-            )
-
-            # Try buttons one at a time.
-            # Some versions of Kick place Download
-            # inside a three-dot/share menu.
-
-            for i in range(
-                min(button_count, 30)
-            ):
-
-                button = buttons.nth(i)
-
-                try:
-
-                    aria = (
-                        button.get_attribute(
-                            "aria-label"
-                        )
-                        or ""
-                    )
-
-                    title = (
-                        button.get_attribute(
-                            "title"
-                        )
-                        or ""
-                    )
-
-                    print(
-                        f"Button {i}: "
-                        f"aria='{aria}' "
-                        f"title='{title}'"
-                    )
-
-                    combined = (
-                        aria + " " + title
-                    ).lower()
-
-                    if (
-                        "more" in combined
-                        or
-                        "share" in combined
-                        or
-                        "option" in combined
-                    ):
-
-                        print(
-                            "Trying possible menu button..."
-                        )
-
-                        button.click()
-
-                        page.wait_for_timeout(
-                            1000
-                        )
-
-                        possible = (
-                            page.get_by_text(
-                                "Download",
-                                exact=True,
-                            )
-                        )
-
-                        if possible.count() > 0:
-
-                            control = (
-                                possible.first
-                            )
-
-                            print(
-                                "Download found "
-                                "inside menu."
-                            )
-
-                            break
-
-                except Exception:
-
-                    continue
-
-        # --------------------------------------------------
-        # STILL NOTHING?
-        # --------------------------------------------------
-
-        if control is None:
-
-            save_debug(
-                page,
-                "03_no_download_control"
-            )
+        if not playlists:
 
             raise RuntimeError(
-                "Kick clip loaded successfully, "
-                "but the Download control could "
-                "not be located. Diagnostic "
-                "HTML/screenshots were saved."
+                "Selected clip playlist "
+                "was not found in Kick page."
             )
 
-        # --------------------------------------------------
-        # DOWNLOAD
-        # --------------------------------------------------
+        playlist_url = playlists[0]
+
+        print()
+        print("Selected media playlist:")
+        print(playlist_url)
+
+        # ---------------------------------------------
+        # DOWNLOAD / REMUX WITH FFMPEG
+        # ---------------------------------------------
+
+        output_file = (
+            DOWNLOAD_DIR /
+            f"{clip_id}.mp4"
+        )
 
         print()
         print(
-            "Clicking Kick Download control..."
+            "Creating MP4 with FFmpeg..."
         )
 
-        try:
+        command = [
+            "ffmpeg",
+            "-y",
 
-            with page.expect_download(
-                timeout=30000
-            ) as download_info:
+            "-user_agent",
+            (
+                "Mozilla/5.0 "
+                "(Windows NT 10.0; Win64; x64) "
+                "AppleWebKit/537.36 "
+                "(KHTML, like Gecko) "
+                "Chrome/140.0 Safari/537.36"
+            ),
 
-                control.click()
+            "-headers",
+            (
+                "Referer: https://kick.com/\r\n"
+                "Origin: https://kick.com\r\n"
+            ),
 
-            download = (
-                download_info.value
-            )
+            "-i",
+            playlist_url,
 
-            filename = (
-                download.suggested_filename
-                or
-                "kick_clip.mp4"
-            )
+            "-c",
+            "copy",
 
-            if not filename.lower().endswith(
-                ".mp4"
-            ):
+            "-movflags",
+            "+faststart",
 
-                filename += ".mp4"
+            str(output_file),
+        ]
 
-            destination = (
-                DOWNLOAD_DIR /
-                filename
-            )
+        result = subprocess.run(
+            command,
+            capture_output=True,
+            text=True,
+        )
 
-            download.save_as(
-                str(destination)
-            )
+        print()
+        print("FFmpeg return code:")
+        print(result.returncode)
+
+        if result.returncode != 0:
 
             print()
-            print(
-                "Downloaded:"
-            )
-
-            print(destination)
-
-        except Exception as exc:
-
-            save_debug(
-                page,
-                "04_download_failure"
-            )
+            print("FFmpeg STDERR:")
+            print(result.stderr[-5000:])
 
             raise RuntimeError(
-                "Kick Download control was found, "
-                "but Chromium did not receive a "
-                f"download event: {exc}"
+                "FFmpeg could not create "
+                "the Kick clip MP4."
             )
 
-        # --------------------------------------------------
-        # VERIFY FILE
-        # --------------------------------------------------
+        # ---------------------------------------------
+        # VERIFY MP4
+        # ---------------------------------------------
 
-        mp4_files = list(
-            DOWNLOAD_DIR.glob(
-                "*.mp4"
+        if not output_file.exists():
+
+            raise RuntimeError(
+                "FFmpeg returned successfully "
+                "but MP4 does not exist."
             )
+
+        size = output_file.stat().st_size
+
+        if size < 10000:
+
+            raise RuntimeError(
+                "MP4 exists but is unexpectedly small."
+            )
+
+        size_mb = (
+            size /
+            1_000_000
         )
-
-        if not mp4_files:
-
-            raise RuntimeError(
-                "No MP4 exists after download."
-            )
 
         print()
         print("=" * 60)
-        print("DOWNLOAD SUCCESS")
+        print("SUCCESS")
         print("=" * 60)
 
-        for file in mp4_files:
+        print()
+        print("MP4:")
+        print(output_file)
 
-            size_mb = (
-                file.stat().st_size
-                / 1_000_000
-            )
-
-            print(
-                f"{file.name}"
-            )
-
-            print(
-                f"Size: {size_mb:.2f} MB"
-            )
+        print()
+        print(
+            f"Size: {size_mb:.2f} MB"
+        )
 
         browser.close()
 
