@@ -4,10 +4,15 @@ import os
 import pathlib
 import re
 import subprocess
+import textwrap
 
 from openai import OpenAI
 from playwright.sync_api import sync_playwright
 
+
+# ============================================================
+# PATHS / SETTINGS
+# ============================================================
 
 ROOT = pathlib.Path(__file__).resolve().parent
 WORK = ROOT / "work" / "production"
@@ -17,14 +22,21 @@ WORK.mkdir(parents=True, exist_ok=True)
 FRAMES.mkdir(parents=True, exist_ok=True)
 
 CHANNEL = "ayezee"
+CREATOR_NAME = "AyeZee"
 CLIPS_URL = f"https://kick.com/{CHANNEL}/clips"
+
+FINAL_VIDEO = WORK / "ViralSpawnTV_Short.mp4"
 
 
 # ============================================================
-# HELPERS
+# COMMAND HELPER
 # ============================================================
 
 def run(command):
+
+    print()
+    print("RUNNING:")
+    print(" ".join(str(x) for x in command))
 
     result = subprocess.run(
         command,
@@ -34,11 +46,12 @@ def run(command):
 
     if result.returncode != 0:
 
-        print(result.stderr[-5000:])
+        print()
+        print("STDERR:")
+        print(result.stderr[-8000:])
 
         raise RuntimeError(
-            "Command failed: "
-            + " ".join(command)
+            "Command failed."
         )
 
     return result
@@ -52,14 +65,14 @@ def encode_image(path):
 
 
 # ============================================================
-# ACQUIRE KICK CLIP
+# ACQUIRE AUTHORIZED KICK CLIP
 # ============================================================
 
 def acquire_clip():
 
     print()
     print("=" * 60)
-    print("ACQUIRING AUTHORIZED KICK CLIP")
+    print("ACQUIRING KICK CLIP")
     print("=" * 60)
 
     with sync_playwright() as p:
@@ -98,13 +111,13 @@ def acquire_clip():
         count = links.count()
 
         print(
-            f"Found {count} public Kick clips."
+            f"Found {count} clips."
         )
 
         if count == 0:
 
             raise RuntimeError(
-                "No clips discovered."
+                "No Kick clips discovered."
             )
 
         href = (
@@ -116,7 +129,7 @@ def acquire_clip():
         if not href:
 
             raise RuntimeError(
-                "Selected clip has no URL."
+                "Selected clip has no href."
             )
 
         match = re.search(
@@ -138,7 +151,7 @@ def acquire_clip():
             else href
         )
 
-        print("Selected:")
+        print("Selected clip:")
         print(clip_url)
 
         page.goto(
@@ -158,7 +171,7 @@ def acquire_clip():
             + r'/playlist\.m3u8'
         )
 
-        matches = list(
+        playlists = list(
             dict.fromkeys(
                 re.findall(
                     pattern,
@@ -167,17 +180,18 @@ def acquire_clip():
             )
         )
 
-        if not matches:
+        if not playlists:
 
             raise RuntimeError(
-                "Clip playlist not found."
+                "Clip media playlist not found."
             )
 
-        playlist = matches[0]
+        playlist = playlists[0]
 
-        video = WORK / f"{clip_id}.mp4"
-
-        print("Acquiring MP4...")
+        video = (
+            WORK /
+            f"{clip_id}.mp4"
+        )
 
         run([
             "ffmpeg",
@@ -212,17 +226,8 @@ def acquire_clip():
 
         browser.close()
 
-    if not video.exists():
-
-        raise RuntimeError(
-            "MP4 acquisition failed."
-        )
-
-    print("MP4 ready:")
-    print(video)
-
     return {
-        "creator": "AyeZee",
+        "creator": CREATOR_NAME,
         "clip_id": clip_id,
         "clip_url": clip_url,
         "video": video,
@@ -230,7 +235,7 @@ def acquire_clip():
 
 
 # ============================================================
-# VIDEO DURATION
+# VIDEO INFO
 # ============================================================
 
 def duration(video):
@@ -252,37 +257,31 @@ def duration(video):
 
 
 # ============================================================
-# EXTRACT REPRESENTATIVE FRAMES
+# FRAME EXTRACTION
 # ============================================================
 
 def extract_frames(video):
 
     print()
     print("=" * 60)
-    print("EXTRACTING VIDEO FRAMES")
+    print("EXTRACTING FRAMES")
     print("=" * 60)
 
     seconds = duration(video)
 
-    print(
-        f"Source duration: {seconds:.2f}s"
-    )
-
-    # Sample roughly every 5 seconds.
     timestamps = []
 
-    t = 1.0
+    current = 1.0
 
-    while t < seconds:
+    while current < seconds:
 
-        timestamps.append(t)
+        timestamps.append(current)
 
-        t += 5.0
+        current += 5.0
 
-    # Keep API request reasonable.
     timestamps = timestamps[:16]
 
-    frame_paths = []
+    frames = []
 
     for index, timestamp in enumerate(
         timestamps
@@ -290,67 +289,73 @@ def extract_frames(video):
 
         path = (
             FRAMES /
-            f"frame_{index:02d}_{timestamp:.1f}.jpg"
+            f"frame_{index:02d}.jpg"
         )
 
         run([
             "ffmpeg",
             "-y",
+
             "-ss",
             str(timestamp),
+
             "-i",
             str(video),
+
             "-frames:v",
             "1",
+
             "-vf",
-            "scale=768:-2",
+            "scale=640:-2",
+
             "-q:v",
-            "3",
+            "4",
+
             str(path),
         ])
 
-        frame_paths.append(
+        frames.append(
             (
                 timestamp,
                 path
             )
         )
 
-    print(
-        f"Extracted {len(frame_paths)} frames."
-    )
-
     return (
         seconds,
-        frame_paths
+        frames
     )
 
 
 # ============================================================
-# EXTRACT AUDIO
+# AUDIO EXTRACTION
 # ============================================================
 
 def extract_audio(video):
 
-    print()
-    print("=" * 60)
-    print("EXTRACTING AUDIO")
-    print("=" * 60)
-
-    audio = WORK / "source_audio.mp3"
+    audio = (
+        WORK /
+        "source_audio.mp3"
+    )
 
     run([
         "ffmpeg",
         "-y",
+
         "-i",
         str(video),
+
         "-vn",
+
         "-ac",
         "1",
+
         "-ar",
         "16000",
+
         "-b:a",
         "64k",
+
         str(audio),
     ])
 
@@ -358,29 +363,29 @@ def extract_audio(video):
 
 
 # ============================================================
-# TRANSCRIBE SOURCE AUDIO
+# TRANSCRIPTION
 # ============================================================
 
 def transcribe(client, audio):
 
     print()
     print("=" * 60)
-    print("TRANSCRIBING SOURCE")
+    print("TRANSCRIBING CLIP")
     print("=" * 60)
 
     with open(
         audio,
         "rb"
-    ) as audio_file:
+    ) as file:
 
-        result = (
+        response = (
             client.audio.transcriptions.create(
                 model="gpt-4o-mini-transcribe",
-                file=audio_file,
+                file=file,
             )
         )
 
-    transcript = result.text
+    transcript = response.text
 
     (
         WORK /
@@ -390,13 +395,11 @@ def transcribe(client, audio):
         encoding="utf-8",
     )
 
-    print(transcript)
-
     return transcript
 
 
 # ============================================================
-# ANALYZE ACTUAL CLIP
+# AI VIDEO ANALYSIS
 # ============================================================
 
 def analyze_clip(
@@ -409,51 +412,47 @@ def analyze_clip(
 
     print()
     print("=" * 60)
-    print("ANALYZING ACTUAL VIDEO")
+    print("ANALYZING VIDEO")
     print("=" * 60)
 
     content = []
 
     prompt = f"""
-You are the video producer for ViralSpawnTV.
+You are producing a YouTube Short for ViralSpawnTV.
 
-You are analyzing an actual streamer clip.
+Analyze this actual streamer clip.
 
 Creator:
 {clip["creator"]}
 
-Original clip:
+Source:
 {clip["clip_url"]}
 
-Source duration:
+Duration:
 {seconds:.2f} seconds
 
-TRANSCRIPT:
+Transcript:
 
 {transcript}
 
-I am also providing representative frames from the video.
-Each frame is labeled with its approximate timestamp.
+Representative video frames are supplied below.
 
-Your job is to choose the strongest segment for a
-YouTube Short.
+Choose the strongest continuous 20-45 second segment.
 
-Prefer approximately 20-45 seconds.
+It should contain the most entertaining, surprising,
+funny, interesting, or noteworthy portion.
 
-The segment should make sense on its own and should contain
-the funniest, most surprising, most interesting, or most
-engaging moment available.
+Do not invent dialogue or events.
 
-Do NOT invent anything not supported by the transcript
-and frames.
+Write original commentary that adds context,
+observation, explanation, or humor.
 
-Then create original ViralSpawnTV commentary.
+If gambling appears in the footage, describe what happens
+rather than encouraging viewers to gamble.
 
-The commentary must add context, observation, humor,
-explanation, or reaction. Do not merely restate what the
-streamer says.
+Return ONLY valid JSON.
 
-Return ONLY valid JSON with exactly these keys:
+Exactly these keys:
 
 segment_start
 segment_end
@@ -463,35 +462,24 @@ title
 description
 caption_top
 
-Rules:
-
-segment_start:
-Number of seconds from beginning of source.
-
-segment_end:
-Number of seconds from beginning of source.
+segment_start and segment_end must be numbers.
 
 hook:
-Very short opening hook.
+Maximum 8 words.
 
 narration:
-Approximately 25-55 words.
-Young American gaming/commentary style.
-Natural and conversational.
+25-50 words.
+Natural young American gaming-commentary style.
 
 title:
 YouTube Shorts title.
-Do not make unsupported claims.
 
 description:
-Short description.
-Credit the original creator.
-Include the original clip URL.
-Do not claim ownership of original footage.
+Credit the creator and include:
+{clip["clip_url"]}
 
 caption_top:
-Very short uppercase on-screen hook.
-Maximum 7 words.
+Maximum 7 words in uppercase.
 """
 
     content.append({
@@ -504,7 +492,7 @@ Maximum 7 words.
         content.append({
             "type": "input_text",
             "text": (
-                f"Frame at approximately "
+                f"Video frame at "
                 f"{timestamp:.1f} seconds:"
             ),
         })
@@ -545,6 +533,39 @@ Maximum 7 words.
 
     package = json.loads(text)
 
+    # Safety bounds.
+    start = float(
+        package["segment_start"]
+    )
+
+    end = float(
+        package["segment_end"]
+    )
+
+    start = max(
+        0.0,
+        min(
+            start,
+            seconds - 5
+        )
+    )
+
+    end = max(
+        start + 5,
+        min(
+            end,
+            seconds
+        )
+    )
+
+    # Keep the final Short reasonable.
+    if end - start > 45:
+
+        end = start + 45
+
+    package["segment_start"] = start
+    package["segment_end"] = end
+
     (
         WORK /
         "analysis.json"
@@ -567,7 +588,7 @@ Maximum 7 words.
 
 
 # ============================================================
-# CREATE VOICEOVER
+# VOICEOVER
 # ============================================================
 
 def create_voice(
@@ -577,7 +598,7 @@ def create_voice(
 
     print()
     print("=" * 60)
-    print("GENERATING VIRALSPAWNTV VOICE")
+    print("GENERATING VOICE")
     print("=" * 60)
 
     narration = (
@@ -608,19 +629,15 @@ def create_voice(
             input=narration,
 
             instructions=(
-                "Speak as a young adult American male "
-                "gaming commentator. "
-                "Use a neutral United States accent. "
-                "Speak clearly and naturally. "
+                "Young adult American male. "
+                "Neutral United States accent. "
+                "Very clear pronunciation. "
+                "Natural gaming commentary. "
                 "Medium-fast conversational pace. "
-                "Crisp pronunciation. "
-                "Energetic enough for YouTube Shorts "
-                "without shouting. "
-                "Do not use an Indian, British, "
-                "Australian, or exaggerated accent. "
-                "Do not sound like a radio announcer. "
+                "Energetic but not exaggerated. "
                 "Sound like a normal American streamer "
-                "explaining a wild clip to a friend."
+                "telling a friend about the clip. "
+                "Do not sound like a radio announcer."
             ),
         )
     ) as response:
@@ -629,13 +646,248 @@ def create_voice(
             output
         )
 
-    print(
-        "Voice generated:"
+    return output
+
+
+# ============================================================
+# CREATE TEXT FILES FOR FFMPEG
+# ============================================================
+
+def prepare_text(package):
+
+    hook = package[
+        "caption_top"
+    ].upper()
+
+    hook = "\n".join(
+        textwrap.wrap(
+            hook,
+            width=20
+        )
     )
 
-    print(output)
+    hook_file = (
+        WORK /
+        "hook.txt"
+    )
 
-    return output
+    hook_file.write_text(
+        hook,
+        encoding="utf-8",
+    )
+
+    creator_file = (
+        WORK /
+        "creator.txt"
+    )
+
+    creator_file.write_text(
+        f"@{CHANNEL} • VIRALSPAWNTV",
+        encoding="utf-8",
+    )
+
+    return (
+        hook_file,
+        creator_file
+    )
+
+
+# ============================================================
+# RENDER VERTICAL SHORT
+# ============================================================
+
+def render_short(
+    clip,
+    package,
+    voice,
+    hook_file,
+    creator_file
+):
+
+    print()
+    print("=" * 60)
+    print("RENDERING VIRALSPAWNTV SHORT")
+    print("=" * 60)
+
+    start = float(
+        package["segment_start"]
+    )
+
+    end = float(
+        package["segment_end"]
+    )
+
+    clip_length = (
+        end -
+        start
+    )
+
+    # Font supplied by Ubuntu.
+    font = (
+        "/usr/share/fonts/truetype/"
+        "dejavu/DejaVuSans-Bold.ttf"
+    )
+
+    #
+    # VIDEO:
+    #
+    # Background = enlarged blurred 16:9 video.
+    # Foreground = original 16:9 video centered.
+    #
+    # This avoids stretching the source.
+    #
+
+    filter_complex = (
+        "[0:v]"
+        "scale=1080:1920:"
+        "force_original_aspect_ratio=increase,"
+        "crop=1080:1920,"
+        "boxblur=20:10"
+        "[bg];"
+
+        "[0:v]"
+        "scale=1080:-2"
+        "[fg];"
+
+        "[bg][fg]"
+        "overlay="
+        "(W-w)/2:"
+        "(H-h)/2,"
+        
+        "drawbox="
+        "x=0:y=0:"
+        "w=iw:h=240:"
+        "color=black@0.50:"
+        "t=fill,"
+
+        f"drawtext="
+        f"fontfile={font}:"
+        f"textfile={hook_file}:"
+        "fontcolor=white:"
+        "fontsize=64:"
+        "line_spacing=10:"
+        "x=(w-text_w)/2:"
+        "y=65:"
+        "borderw=4:"
+        "bordercolor=black:"
+        "enable='between(t,0,5)',"
+
+        f"drawtext="
+        f"fontfile={font}:"
+        f"textfile={creator_file}:"
+        "fontcolor=white:"
+        "fontsize=34:"
+        "x=(w-text_w)/2:"
+        "y=h-105:"
+        "borderw=3:"
+        "bordercolor=black"
+        "[video];"
+
+        # Original clip audio reduced underneath commentary.
+        "[0:a]"
+        "volume=0.38"
+        "[original];"
+
+        # Voice starts immediately.
+        "[1:a]"
+        "volume=1.35"
+        "[voice];"
+
+        # Mix original audio and commentary.
+        "[original][voice]"
+        "amix="
+        "inputs=2:"
+        "duration=first:"
+        "dropout_transition=2"
+        "[audio]"
+    )
+
+    run([
+        "ffmpeg",
+        "-y",
+
+        # Start at AI-selected segment.
+        "-ss",
+        str(start),
+
+        "-t",
+        str(clip_length),
+
+        "-i",
+        str(
+            clip["video"]
+        ),
+
+        "-i",
+        str(voice),
+
+        "-filter_complex",
+        filter_complex,
+
+        "-map",
+        "[video]",
+
+        "-map",
+        "[audio]",
+
+        "-c:v",
+        "libx264",
+
+        "-preset",
+        "medium",
+
+        "-crf",
+        "20",
+
+        "-pix_fmt",
+        "yuv420p",
+
+        "-r",
+        "30",
+
+        "-c:a",
+        "aac",
+
+        "-b:a",
+        "192k",
+
+        "-ar",
+        "48000",
+
+        "-movflags",
+        "+faststart",
+
+        "-shortest",
+
+        str(
+            FINAL_VIDEO
+        ),
+    ])
+
+    if not FINAL_VIDEO.exists():
+
+        raise RuntimeError(
+            "Final video was not created."
+        )
+
+    size_mb = (
+        FINAL_VIDEO
+        .stat()
+        .st_size
+        /
+        1_000_000
+    )
+
+    print()
+    print("=" * 60)
+    print("FINAL SHORT CREATED")
+    print("=" * 60)
+
+    print(FINAL_VIDEO)
+
+    print(
+        f"Size: {size_mb:.2f} MB"
+    )
 
 
 # ============================================================
@@ -646,7 +898,7 @@ def main():
 
     print()
     print("=" * 60)
-    print("VIRALSPAWNTV PRODUCTION TEST")
+    print("VIRALSPAWNTV FULL PRODUCTION")
     print("=" * 60)
 
     client = OpenAI()
@@ -679,31 +931,37 @@ def main():
         package
     )
 
+    hook_file, creator_file = (
+        prepare_text(
+            package
+        )
+    )
+
+    render_short(
+        clip,
+        package,
+        voice,
+        hook_file,
+        creator_file
+    )
+
     print()
     print("=" * 60)
-    print("PRODUCTION TEST COMPLETE")
+    print("VIRALSPAWNTV SHORT READY")
     print("=" * 60)
 
     print()
-    print("Review these artifact files:")
-
     print(
-        "1. analysis.json"
+        "Finished video:"
     )
 
     print(
-        "2. transcript.txt"
-    )
-
-    print(
-        "3. viralspawntv_voice.mp3"
+        "ViralSpawnTV_Short.mp4"
     )
 
     print()
     print(
-        "If the selected segment, commentary, "
-        "and voice are good, the next stage "
-        "will render the finished Short."
+        "YouTube upload remains OFF."
     )
 
 
