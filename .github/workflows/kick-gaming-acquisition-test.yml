@@ -1,0 +1,58 @@
+name: ViralSpawnTV Kick Gaming Acquisition Test
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  kick-gaming-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests playwright
+
+      - name: Install Chromium
+        run: playwright install --with-deps chromium
+
+      - name: Install FFmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+
+      - name: Run Kick gaming acquisition test
+        run: python kick_gaming_acquisition.py
+
+      - name: Show acquisition result
+        if: always()
+        run: |
+          echo "===== KICK GAMING ACQUISITION TEST ====="
+
+          if [ -f work/kick_gaming/acquisition_result.json ]; then
+            cat work/kick_gaming/acquisition_result.json
+          else
+            echo "No acquisition_result.json created."
+            echo "This is expected while no gaming source is enabled."
+          fi
+
+      - name: Upload acquisition artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: viralspawntv-kick-gaming-acquisition-test
+          path: work/kick_gaming/
+          if-no-files-found: warn
+          retention-days: 7
