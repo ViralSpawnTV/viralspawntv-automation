@@ -9,9 +9,7 @@ from openai import OpenAI
 
 
 # ============================================================
-# VIRALSPAWNTV AUTOMATION
-# Stage 1:
-# Twitch discovery + ranking + OpenAI commentary generation
+# PATHS
 # ============================================================
 
 ROOT = pathlib.Path(__file__).resolve().parent
@@ -25,39 +23,37 @@ DATA.mkdir(exist_ok=True)
 
 
 # ============================================================
-# CONFIG
+# CONFIG / HISTORY
 # ============================================================
 
 def load_config():
-    p = ROOT / "config.json"
+    path = ROOT / "config.json"
 
-    if not p.exists():
+    if not path.exists():
         raise SystemExit("Missing config.json.")
 
-    return json.loads(p.read_text())
+    return json.loads(path.read_text())
 
-
-# ============================================================
-# HISTORY
-# ============================================================
 
 def history():
-    p = DATA / "history.json"
+    path = DATA / "history.json"
 
-    if p.exists():
-        return json.loads(p.read_text())
+    if path.exists():
+        return json.loads(path.read_text())
 
-    return {"processed": []}
+    return {
+        "processed": []
+    }
 
 
 def save_history(h):
-    """
-    We will use this later after an actual finished
-    ViralSpawnTV video has been successfully created.
-    """
-    (DATA / "history.json").write_text(
-        json.dumps(h, indent=2)
-    )
+    path = DATA / "history.json"
+    path.write_text(json.dumps(h, indent=2))
+
+
+def clip_key(clip):
+    raw = f"{clip.get('platform')}:{clip.get('id')}"
+    return hashlib.sha256(raw.encode()).hexdigest()
 
 
 # ============================================================
@@ -65,10 +61,11 @@ def save_history(h):
 # ============================================================
 
 def twitch_token():
+
     client_id = os.environ["TWITCH_CLIENT_ID"]
     client_secret = os.environ["TWITCH_CLIENT_SECRET"]
 
-    r = requests.post(
+    response = requests.post(
         "https://id.twitch.tv/oauth2/token",
         params={
             "client_id": client_id,
@@ -78,12 +75,13 @@ def twitch_token():
         timeout=30,
     )
 
-    r.raise_for_status()
+    response.raise_for_status()
 
-    return r.json()["access_token"]
+    return response.json()["access_token"]
 
 
 def twitch_headers(token):
+
     return {
         "Client-ID": os.environ["TWITCH_CLIENT_ID"],
         "Authorization": f"Bearer {token}",
@@ -91,11 +89,12 @@ def twitch_headers(token):
 
 
 # ============================================================
-# TWITCH USER LOOKUP
+# TWITCH DISCOVERY
 # ============================================================
 
 def get_broadcaster_id(username, token):
-    r = requests.get(
+
+    response = requests.get(
         "https://api.twitch.tv/helix/users",
         headers=twitch_headers(token),
         params={
@@ -104,9 +103,9 @@ def get_broadcaster_id(username, token):
         timeout=30,
     )
 
-    r.raise_for_status()
+    response.raise_for_status()
 
-    data = r.json().get("data", [])
+    data = response.json().get("data", [])
 
     if not data:
         print(f"Twitch user not found: {username}")
@@ -115,16 +114,9 @@ def get_broadcaster_id(username, token):
     return data[0]["id"]
 
 
-# ============================================================
-# GET TODAY'S CLIPS
-# ============================================================
+def get_daily_twitch_clips(username, token):
 
-def get_daily_clips(username, token):
-
-    broadcaster_id = get_broadcaster_id(
-        username,
-        token
-    )
+    broadcaster_id = get_broadcaster_id(username, token)
 
     if not broadcaster_id:
         return []
@@ -140,82 +132,64 @@ def get_daily_clips(username, token):
 
     params = {
         "broadcaster_id": broadcaster_id,
-        "started_at": start.isoformat().replace(
-            "+00:00",
-            "Z"
-        ),
-        "ended_at": now.isoformat().replace(
-            "+00:00",
-            "Z"
-        ),
+        "started_at": start.isoformat().replace("+00:00", "Z"),
+        "ended_at": now.isoformat().replace("+00:00", "Z"),
         "first": 100,
     }
 
-    r = requests.get(
+    response = requests.get(
         "https://api.twitch.tv/helix/clips",
         headers=twitch_headers(token),
         params=params,
         timeout=30,
     )
 
-    r.raise_for_status()
+    response.raise_for_status()
 
     clips = []
 
-    for clip in r.json().get("data", []):
+    for clip in response.json().get("data", []):
 
-        clips.append(
-            {
-                "id": clip["id"],
-                "creator": username,
-                "title": clip.get(
-                    "title",
-                    ""
-                ),
-                "url": clip.get("url"),
-                "thumbnail_url": clip.get(
-                    "thumbnail_url"
-                ),
-                "view_count": clip.get(
-                    "view_count",
-                    0
-                ),
-                "created_at": clip.get(
-                    "created_at"
-                ),
-                "duration": clip.get(
-                    "duration",
-                    0
-                ),
-            }
-        )
+        clips.append({
+            "platform": "twitch",
+            "id": clip["id"],
+            "creator": username,
+            "title": clip.get("title", ""),
+            "url": clip.get("url"),
+            "thumbnail_url": clip.get("thumbnail_url"),
+            "view_count": clip.get("view_count", 0),
+            "created_at": clip.get("created_at"),
+            "duration": clip.get("duration", 0),
+
+            # Twitch discovery clips are NOT automatically
+            # authorized for production.
+            "reuse_allowed": False,
+            "download_allowed": False,
+            "permission_url": None,
+        })
 
     return clips
 
 
-# ============================================================
-# DISCOVER TOP CLIPS
-# ============================================================
+def discover_twitch(cfg):
 
-def discover(cfg):
+    print("\n==============================")
+    print("TWITCH DISCOVERY")
+    print("==============================")
 
     token = twitch_token()
 
     candidates = []
 
-    for username in cfg.get(
-        "streamers",
-        []
-    ):
+    for username in cfg.get("streamers", []):
 
         try:
 
             print(
-                f"Checking Twitch clips for "
-                f"{username}..."
+                f"Checking Twitch clips for {username}..."
             )
 
-            clips = get_daily_clips(
+            clips = get_daily_twitch_clips(
                 username,
                 token
             )
@@ -225,22 +199,17 @@ def discover(cfg):
         except Exception as e:
 
             print(
-                f"Twitch error for "
-                f"{username}: {e}"
+                f"Twitch error for {username}: {e}"
             )
 
-    # Rank everything by current view count
     candidates.sort(
-        key=lambda x: x.get(
-            "view_count",
-            0
-        ),
+        key=lambda x: x.get("view_count", 0),
         reverse=True
     )
 
     top_clips = candidates[:10]
 
-    print("\nTop Twitch clips found:")
+    print("\nTop Twitch discovery clips:")
 
     for clip in top_clips:
 
@@ -255,28 +224,120 @@ def discover(cfg):
 
 
 # ============================================================
-# CHOOSE TOP UNUSED CLIP
+# AUTHORIZED SOURCE CONFIGURATION
 # ============================================================
 
-def choose(candidates, h):
+def get_authorized_sources(cfg):
+
+    authorized = []
+
+    source_groups = cfg.get(
+        "authorized_sources",
+        {}
+    )
+
+    for platform, creators in source_groups.items():
+
+        for creator in creators:
+
+            item = creator.copy()
+
+            item["platform"] = platform
+
+            authorized.append(item)
+
+    return authorized
+
+
+def print_authorized_sources(cfg):
+
+    sources = get_authorized_sources(cfg)
+
+    print("\n==============================")
+    print("AUTHORIZED PRODUCTION SOURCES")
+    print("==============================")
+
+    if not sources:
+
+        print(
+            "No authorized production sources configured."
+        )
+
+        return
+
+    for source in sources:
+
+        print(
+            f"\nCreator: {source.get('creator')}"
+        )
+
+        print(
+            f"Platform: {source.get('platform')}"
+        )
+
+        print(
+            f"Channel: {source.get('channel')}"
+        )
+
+        print(
+            f"Reuse allowed: "
+            f"{source.get('reuse_allowed')}"
+        )
+
+        print(
+            f"Download allowed: "
+            f"{source.get('download_allowed')}"
+        )
+
+        print(
+            f"Permission: "
+            f"{source.get('permission_url')}"
+        )
+
+
+# ============================================================
+# PRODUCTION AUTHORIZATION CHECK
+# ============================================================
+
+def production_authorized(clip):
+
+    return (
+        clip.get("reuse_allowed") is True
+        and
+        clip.get("download_allowed") is True
+    )
+
+
+# ============================================================
+# DUPLICATE PROTECTION
+# ============================================================
+
+def choose_unprocessed(candidates, h):
 
     seen = set(
-        h.get(
-            "processed",
-            []
-        )
+        h.get("processed", [])
     )
 
     for clip in candidates:
 
-        key = hashlib.sha256(
-            clip["id"].encode()
-        ).hexdigest()
+        key = clip_key(clip)
 
         if key not in seen:
+
             return clip
 
     return None
+
+
+def mark_processed(clip, h):
+
+    key = clip_key(clip)
+
+    if key not in h["processed"]:
+
+        h["processed"].append(key)
+
+    save_history(h)
 
 
 # ============================================================
@@ -290,7 +351,10 @@ You are writing original commentary for ViralSpawnTV,
 a YouTube Shorts channel covering viral streamer moments.
 
 Create a transformative YouTube Short commentary package
-about the following streamer clip.
+about the following clip.
+
+Platform:
+{clip.get('platform')}
 
 Creator:
 {clip.get('creator')}
@@ -306,12 +370,13 @@ Clip URL:
 
 IMPORTANT:
 
-At this stage you only have the Twitch metadata and clip
-title. Do not pretend that you watched or analyzed the
-actual video.
+At this stage you may only have metadata and the clip title.
+
+Do not pretend that you watched or analyzed the actual
+video unless actual video analysis has been supplied.
 
 Do not invent events, dialogue, people, actions, or context
-that are not supported by the information provided.
+that are not supported by the supplied information.
 
 If the title alone does not provide enough context, keep
 the commentary focused on the available information rather
@@ -338,7 +403,7 @@ Use a young, conversational American gaming/commentary
 style.
 
 The narration should add commentary or context rather than
-simply repeat the clip title.
+simply repeating the clip title.
 
 title:
 Create an attention-grabbing YouTube Shorts title without
@@ -349,12 +414,12 @@ Create a short ViralSpawnTV description.
 
 Mention the original creator.
 
-Include the original Twitch clip URL.
+Include the original clip URL.
 
 Do not claim ViralSpawnTV owns the original footage.
 """
 
-    r = client.responses.create(
+    response = client.responses.create(
         model=os.getenv(
             "OPENAI_MODEL",
             "gpt-5.6"
@@ -362,25 +427,21 @@ Do not claim ViralSpawnTV owns the original footage.
         input=prompt,
     )
 
-    txt = r.output_text.strip()
+    text = response.output_text.strip()
 
-    # Remove markdown code fences if the model happens
-    # to include them.
-    if txt.startswith("```"):
+    if text.startswith("```"):
 
-        txt = txt.split(
-            "\n",
-            1
-        )[1].rsplit(
-            "```",
-            1
-        )[0]
+        text = (
+            text
+            .split("\n", 1)[1]
+            .rsplit("```", 1)[0]
+        )
 
-    return json.loads(txt)
+    return json.loads(text)
 
 
 # ============================================================
-# AI VOICE
+# VOICE GENERATION
 # ============================================================
 
 def voice(client, text, path):
@@ -415,144 +476,152 @@ def voice(client, text, path):
 
 
 # ============================================================
-# MAIN PIPELINE
+# MAIN
 # ============================================================
 
 def main():
 
-    print(
-        "\n=============================="
-    )
-    print(
-        "VIRALSPAWNTV AUTOMATION"
-    )
-    print(
-        "==============================\n"
-    )
+    print("\n==============================")
+    print("VIRALSPAWNTV AUTOMATION")
+    print("==============================\n")
 
     cfg = load_config()
 
     h = history()
 
-    # ------------------------------------------
-    # Find today's top clips
-    # ------------------------------------------
+    # ----------------------------------------
+    # Show approved production sources
+    # ----------------------------------------
 
-    candidates = discover(cfg)
+    print_authorized_sources(cfg)
 
-    if not candidates:
+    # ----------------------------------------
+    # Twitch discovery
+    # ----------------------------------------
 
-        print(
-            "\nNo Twitch clips found today."
-        )
+    twitch_candidates = discover_twitch(cfg)
 
-        return
-
-    # ------------------------------------------
-    # Choose highest-ranked unused clip
-    # ------------------------------------------
-
-    clip = choose(
-        candidates,
-        h
-    )
-
-    if not clip:
+    if not twitch_candidates:
 
         print(
-            "\nTop clips have already "
-            "been processed."
+            "\nNo Twitch discovery clips found today."
         )
 
-        return
+    else:
 
-    # ------------------------------------------
-    # Show selected clip
-    # ------------------------------------------
-
-    print(
-        "\nSELECTED CLIP"
-    )
-
-    print(
-        json.dumps(
-            clip,
-            indent=2
+        candidate = choose_unprocessed(
+            twitch_candidates,
+            h
         )
+
+        if candidate:
+
+            print("\n==============================")
+            print("TOP DISCOVERY CANDIDATE")
+            print("==============================")
+
+            print(
+                json.dumps(
+                    candidate,
+                    indent=2
+                )
+            )
+
+            # --------------------------------
+            # Critical rights check
+            # --------------------------------
+
+            if not production_authorized(candidate):
+
+                print(
+                    "\nDISCOVERY ONLY:"
+                )
+
+                print(
+                    "This clip has NOT been approved "
+                    "for automatic production."
+                )
+
+                print(
+                    "No video will be downloaded."
+                )
+
+                print(
+                    "No voiceover will be generated."
+                )
+
+                print(
+                    "No Short will be rendered."
+                )
+
+                print(
+                    "No YouTube upload will occur."
+                )
+
+            else:
+
+                print(
+                    "\nAUTHORIZED FOR PRODUCTION."
+                )
+
+        else:
+
+            print(
+                "\nTop Twitch clips have already "
+                "been processed."
+            )
+
+    # ----------------------------------------
+    # Current authorized Kick sources
+    # ----------------------------------------
+
+    kick_sources = (
+        cfg
+        .get("authorized_sources", {})
+        .get("kick", [])
     )
 
-    # ------------------------------------------
-    # Connect to OpenAI
-    # ------------------------------------------
+    if kick_sources:
 
-    client = OpenAI()
+        print("\n==============================")
+        print("KICK PRODUCTION QUEUE")
+        print("==============================")
 
-    # ------------------------------------------
-    # Generate ViralSpawnTV commentary
-    # ------------------------------------------
+        for source in kick_sources:
 
-    meta = write_package(
-        client,
-        clip
-    )
+            print(
+                f"{source.get('creator')} "
+                f"({source.get('channel')})"
+            )
 
-    print(
-        "\nVIRALSPAWNTV PACKAGE"
-    )
+            print(
+                "  Authorized for reuse:",
+                source.get("reuse_allowed")
+            )
 
-    print(
-        json.dumps(
-            meta,
-            indent=2
+            print(
+                "  Authorized for download:",
+                source.get("download_allowed")
+            )
+
+            print(
+                "  Permission:",
+                source.get("permission_url")
+            )
+
+        print(
+            "\nAuthorized Kick creators are configured."
         )
-    )
 
-    # ------------------------------------------
-    # IMPORTANT
-    # ------------------------------------------
-    #
-    # We intentionally DO NOT add this clip
-    # to processed history yet.
-    #
-    # A clip should only be marked processed
-    # AFTER:
-    #
-    # 1. Authorized video media is obtained
-    # 2. The video is analyzed
-    # 3. Commentary is finalized
-    # 4. Voiceover is generated
-    # 5. The vertical Short is rendered
-    # 6. The finished MP4 passes successfully
-    #
-    # This prevents scheduled runs from
-    # consuming clips without creating videos.
-    # ------------------------------------------
+        print(
+            "Automated Kick media acquisition is "
+            "the next module to connect."
+        )
 
-    print(
-        "\nCandidate successfully "
-        "discovered and analyzed."
-    )
+    print("\n==============================")
+    print("RUN COMPLETE")
+    print("==============================\n")
 
-    print(
-        "Clip URL:",
-        clip["url"]
-    )
-
-    print(
-        "\nClip has NOT been marked "
-        "as processed yet."
-    )
-
-    print(
-        "Waiting for successful video "
-        "production before adding it "
-        "to history."
-    )
-
-
-# ============================================================
-# START
-# ============================================================
 
 if __name__ == "__main__":
     main()
