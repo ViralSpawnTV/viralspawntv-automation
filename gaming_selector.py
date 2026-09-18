@@ -10,6 +10,7 @@ import requests
 
 
 CONFIG_PATH = Path("config.json")
+SOURCES_PATH = Path("gaming_sources.json")
 HISTORY_PATH = Path("history.json")
 OUTPUT_PATH = Path("work/production/gaming_selection.json")
 
@@ -19,51 +20,17 @@ TWITCH_CLIPS_URL = "https://api.twitch.tv/helix/clips"
 
 
 GAMBLING_TERMS = {
-    "casino",
-    "gambling",
-    "slots",
-    "slot",
-    "roulette",
-    "blackjack",
-    "sportsbook",
-    "sports betting",
-    "betting",
-    "jackpot",
-    "stake",
-    "stake.com",
-    "wager",
-    "wagering",
+    "casino", "gambling", "slots", "slot", "roulette",
+    "blackjack", "sportsbook", "sports betting", "betting",
+    "jackpot", "stake", "stake.com", "wager", "wagering"
 }
 
 GAMING_TERMS = {
-    "game",
-    "gaming",
-    "ranked",
-    "clutch",
-    "kill",
-    "kills",
-    "win",
-    "wins",
-    "boss",
-    "speedrun",
-    "record",
-    "rage",
-    "fail",
-    "fails",
-    "glitch",
-    "challenge",
-    "1v1",
-    "ace",
-    "headshot",
-    "round",
-    "match",
-    "squad",
-    "duo",
-    "trio",
-    "controller",
-    "keyboard",
-    "console",
-    "pc",
+    "game", "gaming", "ranked", "clutch", "kill", "kills",
+    "win", "wins", "boss", "speedrun", "record", "rage",
+    "fail", "fails", "glitch", "challenge", "1v1", "ace",
+    "headshot", "round", "match", "squad", "duo", "trio",
+    "controller", "keyboard", "console", "pc"
 }
 
 
@@ -82,41 +49,7 @@ def save_json(path, data):
     path.parent.mkdir(parents=True, exist_ok=True)
 
     with open(path, "w", encoding="utf-8") as f:
-        json.dump(
-            data,
-            f,
-            indent=2,
-            ensure_ascii=False,
-        )
-
-
-def load_config():
-    config = load_json(CONFIG_PATH, {})
-
-    if not config:
-        raise RuntimeError("config.json could not be loaded.")
-
-    return config
-
-
-def load_history():
-    history = load_json(
-        HISTORY_PATH,
-        {
-            "processed": [],
-            "updated_at": None,
-        },
-    )
-
-    if isinstance(history, list):
-        history = {
-            "processed": history,
-            "updated_at": None,
-        }
-
-    history.setdefault("processed", [])
-
-    return history
+        json.dump(data, f, indent=2, ensure_ascii=False)
 
 
 def normalize(text):
@@ -127,65 +60,70 @@ def normalize(text):
 
 
 def contains_any(text, terms):
-    normalized = normalize(text)
+    text = normalize(text)
+    return any(normalize(term) in text for term in terms)
 
-    for term in terms:
-        if normalize(term) in normalized:
-            return True
 
-    return False
+def parse_time(value):
+    if not value:
+        return None
+
+    try:
+        return datetime.fromisoformat(
+            str(value).replace("Z", "+00:00")
+        )
+    except Exception:
+        return None
 
 
 def clip_fingerprint(clip):
-    """
-    Creates our own stable duplicate identifier.
-
-    Twitch clip ID is preferred, but the fallback protects us
-    if another platform/source uses a different identifier.
-    """
-
     platform = str(clip.get("platform", "")).lower()
     clip_id = str(clip.get("id", "")).strip()
 
     if clip_id:
         raw = f"{platform}:{clip_id}"
     else:
-        raw = "|".join(
-            [
-                platform,
-                str(clip.get("creator_name", "")),
-                str(clip.get("title", "")),
-                str(clip.get("created_at", "")),
-                str(clip.get("url", "")),
-            ]
-        )
+        raw = "|".join([
+            platform,
+            str(clip.get("creator_name", "")),
+            str(clip.get("title", "")),
+            str(clip.get("created_at", "")),
+            str(clip.get("url", "")),
+        ])
 
-    return hashlib.sha256(
-        raw.encode("utf-8")
-    ).hexdigest()
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
 
-def history_fingerprints(history):
-    fingerprints = set()
+def load_history():
+    data = load_json(HISTORY_PATH, {"processed": []})
+
+    if isinstance(data, list):
+        data = {"processed": data}
+
+    data.setdefault("processed", [])
+    return data
+
+
+def processed_fingerprints(history):
+    result = set()
 
     for item in history.get("processed", []):
-        if isinstance(item, dict):
-            fp = item.get("fingerprint")
+        if isinstance(item, dict) and item.get("fingerprint"):
+            result.add(item["fingerprint"])
 
-            if fp:
-                fingerprints.add(fp)
+    return result
 
-    return fingerprints
 
+# ---------------------------------------------------------
+# TWITCH DISCOVERY
+# ---------------------------------------------------------
 
 def twitch_app_token():
     client_id = os.environ.get("TWITCH_CLIENT_ID")
     client_secret = os.environ.get("TWITCH_CLIENT_SECRET")
 
     if not client_id or not client_secret:
-        raise RuntimeError(
-            "TWITCH_CLIENT_ID or TWITCH_CLIENT_SECRET is missing."
-        )
+        raise RuntimeError("Twitch credentials are missing.")
 
     response = requests.post(
         TWITCH_TOKEN_URL,
@@ -199,10 +137,7 @@ def twitch_app_token():
 
     response.raise_for_status()
 
-    return (
-        response.json()["access_token"],
-        client_id,
-    )
+    return response.json()["access_token"], client_id
 
 
 def twitch_headers(token, client_id):
@@ -221,148 +156,118 @@ def get_twitch_user(login, headers):
     )
 
     response.raise_for_status()
-
     data = response.json().get("data", [])
 
-    if not data:
-        return None
-
-    return data[0]
+    return data[0] if data else None
 
 
-def get_twitch_clips(user_id, headers, first=100):
+def get_twitch_clips(user_id, headers):
     response = requests.get(
         TWITCH_CLIPS_URL,
         headers=headers,
         params={
             "broadcaster_id": user_id,
-            "first": first,
+            "first": 100,
         },
         timeout=30,
     )
 
     response.raise_for_status()
-
     return response.json().get("data", [])
 
 
-def convert_twitch_clip(raw, streamer):
-    return {
-        "platform": "twitch",
-        "id": raw.get("id"),
-        "url": raw.get("url"),
-        "embed_url": raw.get("embed_url"),
-        "title": raw.get("title", ""),
-        "creator_name": raw.get("creator_name", ""),
-        "broadcaster_name": raw.get(
-            "broadcaster_name",
-            streamer,
-        ),
-        "game_id": raw.get("game_id"),
-        "language": raw.get("language"),
-        "views": int(raw.get("view_count", 0)),
-        "created_at": raw.get("created_at"),
-        "duration": float(raw.get("duration", 0)),
-        "thumbnail_url": raw.get("thumbnail_url"),
-        "reuse_allowed": False,
-        "download_allowed": False,
-        "permission_url": None,
-        "production_authorized": False,
-        "discovery_only": True,
-    }
+def discover_twitch(config):
+    streamers = config.get("discovery_streamers", [])
+
+    token, client_id = twitch_app_token()
+    headers = twitch_headers(token, client_id)
+
+    candidates = []
+
+    for streamer in streamers:
+        print(f"Discovering: {streamer}")
+
+        try:
+            user = get_twitch_user(streamer, headers)
+
+            if not user:
+                print("  Twitch user not found.")
+                continue
+
+            raw_clips = get_twitch_clips(user["id"], headers)
+
+            print(f"  Found {len(raw_clips)} clips.")
+
+            for raw in raw_clips:
+                candidates.append({
+                    "platform": "twitch",
+                    "id": raw.get("id"),
+                    "url": raw.get("url"),
+                    "title": raw.get("title", ""),
+                    "creator_name": raw.get("creator_name", ""),
+                    "broadcaster_name": raw.get(
+                        "broadcaster_name",
+                        streamer
+                    ),
+                    "game_id": raw.get("game_id"),
+                    "views": int(raw.get("view_count", 0)),
+                    "created_at": raw.get("created_at"),
+                    "duration": float(raw.get("duration", 0)),
+                    "thumbnail_url": raw.get("thumbnail_url"),
+
+                    # Discovery is NOT production permission.
+                    "production_authorized": False,
+                    "discovery_only": True,
+                })
+
+        except Exception as exc:
+            print(f"  Error: {exc}")
+
+    return candidates
 
 
-def reject_reason(clip, config, fingerprints):
-    """
-    Hard filters.
-
-    Returning None means the candidate survives.
-    """
-
-    fp = clip_fingerprint(clip)
-
-    if fp in fingerprints:
-        return "duplicate"
-
-    combined_text = " ".join(
-        [
-            str(clip.get("title", "")),
-            str(clip.get("creator_name", "")),
-            str(clip.get("broadcaster_name", "")),
-        ]
-    )
-
-    filters = config.get("content_filters", {})
-
-    if filters.get("reject_gambling", True):
-        if contains_any(combined_text, GAMBLING_TERMS):
-            return "gambling_or_casino"
-
-    duration = float(clip.get("duration", 0))
-
-    # Extremely tiny clips generally do not give V4 enough story.
-    if duration and duration < 8:
-        return "too_short"
-
-    # Avoid absurdly long discovery candidates.
-    if duration > 180:
-        return "too_long"
-
-    return None
-
-
-def recency_score(created_at):
-    if not created_at:
-        return 0.0
-
-    try:
-        created = datetime.fromisoformat(
-            created_at.replace("Z", "+00:00")
-        )
-
-        now = datetime.now(timezone.utc)
-        age_hours = max(
-            0,
-            (now - created).total_seconds() / 3600,
-        )
-
-        # Recent clips get a meaningful advantage,
-        # but older viral clips can still compete.
-        return max(
-            0.0,
-            30.0 - min(age_hours / 24.0, 30.0),
-        )
-
-    except Exception:
-        return 0.0
-
+# ---------------------------------------------------------
+# GAMING SCORING
+# ---------------------------------------------------------
 
 def view_score(views):
     views = max(int(views or 0), 0)
 
-    if views == 0:
-        return 0.0
+    if not views:
+        return 0
 
-    # Log scale prevents one giant clip from completely
-    # overwhelming every other signal.
     return min(
-        40.0,
-        math.log10(views + 1) * 8.0,
+        40,
+        math.log10(views + 1) * 8
     )
+
+
+def recency_score(created_at):
+    created = parse_time(created_at)
+
+    if not created:
+        return 0
+
+    age_days = max(
+        0,
+        (
+            datetime.now(timezone.utc) - created
+        ).total_seconds() / 86400
+    )
+
+    return max(0, 30 - min(age_days, 30))
 
 
 def title_score(title):
     title = normalize(title)
+    score = 0
 
-    score = 0.0
-
-    high_value_terms = {
+    signals = {
         "clutch": 8,
         "insane": 7,
         "crazy": 6,
         "rage": 6,
         "fail": 6,
-        "fails": 6,
         "record": 8,
         "world record": 10,
         "speedrun": 8,
@@ -370,196 +275,193 @@ def title_score(title):
         "ace": 7,
         "glitch": 7,
         "boss": 5,
-        "win": 4,
-        "wins": 4,
         "no way": 6,
-        "wtf": 3,
     }
 
-    for term, points in high_value_terms.items():
+    for term, points in signals.items():
         if term in title:
             score += points
 
     if contains_any(title, GAMING_TERMS):
         score += 5
 
-    return min(score, 20.0)
+    return min(score, 20)
 
 
 def duration_score(duration):
     duration = float(duration or 0)
 
     if 20 <= duration <= 60:
-        return 10.0
-
+        return 10
     if 12 <= duration < 20:
-        return 7.0
-
+        return 7
     if 60 < duration <= 90:
-        return 7.0
-
+        return 7
     if 8 <= duration < 12:
-        return 4.0
-
+        return 4
     if 90 < duration <= 180:
-        return 3.0
+        return 3
 
-    return 0.0
+    return 0
 
 
 def score_clip(clip):
-    score = 0.0
-
-    score += view_score(
-        clip.get("views", 0)
+    return round(
+        view_score(clip.get("views"))
+        + recency_score(clip.get("created_at"))
+        + title_score(clip.get("title"))
+        + duration_score(clip.get("duration")),
+        2,
     )
 
-    score += recency_score(
+
+# ---------------------------------------------------------
+# RIGHTS ENGINE
+# ---------------------------------------------------------
+
+def evaluate_source(source):
+    reasons = []
+
+    if not source.get("creator_clipping_allowed"):
+        reasons.append("creator_clipping_not_allowed")
+
+    if not source.get("platform_monetization_allowed"):
+        reasons.append("platform_monetization_not_allowed")
+
+    if not source.get("commercial_use_allowed"):
+        reasons.append("commercial_use_not_allowed")
+
+    if source.get("third_party_game_rights_check"):
+        reasons.append("game_rights_must_be_checked_per_clip")
+
+    if not source.get("authorized_acquisition_method"):
+        reasons.append("no_authorized_acquisition_method")
+
+    if not source.get("production_enabled"):
+        reasons.append("production_disabled")
+
+    return {
+        "source_id": source.get("id"),
+        "creator": source.get("creator"),
+        "organization": source.get("organization"),
+        "permission_url": source.get("permission_url"),
+        "waiting_period_hours": int(
+            source.get("waiting_period_hours", 0)
+        ),
+        "authorized_acquisition_method":
+            source.get("authorized_acquisition_method"),
+        "production_enabled":
+            bool(source.get("production_enabled")),
+        "eligible_for_unattended_production":
+            len(reasons) == 0,
+        "blocking_reasons": reasons,
+    }
+
+
+def build_rights_report(source_db):
+    report = []
+
+    for source in source_db.get("sources", []):
+        report.append(evaluate_source(source))
+
+    return report
+
+
+def source_wait_period_passed(source, clip_created_at):
+    hours = int(source.get("waiting_period_hours", 0))
+
+    if hours <= 0:
+        return True
+
+    created = parse_time(clip_created_at)
+
+    if not created:
+        return False
+
+    age_hours = (
+        datetime.now(timezone.utc) - created
+    ).total_seconds() / 3600
+
+    return age_hours >= hours
+
+
+def source_can_produce(source, clip=None):
+    if not source.get("creator_clipping_allowed"):
+        return False
+
+    if not source.get("platform_monetization_allowed"):
+        return False
+
+    if not source.get("commercial_use_allowed"):
+        return False
+
+    if not source.get("authorized_acquisition_method"):
+        return False
+
+    if not source.get("production_enabled"):
+        return False
+
+    # We deliberately do NOT automatically pass the
+    # third-party game-rights requirement.
+    if source.get("third_party_game_rights_check"):
+        if not clip:
+            return False
+
+        if not clip.get("game_rights_verified"):
+            return False
+
+    if clip and not source_wait_period_passed(
+        source,
         clip.get("created_at")
-    )
+    ):
+        return False
 
-    score += title_score(
-        clip.get("title", "")
-    )
-
-    score += duration_score(
-        clip.get("duration", 0)
-    )
-
-    return round(score, 2)
+    return True
 
 
-def discover_twitch(config):
-    streamers = config.get(
-        "discovery_streamers",
-        [],
-    )
+# ---------------------------------------------------------
+# CONTENT FILTERS / DUPLICATES
+# ---------------------------------------------------------
 
-    if not streamers:
-        print("No Twitch discovery streamers configured.")
-        return []
+def hard_rejection_reason(clip, fingerprints):
+    fp = clip_fingerprint(clip)
 
-    token, client_id = twitch_app_token()
+    if fp in fingerprints:
+        return "duplicate"
 
-    headers = twitch_headers(
-        token,
-        client_id,
-    )
+    text = " ".join([
+        str(clip.get("title", "")),
+        str(clip.get("creator_name", "")),
+        str(clip.get("broadcaster_name", "")),
+    ])
 
-    candidates = []
+    if contains_any(text, GAMBLING_TERMS):
+        return "gambling_or_casino"
 
-    for streamer in streamers:
-        print(f"Discovering gaming clips: {streamer}")
+    duration = float(clip.get("duration", 0))
 
-        try:
-            user = get_twitch_user(
-                streamer,
-                headers,
-            )
+    if duration and duration < 8:
+        return "too_short"
 
-            if not user:
-                print(
-                    f"  Could not find Twitch user: {streamer}"
-                )
-                continue
+    if duration > 180:
+        return "too_long"
 
-            clips = get_twitch_clips(
-                user["id"],
-                headers,
-                first=100,
-            )
-
-            print(
-                f"  Found {len(clips)} public clips."
-            )
-
-            for raw in clips:
-                candidates.append(
-                    convert_twitch_clip(
-                        raw,
-                        streamer,
-                    )
-                )
-
-        except Exception as exc:
-            print(
-                f"  Discovery error for {streamer}: {exc}"
-            )
-
-    return candidates
+    return None
 
 
-def production_sources_from_config(config):
-    """
-    Future authorized gaming sources go here.
-
-    This deliberately does NOT turn Twitch discovery clips
-    into production clips.
-    """
-
-    sources = config.get(
-        "production_sources",
-        [],
-    )
-
-    candidates = []
-
-    for source in sources:
-        if not isinstance(source, dict):
-            continue
-
-        candidate = dict(source)
-
-        candidate.setdefault(
-            "platform",
-            "unknown",
-        )
-
-        candidate.setdefault(
-            "reuse_allowed",
-            False,
-        )
-
-        candidate.setdefault(
-            "download_allowed",
-            False,
-        )
-
-        candidate["production_authorized"] = bool(
-            candidate.get("reuse_allowed")
-            and candidate.get("download_allowed")
-        )
-
-        candidate["discovery_only"] = False
-
-        candidates.append(candidate)
-
-    return candidates
-
-
-def evaluate_candidates(
-    candidates,
-    config,
-    history,
-):
-    fingerprints = history_fingerprints(
-        history
-    )
+def evaluate_discovery(clips, history):
+    fingerprints = processed_fingerprints(history)
 
     accepted = []
     rejected = []
 
-    for clip in candidates:
+    for clip in clips:
         clip = dict(clip)
+        clip["fingerprint"] = clip_fingerprint(clip)
 
-        clip["fingerprint"] = (
-            clip_fingerprint(clip)
-        )
-
-        reason = reject_reason(
+        reason = hard_rejection_reason(
             clip,
-            config,
-            fingerprints,
+            fingerprints
         )
 
         if reason:
@@ -567,203 +469,173 @@ def evaluate_candidates(
             rejected.append(clip)
             continue
 
-        clip["gaming_score"] = (
-            score_clip(clip)
-        )
-
+        clip["gaming_score"] = score_clip(clip)
         accepted.append(clip)
 
     accepted.sort(
-        key=lambda x: x.get(
-            "gaming_score",
-            0,
-        ),
-        reverse=True,
+        key=lambda item: item["gaming_score"],
+        reverse=True
     )
 
     return accepted, rejected
 
 
-def choose_production_candidate(
-    accepted,
+# ---------------------------------------------------------
+# ATTRIBUTION
+# ---------------------------------------------------------
+
+def build_attribution(
+    creator,
+    original_title,
+    source_url,
 ):
-    """
-    Critical rights gate.
-
-    A high gaming score NEVER overrides rights.
-    """
-
-    for clip in accepted:
-        if (
-            clip.get("production_authorized")
-            and clip.get("reuse_allowed")
-            and clip.get("download_allowed")
-        ):
-            return clip
-
-    return None
+    return {
+        "featured_creator": creator,
+        "original_title": original_title,
+        "source_url": source_url,
+        "youtube_description_block": (
+            "Original commentary and editing by ViralSpawnTV.\n\n"
+            f"Featured creator: {creator}\n"
+            f"Original stream/video: {original_title}\n"
+            f"Source: {source_url}\n\n"
+            "ViralSpawnTV transforms gaming moments with "
+            "original commentary, narration, captions and editing."
+        ),
+    }
 
 
-def print_leaderboard(accepted):
+# ---------------------------------------------------------
+# MAIN
+# ---------------------------------------------------------
+
+def main():
     print()
-    print("======================================")
-    print("ViralSpawnTV Gaming Discovery Rankings")
-    print("======================================")
+    print("=======================================")
+    print("ViralSpawnTV Gaming Rights Selector V2")
+    print("=======================================")
+    print("Gaming only: YES")
+    print("Gambling: BLOCKED")
+    print("Duplicate protection: ON")
+    print("Creator rights gate: ON")
+    print("Acquisition rights gate: ON")
+    print("Game-rights gate: ON")
+    print()
 
-    if not accepted:
-        print("No usable discovery candidates.")
-        return
+    config = load_json(CONFIG_PATH, {})
+    source_db = load_json(SOURCES_PATH, {})
+    history = load_history()
+
+    if not config:
+        raise RuntimeError("config.json missing or invalid.")
+
+    if not source_db:
+        raise RuntimeError(
+            "gaming_sources.json missing or invalid."
+        )
+
+    rights_report = build_rights_report(source_db)
+
+    print("SOURCE RIGHTS STATUS")
+    print("---------------------------------------")
+
+    for item in rights_report:
+        name = (
+            item.get("creator")
+            or item.get("organization")
+            or item.get("source_id")
+        )
+
+        print()
+        print(name)
+
+        if item["eligible_for_unattended_production"]:
+            print("  STATUS: PRODUCTION READY")
+        else:
+            print("  STATUS: NOT PRODUCTION READY")
+
+            for reason in item["blocking_reasons"]:
+                print(f"   - {reason}")
+
+    print()
+    print("TWITCH GAMING DISCOVERY")
+    print("---------------------------------------")
+
+    discovery = discover_twitch(config)
+
+    accepted, rejected = evaluate_discovery(
+        discovery,
+        history
+    )
+
+    print()
+    print("TOP GAMING DISCOVERY")
+    print("---------------------------------------")
 
     for index, clip in enumerate(
         accepted[:15],
-        start=1,
+        start=1
     ):
-        rights = (
-            "AUTHORIZED"
-            if clip.get("production_authorized")
-            else "DISCOVERY ONLY"
-        )
-
         print()
         print(
             f"{index}. "
             f"{clip.get('broadcaster_name', 'Unknown')}"
         )
+        print(f"   Score: {clip['gaming_score']}")
+        print(f"   Views: {clip.get('views', 0):,}")
+        print(f"   Title: {clip.get('title', '')}")
+        print("   Production: DISCOVERY ONLY")
 
-        print(
-            f"   Score: {clip.get('gaming_score')}"
-        )
+    production_ready_sources = []
 
-        print(
-            f"   Views: {clip.get('views', 0):,}"
-        )
-
-        print(
-            f"   Title: {clip.get('title', '')}"
-        )
-
-        print(
-            f"   Rights: {rights}"
-        )
-
-        print(
-            f"   URL: {clip.get('url', '')}"
-        )
-
-
-def main():
-    print()
-    print("======================================")
-    print("ViralSpawnTV Gaming Selector")
-    print("======================================")
-    print("Gaming-only mode: ON")
-    print("Gambling rejection: ON")
-    print("Duplicate protection: ON")
-    print("Rights gate: ON")
-    print()
-
-    config = load_config()
-    history = load_history()
-
-    twitch_candidates = discover_twitch(
-        config
-    )
-
-    authorized_candidates = (
-        production_sources_from_config(
-            config
-        )
-    )
-
-    all_candidates = (
-        twitch_candidates
-        + authorized_candidates
-    )
-
-    accepted, rejected = (
-        evaluate_candidates(
-            all_candidates,
-            config,
-            history,
-        )
-    )
-
-    print_leaderboard(accepted)
-
-    production_candidate = (
-        choose_production_candidate(
-            accepted
-        )
-    )
+    for source in source_db.get("sources", []):
+        # No clip supplied yet, therefore any source requiring
+        # per-game verification correctly remains blocked here.
+        if source_can_produce(source):
+            production_ready_sources.append(source)
 
     result = {
-        "generated_at": (
-            datetime.now(timezone.utc)
-            .isoformat()
-        ),
+        "generated_at":
+            datetime.now(timezone.utc).isoformat(),
+
+        "channel": "ViralSpawnTV",
         "niche": "gaming",
-        "candidate_count": len(
-            all_candidates
+
+        "discovery": {
+            "total": len(discovery),
+            "accepted": len(accepted),
+            "rejected": len(rejected),
+            "top_candidates": accepted[:25],
+        },
+
+        "rights_sources": rights_report,
+
+        "production_ready_source_count":
+            len(production_ready_sources),
+
+        "production_candidate": None,
+
+        "next_required_step": (
+            "Configure an authorized acquisition adapter "
+            "and verify underlying game rights before enabling "
+            "a source for production."
         ),
-        "accepted_count": len(
-            accepted
-        ),
-        "rejected_count": len(
-            rejected
-        ),
-        "production_candidate": (
-            production_candidate
-        ),
-        "top_discovery_candidates": (
-            accepted[:25]
-        ),
-        "rejected": rejected[:50],
     }
 
-    save_json(
-        OUTPUT_PATH,
-        result,
-    )
+    save_json(OUTPUT_PATH, result)
 
     print()
-    print(
-        f"Selection report saved to: "
-        f"{OUTPUT_PATH}"
-    )
+    print("=======================================")
 
-    if production_candidate:
-        print()
-        print("======================================")
-        print("AUTHORIZED GAMING CLIP SELECTED")
-        print("======================================")
-        print(
-            production_candidate.get(
-                "title",
-                "",
-            )
-        )
-        print(
-            production_candidate.get(
-                "url",
-                "",
-            )
-        )
-
+    if production_ready_sources:
+        print("PRODUCTION SOURCES AVAILABLE")
     else:
-        print()
-        print("======================================")
-        print("NO AUTHORIZED PRODUCTION CLIP")
-        print("======================================")
-        print(
-            "Gaming clips were discovered and ranked, "
-            "but none passed the production-rights gate."
-        )
-        print()
-        print(
-            "This is intentional. ViralSpawnTV will "
-            "not turn discovery-only footage into a "
-            "production video."
-        )
+        print("NO SOURCE CLEARED FOR PRODUCTION")
+
+    print("=======================================")
+
+    print(
+        f"\nReport saved to {OUTPUT_PATH}"
+    )
 
 
 if __name__ == "__main__":
