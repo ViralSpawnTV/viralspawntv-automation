@@ -1,32 +1,62 @@
 {
   "channel_name": "ViralSpawnTV",
   "handle": "@ViralSpawnTV",
+
+  "content_niche": "gaming",
+
   "runs_per_day": 10,
   "publish_mode": "private",
 
-  "streamers": [
+  "content_filters": {
+    "gaming_only": true,
+    "reject_gambling": true,
+    "reject_casino": true,
+    "reject_slots": true,
+    "reject_sports_betting": true,
+    "reject_non_gaming": true
+  },
+
+  "preferred_moments": [
+    "insane plays",
+    "clutch wins",
+    "funny fails",
+    "rage moments",
+    "funny reactions",
+    "world records",
+    "speedruns",
+    "gaming challenges",
+    "glitches",
+    "unexpected gaming moments",
+    "competitive gaming",
+    "new game moments"
+  ],
+
+  "discovery_streamers": [
     "kaicenat",
     "xqc",
-    "adinross",
     "jynxzi"
   ],
 
-  "authorized_sources": {
-    "kick": [
-      {
-        "creator": "AyeZee",
-        "channel": "ayezee",
-        "reuse_allowed": true,
-        "download_allowed": true,
-        "permission_url": "https://ayezee.tv/clipping"
-      },
-      {
-        "creator": "X7Dave",
-        "channel": "x7dave",
-        "reuse_allowed": true,
-        "download_allowed": true,
-        "permission_url": "https://ayezee.tv/clipping"
-      }
+  "production_sources": [],
+
+  "production_rules": {
+    "require_reuse_permission": true,
+    "require_download_permission": true,
+    "require_gaming_content": true,
+    "allow_gambling": false,
+    "allow_casino": false,
+    "allow_slots": false,
+    "allow_duplicate_clips": false
+  },
+
+  "future_scale": {
+    "shorts_per_day": 24,
+    "longs_per_day": 2,
+    "platforms": [
+      "youtube",
+      "tiktok",
+      "facebook",
+      "kick"
     ]
   }
 }
