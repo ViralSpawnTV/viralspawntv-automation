@@ -1,0 +1,12 @@
+.env
+*.mp4
+*.mp3
+*.wav
+*.json
+!config.example.json
+!data/history.json
+client_secret*.json
+token*.json
+output/
+work/
+__pycache__/

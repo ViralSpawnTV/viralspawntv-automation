@@ -1,0 +1,11 @@
+{
+  "channel_name": "ViralSpawnTV",
+  "handle": "@ViralSpawnTV",
+  "runs_per_day": 10,
+  "publish_mode": "private",
+  "max_source_seconds": 45,
+  "voice": "alloy",
+  "sources": [
+    {"type": "rss", "url": "ADD_AUTHORIZED_SOURCE_FEED_HERE", "creator": "creator-name", "reuse_authorized": true}
+  ]
+}
