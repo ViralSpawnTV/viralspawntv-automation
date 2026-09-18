@@ -3,10 +3,30 @@
   "handle": "@ViralSpawnTV",
   "runs_per_day": 10,
   "publish_mode": "private",
+
   "streamers": [
     "kaicenat",
     "xqc",
     "adinross",
     "jynxzi"
-  ]
+  ],
+
+  "authorized_sources": {
+    "kick": [
+      {
+        "creator": "AyeZee",
+        "channel": "ayezee",
+        "reuse_allowed": true,
+        "download_allowed": true,
+        "permission_url": "https://ayezee.tv/clipping"
+      },
+      {
+        "creator": "X7Dave",
+        "channel": "x7dave",
+        "reuse_allowed": true,
+        "download_allowed": true,
+        "permission_url": "https://ayezee.tv/clipping"
+      }
+    ]
+  }
 }
