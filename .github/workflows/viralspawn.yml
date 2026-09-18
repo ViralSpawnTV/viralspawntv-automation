@@ -31,9 +31,11 @@ jobs:
 
       - name: Run ViralSpawnTV pipeline
         env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          YOUTUBE_TOKEN_JSON: ${{ secrets.YOUTUBE_TOKEN_JSON }}
-          AUTO_UPLOAD: ${{ vars.AUTO_UPLOAD || 'false' }}
+  OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+  TWITCH_CLIENT_ID: ${{ secrets.TWITCH_CLIENT_ID }}
+  TWITCH_CLIENT_SECRET: ${{ secrets.TWITCH_CLIENT_SECRET }}
+  YOUTUBE_TOKEN_JSON: ${{ secrets.YOUTUBE_TOKEN_JSON }}
+  AUTO_UPLOAD: ${{ vars.AUTO_UPLOAD || 'false' }}
         run: python main.py
 
       - name: Persist duplicate history
