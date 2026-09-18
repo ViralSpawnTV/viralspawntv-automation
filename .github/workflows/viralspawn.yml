@@ -2,8 +2,6 @@ name: ViralSpawnTV Pipeline
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: "17 0,2,4,7,9,12,14,16,19,22 * * *"
 
 permissions:
   contents: write
@@ -21,27 +19,18 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install FFmpeg
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y ffmpeg
-
       - name: Install Python dependencies
         run: pip install -r requirements.txt
 
-      - name: Run ViralSpawnTV pipeline
-        env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          TWITCH_CLIENT_ID: ${{ secrets.TWITCH_CLIENT_ID }}
-          TWITCH_CLIENT_SECRET: ${{ secrets.TWITCH_CLIENT_SECRET }}
-          YOUTUBE_TOKEN_JSON: ${{ secrets.YOUTUBE_TOKEN_JSON }}
-          AUTO_UPLOAD: "false"
-        run: python main.py
+      - name: Install Chromium
+        run: playwright install --with-deps chromium
 
-      - name: Persist duplicate history
-        run: |
-          git config user.name "viralspawntv-bot"
-          git config user.email "actions@users.noreply.github.com"
-          git add data/history.json
-          git diff --cached --quiet || git commit -m "Update processed clip history"
-          git push
+      - name: Run Kick download test
+        run: python kick_download_test.py
+
+      - name: Upload downloaded clip
+        uses: actions/upload-artifact@v4
+        with:
+          name: kick-test-clip
+          path: work/kick_downloads/
+          if-no-files-found: error
