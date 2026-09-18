@@ -1,5 +1,6 @@
 import base64
 import json
+import math
 import os
 import pathlib
 import re
@@ -27,16 +28,13 @@ CHANNEL = "ayezee"
 CREATOR = "AyeZee"
 CLIPS_URL = f"https://kick.com/{CHANNEL}/clips"
 
-FINAL_VIDEO = WORK / "ViralSpawnTV_Short_V3.mp4"
+FINAL_VIDEO = WORK / "ViralSpawnTV_Short_V4.mp4"
 
-FONT = (
-    "/usr/share/fonts/truetype/"
-    "dejavu/DejaVuSans-Bold.ttf"
-)
+FONT = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
 
 
 # ============================================================
-# HELPERS
+# BASIC HELPERS
 # ============================================================
 
 def run(command):
@@ -51,7 +49,8 @@ def run(command):
     )
 
     if result.returncode != 0:
-        print(result.stderr[-12000:])
+        print("\nSTDERR:")
+        print(result.stderr[-15000:])
         raise RuntimeError("Command failed.")
 
     return result
@@ -63,8 +62,7 @@ def duration(path):
         "ffprobe",
         "-v", "error",
         "-show_entries", "format=duration",
-        "-of",
-        "default=noprint_wrappers=1:nokey=1",
+        "-of", "default=noprint_wrappers=1:nokey=1",
         str(path),
     ])
 
@@ -82,11 +80,36 @@ def clean_text(text):
 
     text = str(text)
 
+    text = text.replace("\n", " ")
+    text = text.replace("\r", " ")
     text = text.replace("'", "")
     text = text.replace(":", " ")
-    text = text.replace("%", " percent")
+    text = re.sub(r"\s+", " ", text)
 
     return text.strip()
+
+
+def make_text_file(name, text, width=None):
+
+    text = clean_text(text)
+
+    if width:
+        text = "\n".join(
+            textwrap.wrap(
+                text,
+                width=width,
+                break_long_words=False,
+            )
+        )
+
+    path = TEXTS / f"{name}.txt"
+
+    path.write_text(
+        text,
+        encoding="utf-8"
+    )
+
+    return path
 
 
 # ============================================================
@@ -95,13 +118,15 @@ def clean_text(text):
 
 def acquire_clip():
 
-    print("\n" + "=" * 60)
-    print("ACQUIRING AUTHORIZED CLIP")
-    print("=" * 60)
+    print("\n" + "=" * 65)
+    print("ACQUIRING AUTHORIZED KICK CLIP")
+    print("=" * 65)
 
     with sync_playwright() as p:
 
-        browser = p.chromium.launch(headless=True)
+        browser = p.chromium.launch(
+            headless=True
+        )
 
         context = browser.new_context(
             viewport={
@@ -131,14 +156,16 @@ def acquire_clip():
 
         if links.count() == 0:
             raise RuntimeError(
-                "No clips found."
+                "No Kick clips found."
             )
 
-        href = links.first.get_attribute("href")
+        href = links.first.get_attribute(
+            "href"
+        )
 
         if not href:
             raise RuntimeError(
-                "No clip href."
+                "Clip URL missing."
             )
 
         match = re.search(
@@ -148,7 +175,7 @@ def acquire_clip():
 
         if not match:
             raise RuntimeError(
-                "Clip ID not found."
+                "Could not identify clip ID."
             )
 
         clip_id = match.group(1)
@@ -159,7 +186,8 @@ def acquire_clip():
             else href
         )
 
-        print("Selected:", clip_url)
+        print("\nSelected clip:")
+        print(clip_url)
 
         page.goto(
             clip_url,
@@ -180,13 +208,16 @@ def acquire_clip():
 
         playlists = list(
             dict.fromkeys(
-                re.findall(pattern, html)
+                re.findall(
+                    pattern,
+                    html
+                )
             )
         )
 
         if not playlists:
             raise RuntimeError(
-                "Clip playlist not found."
+                "Selected clip playlist not found."
             )
 
         video = WORK / f"{clip_id}.mp4"
@@ -233,7 +264,7 @@ def acquire_clip():
 
 
 # ============================================================
-# SOURCE ANALYSIS
+# FRAME EXTRACTION
 # ============================================================
 
 def extract_frames(video):
@@ -245,14 +276,19 @@ def extract_frames(video):
     t = 1.0
 
     while t < seconds:
-        timestamps.append(t)
-        t += 4.0
 
-    timestamps = timestamps[:20]
+        timestamps.append(t)
+
+        # More visual context than V3.
+        t += 3.0
+
+    timestamps = timestamps[:24]
 
     frames = []
 
-    for i, timestamp in enumerate(timestamps):
+    for i, timestamp in enumerate(
+        timestamps
+    ):
 
         path = (
             FRAMES /
@@ -291,9 +327,13 @@ def extract_frames(video):
     return seconds, frames
 
 
+# ============================================================
+# AUDIO EXTRACTION
+# ============================================================
+
 def extract_audio(video):
 
-    audio = WORK / "source_audio.mp3"
+    audio = WORK / "source_audio.wav"
 
     run([
         "ffmpeg",
@@ -310,8 +350,8 @@ def extract_audio(video):
         "-ar",
         "16000",
 
-        "-b:a",
-        "64k",
+        "-c:a",
+        "pcm_s16le",
 
         str(audio),
     ])
@@ -319,20 +359,80 @@ def extract_audio(video):
     return audio
 
 
-def transcribe(client, audio):
+# ============================================================
+# TIMESTAMPED TRANSCRIPTION
+# ============================================================
 
-    print("\nTRANSCRIBING...")
+def transcribe_timestamped(
+    client,
+    audio
+):
+
+    print("\n" + "=" * 65)
+    print("TIMESTAMPED TRANSCRIPTION")
+    print("=" * 65)
+
+    #
+    # Use verbose_json so we can obtain real segment
+    # timestamps rather than asking the editor AI to guess.
+    #
 
     with open(audio, "rb") as file:
 
         response = (
             client.audio.transcriptions.create(
-                model="gpt-4o-mini-transcribe",
+                model=os.getenv(
+                    "TRANSCRIBE_MODEL",
+                    "whisper-1"
+                ),
                 file=file,
+                response_format="verbose_json",
+                timestamp_granularities=[
+                    "segment"
+                ],
             )
         )
 
     transcript = response.text
+
+    segments = []
+
+    raw_segments = getattr(
+        response,
+        "segments",
+        None
+    )
+
+    if raw_segments:
+
+        for segment in raw_segments:
+
+            if hasattr(
+                segment,
+                "model_dump"
+            ):
+                segment = (
+                    segment.model_dump()
+                )
+
+            segments.append({
+                "start": float(
+                    segment["start"]
+                ),
+                "end": float(
+                    segment["end"]
+                ),
+                "text": clean_text(
+                    segment["text"]
+                ),
+            })
+
+    if not segments:
+
+        raise RuntimeError(
+            "Timestamped transcription "
+            "returned no segments."
+        )
 
     (
         WORK /
@@ -342,11 +442,27 @@ def transcribe(client, audio):
         encoding="utf-8"
     )
 
-    return transcript
+    (
+        WORK /
+        "timestamped_transcript.json"
+    ).write_text(
+        json.dumps(
+            segments,
+            indent=2
+        ),
+        encoding="utf-8"
+    )
+
+    print(
+        f"Transcript segments: "
+        f"{len(segments)}"
+    )
+
+    return transcript, segments
 
 
 # ============================================================
-# AI V3 EDIT PLAN
+# AI EDIT PLAN
 # ============================================================
 
 def create_plan(
@@ -354,19 +470,27 @@ def create_plan(
     clip,
     seconds,
     frames,
-    transcript
+    transcript,
+    segments
 ):
 
-    print("\n" + "=" * 60)
-    print("AI V3 EDITOR")
-    print("=" * 60)
+    print("\n" + "=" * 65)
+    print("VIRALSPAWNTV V4 AI EDITOR")
+    print("=" * 65)
 
-    content = []
+    transcript_with_times = "\n".join(
+        (
+            f"[{x['start']:.2f}-"
+            f"{x['end']:.2f}] "
+            f"{x['text']}"
+        )
+        for x in segments
+    )
 
     prompt = f"""
-You are the automated editor for ViralSpawnTV.
+You are the senior automated Shorts editor for ViralSpawnTV.
 
-Analyze this real streamer clip.
+Analyze this REAL streamer clip.
 
 CREATOR:
 {clip["creator"]}
@@ -374,31 +498,58 @@ CREATOR:
 SOURCE:
 {clip["clip_url"]}
 
-DURATION:
+FULL CLIP LENGTH:
 {seconds:.2f} seconds
 
 TRANSCRIPT:
 {transcript}
 
-Representative frames are included after this prompt.
+TIMESTAMPED TRANSCRIPT:
+{transcript_with_times}
 
-Your objective is to create an extremely engaging
-25-45 second vertical YouTube Short.
+Representative video frames are supplied after this prompt.
 
-Do not invent facts, quotes, dollar amounts, events,
-or context.
+Your job is to turn this source into a highly engaging,
+fast-paced, professional 25-45 second YouTube Short.
 
-Choose one continuous segment.
+Do not invent facts.
+
+Do not invent quotes.
+
+Do not invent dollar amounts.
+
+Do not claim something happened unless the transcript
+or visible video supports it.
 
 ============================================================
-COMMENTARY
+SELECT THE CLIP
 ============================================================
 
-Create 2 or 3 SHORT ViralSpawnTV commentary beats.
+Choose ONE continuous 25-45 second segment.
 
-Leave important creator reactions audible.
+Choose the portion with the strongest story arc.
 
-For each commentary beat choose ONE delivery:
+The selected segment should ideally contain:
+
+setup
+tension
+payoff or reaction
+
+============================================================
+VIRALSPAWNTV COMMENTARY
+============================================================
+
+Create 2-3 short original commentary beats.
+
+The first should normally occur 0.2-1.5 seconds
+after the selected segment begins.
+
+Do not narrate constantly.
+
+Allow the creator's important dialogue and reactions
+to breathe.
+
+For every commentary beat choose ONE delivery:
 
 normal
 excited
@@ -406,158 +557,156 @@ hype
 amused
 serious
 
-NORMAL should be used most often.
+NORMAL:
+natural streamer/commentator.
 
-EXCITED only when something genuinely exciting,
-surprising, or tense occurs.
+EXCITED:
+genuine surprise or rising excitement.
 
-HYPE should be rare and reserved for an exceptional peak.
+HYPE:
+rare. Only exceptional peak moments.
 
-AMUSED is for genuinely funny situations.
+AMUSED:
+funny or ridiculous moments.
 
-SERIOUS is for dramatic or explanatory moments.
+SERIOUS:
+context, tension, losses, consequences.
 
-Do not make every line excited.
+Most narration should remain normal.
+
+Do NOT make everything sound excited.
 
 ============================================================
-WOW MOMENTS
+WOW / IMPACT SYSTEM
 ============================================================
 
-Identify 0-2 genuine impact moments.
+Identify 0-2 moments worthy of a major visual effect.
 
-Do not force effects when the footage does not deserve one.
+Effects should feel earned.
 
-Each impact moment has:
+For every impact provide:
 
 time
 text
 style
+intensity
 
-"time" is seconds AFTER the selected segment begins.
+"time" is seconds AFTER the selected segment starts.
 
-"text" is 1-5 words of large on-screen text.
+"text" must be 1-5 words.
 
-The text MUST be factually supported by the clip.
-
-style must be ONE of:
+"style" must be one of:
 
 celebration
 shock
 tension
 funny
 
+"intensity" must be:
+
+1
+2
+3
+
+Intensity 1:
+minor emphasis.
+
+Intensity 2:
+strong moment.
+
+Intensity 3:
+rare peak moment.
+
 CELEBRATION:
 positive payoff.
-Can use flash + zoom + celebration particles.
+Use energetic visual burst.
 
 SHOCK:
-surprising reveal.
-Use flash + aggressive zoom + giant text.
+unexpected reveal.
+Use flash, punch zoom and large text.
 
 TENSION:
-high pressure or negative realization.
-Use punch zoom + giant text.
-Avoid celebratory particles.
+high-pressure or negative realization.
+Use punch zoom, shake and large text.
+NO celebration particles.
 
 FUNNY:
-funny payoff.
-Use bounce-style large text.
+ridiculous/funny payoff.
+Use bounce-like impact text.
 
-Never use celebration effects for losses or negative events.
+Never celebrate financial loss.
 
-============================================================
-CAPTIONS
-============================================================
-
-Create 4-8 short caption chunks representing important
-creator dialogue from the selected segment.
-
-Each caption needs:
-
-start
-end
-text
-
-start/end are seconds AFTER the selected segment begins.
-
-Captions should generally contain 2-7 words.
-
-Do not fabricate dialogue.
-
-Do not caption ViralSpawnTV narration.
+For gambling footage:
+describe events neutrally.
+Do not encourage gambling.
+Do not portray gambling as reliable income.
 
 ============================================================
+YOUTUBE METADATA
+============================================================
 
-Return ONLY valid JSON in exactly this structure:
+Create:
+
+headline
+title
+description
+
+HEADLINE:
+maximum 6 words.
+
+TITLE:
+interesting but truthful.
+
+DESCRIPTION:
+brief explanation.
+Credit creator.
+Include exact source URL.
+
+============================================================
+
+Return ONLY valid JSON:
 
 {{
   "segment_start": 0,
   "segment_end": 0,
 
-  "headline": "SHORT HEADLINE",
+  "headline": "HEADLINE",
 
-  "title": "YouTube Shorts title",
+  "title": "YouTube title",
 
-  "description": "Description with creator credit and source URL",
+  "description": "description",
 
   "commentary": [
     {{
       "time": 0.5,
-      "text": "commentary",
+      "text": "short commentary",
       "delivery": "normal"
     }}
   ],
 
   "impacts": [
     {{
-      "time": 12.0,
+      "time": 10.0,
       "text": "NO WAY",
-      "style": "shock"
-    }}
-  ],
-
-  "captions": [
-    {{
-      "start": 3.0,
-      "end": 5.0,
-      "text": "creator dialogue"
+      "style": "shock",
+      "intensity": 2
     }}
   ]
 }}
-
-The first commentary beat should normally occur within
-the first 1.5 seconds.
-
-Do not cover the entire clip with narration.
-
-Keep commentary concise.
-
-Impact text should be short and visually powerful.
-
-Normally use no more than 2 impact moments.
-
-For gambling footage, describe what happened without
-encouraging gambling or portraying gambling as a reliable
-way to make money.
-
-The description must contain:
-
-Creator: {clip["creator"]}
-Source: {clip["clip_url"]}
 """
 
-    content.append({
+    content = [{
         "type": "input_text",
         "text": prompt,
-    })
+    }]
 
     for timestamp, path in frames:
 
         content.append({
             "type": "input_text",
             "text": (
-                f"Frame approximately "
-                f"{timestamp:.1f}s:"
+                f"Video frame around "
+                f"{timestamp:.1f} seconds:"
             ),
         })
 
@@ -581,17 +730,17 @@ Source: {clip["clip_url"]}
         }],
     )
 
-    text = response.output_text.strip()
+    raw = response.output_text.strip()
 
-    if text.startswith("```"):
+    if raw.startswith("```"):
 
-        text = (
-            text
+        raw = (
+            raw
             .split("\n", 1)[1]
             .rsplit("```", 1)[0]
         )
 
-    plan = json.loads(text)
+    plan = json.loads(raw)
 
     start = float(
         plan["segment_start"]
@@ -602,18 +751,21 @@ Source: {clip["clip_url"]}
     )
 
     start = max(
-        0,
+        0.0,
         min(
             start,
-            seconds - 10
+            max(
+                0,
+                seconds - 25
+            )
         )
     )
 
-    end = max(
-        start + 10,
-        min(
+    end = min(
+        seconds,
+        max(
             end,
-            seconds
+            start + 25
         )
     )
 
@@ -625,9 +777,9 @@ Source: {clip["clip_url"]}
 
     clip_length = end - start
 
-    # -------------------------------
-    # Validate commentary
-    # -------------------------------
+    # ---------------------------------------------
+    # Commentary validation
+    # ---------------------------------------------
 
     valid_delivery = {
         "normal",
@@ -644,44 +796,51 @@ Source: {clip["clip_url"]}
         []
     )[:3]:
 
-        beat_time = float(
-            beat.get("time", 0)
+        try:
+            beat_time = float(
+                beat.get(
+                    "time",
+                    0
+                )
+            )
+        except Exception:
+            continue
+
+        delivery = str(
+            beat.get(
+                "delivery",
+                "normal"
+            )
+        ).lower()
+
+        if delivery not in valid_delivery:
+            delivery = "normal"
+
+        text = clean_text(
+            beat.get(
+                "text",
+                ""
+            )
         )
 
         if (
+            text
+            and
             0 <= beat_time <
             clip_length - 0.5
         ):
 
-            delivery = (
-                str(
-                    beat.get(
-                        "delivery",
-                        "normal"
-                    )
-                )
-                .lower()
-            )
-
-            if delivery not in valid_delivery:
-                delivery = "normal"
-
             commentary.append({
                 "time": beat_time,
-                "text": str(
-                    beat.get(
-                        "text",
-                        ""
-                    )
-                ).strip(),
+                "text": text,
                 "delivery": delivery,
             })
 
     plan["commentary"] = commentary
 
-    # -------------------------------
-    # Validate impacts
-    # -------------------------------
+    # ---------------------------------------------
+    # Impact validation
+    # ---------------------------------------------
 
     valid_styles = {
         "celebration",
@@ -697,9 +856,15 @@ Source: {clip["clip_url"]}
         []
     )[:2]:
 
-        impact_time = float(
-            impact.get("time", 0)
-        )
+        try:
+            impact_time = float(
+                impact.get(
+                    "time",
+                    0
+                )
+            )
+        except Exception:
+            continue
 
         style = str(
             impact.get(
@@ -711,83 +876,56 @@ Source: {clip["clip_url"]}
         if style not in valid_styles:
             style = "shock"
 
+        try:
+            intensity = int(
+                impact.get(
+                    "intensity",
+                    2
+                )
+            )
+        except Exception:
+            intensity = 2
+
+        intensity = max(
+            1,
+            min(
+                intensity,
+                3
+            )
+        )
+
+        text = clean_text(
+            impact.get(
+                "text",
+                "WOW"
+            )
+        ).upper()[:45]
+
         if (
+            text
+            and
             0 <= impact_time <
             clip_length - 0.5
         ):
 
             impacts.append({
                 "time": impact_time,
-                "text": clean_text(
-                    impact.get(
-                        "text",
-                        "WOW"
-                    )
-                ).upper()[:40],
+                "text": text,
                 "style": style,
+                "intensity": intensity,
             })
 
     plan["impacts"] = impacts
 
-    # -------------------------------
-    # Validate captions
-    # -------------------------------
-
-    captions = []
-
-    for caption in plan.get(
-        "captions",
-        []
-    )[:10]:
-
-        cstart = float(
-            caption.get(
-                "start",
-                0
-            )
-        )
-
-        cend = float(
-            caption.get(
-                "end",
-                cstart + 1
-            )
-        )
-
-        if (
-            0 <= cstart <
-            clip_length
-            and
-            cend > cstart
-        ):
-
-            cend = min(
-                cend,
-                clip_length
-            )
-
-            captions.append({
-                "start": cstart,
-                "end": cend,
-                "text": clean_text(
-                    caption.get(
-                        "text",
-                        ""
-                    )
-                ),
-            })
-
-    plan["captions"] = captions
-
     (
         WORK /
-        "v3_edit_plan.json"
+        "v4_edit_plan.json"
     ).write_text(
         json.dumps(
             plan,
             indent=2
         ),
-        encoding="utf-8",
+        encoding="utf-8"
     )
 
     print(
@@ -801,58 +939,198 @@ Source: {clip["clip_url"]}
 
 
 # ============================================================
+# REAL CAPTION GENERATION
+# ============================================================
+
+def create_real_captions(
+    segments,
+    segment_start,
+    segment_end
+):
+
+    print("\n" + "=" * 65)
+    print("BUILDING TIMESTAMPED CAPTIONS")
+    print("=" * 65)
+
+    captions = []
+
+    for segment in segments:
+
+        source_start = float(
+            segment["start"]
+        )
+
+        source_end = float(
+            segment["end"]
+        )
+
+        if source_end <= segment_start:
+            continue
+
+        if source_start >= segment_end:
+            continue
+
+        relative_start = max(
+            0,
+            source_start - segment_start
+        )
+
+        relative_end = min(
+            segment_end - segment_start,
+            source_end - segment_start
+        )
+
+        text = clean_text(
+            segment["text"]
+        )
+
+        if not text:
+            continue
+
+        words = text.split()
+
+        #
+        # Split longer transcript segments into
+        # smaller Shorts-style chunks.
+        #
+
+        max_words = 5
+
+        chunks = [
+            words[i:i + max_words]
+            for i in range(
+                0,
+                len(words),
+                max_words
+            )
+        ]
+
+        total_words = max(
+            1,
+            len(words)
+        )
+
+        segment_duration = (
+            relative_end -
+            relative_start
+        )
+
+        consumed = 0
+
+        for chunk in chunks:
+
+            fraction_start = (
+                consumed /
+                total_words
+            )
+
+            consumed += len(chunk)
+
+            fraction_end = (
+                consumed /
+                total_words
+            )
+
+            cstart = (
+                relative_start
+                +
+                segment_duration
+                *
+                fraction_start
+            )
+
+            cend = (
+                relative_start
+                +
+                segment_duration
+                *
+                fraction_end
+            )
+
+            #
+            # Prevent captions flashing too quickly.
+            #
+
+            if cend - cstart < 0.45:
+                cend = min(
+                    relative_end,
+                    cstart + 0.45
+                )
+
+            captions.append({
+                "start": cstart,
+                "end": cend,
+                "text": " ".join(
+                    chunk
+                ).upper(),
+            })
+
+    (
+        WORK /
+        "v4_captions.json"
+    ).write_text(
+        json.dumps(
+            captions,
+            indent=2
+        ),
+        encoding="utf-8"
+    )
+
+    print(
+        f"Caption chunks: "
+        f"{len(captions)}"
+    )
+
+    return captions
+
+
+# ============================================================
 # EMOTIONAL TTS
 # ============================================================
 
 DELIVERY_INSTRUCTIONS = {
 
-    "normal":
-        (
-            "Young adult American male gaming commentator. "
-            "Neutral United States accent. "
-            "Conversational and natural. "
-            "Clear pronunciation. Medium-fast pace. "
-            "Sound like a streamer talking to a friend."
-        ),
+    "normal": (
+        "Young adult American male gaming commentator. "
+        "Neutral United States accent. "
+        "Natural conversational streamer delivery. "
+        "Medium-fast pace. Crisp pronunciation. "
+        "Sound spontaneous and human, not robotic."
+    ),
 
-    "excited":
-        (
-            "Young adult American male gaming commentator. "
-            "Neutral United States accent. "
-            "Sound genuinely excited and surprised. "
-            "Increase energy and pace slightly. "
-            "Emphasize the surprising part naturally. "
-            "Do not scream or sound like an announcer."
-        ),
+    "excited": (
+        "Young adult American male gaming commentator. "
+        "Neutral United States accent. "
+        "You are genuinely excited by what just happened. "
+        "Increase energy and pace. "
+        "Use natural vocal emphasis and surprise. "
+        "Do not scream. Do not sound like a commercial announcer."
+    ),
 
-    "hype":
-        (
-            "Young adult American male streamer reacting "
-            "to an exceptional moment. "
-            "Neutral United States accent. "
-            "High genuine energy and excitement. "
-            "Speak faster with strong emphasis. "
-            "Sound spontaneous, not theatrical. "
-            "Do not become difficult to understand."
-        ),
+    "hype": (
+        "Young adult American male streamer reacting live "
+        "to an exceptional moment. "
+        "Neutral United States accent. "
+        "High energy, spontaneous excitement and strong emphasis. "
+        "Speak quickly but remain completely understandable. "
+        "This should sound like a genuine reaction, not an AI narrator."
+    ),
 
-    "amused":
-        (
-            "Young adult American male gaming commentator. "
-            "Neutral United States accent. "
-            "Sound amused, like you are trying not to laugh. "
-            "Use a subtle smile in the delivery. "
-            "Natural conversational pace."
-        ),
+    "amused": (
+        "Young adult American male gaming commentator. "
+        "Neutral United States accent. "
+        "Sound genuinely amused. "
+        "Use a subtle smile and slight laugh in the voice. "
+        "Keep it conversational and spontaneous."
+    ),
 
-    "serious":
-        (
-            "Young adult American male gaming commentator. "
-            "Neutral United States accent. "
-            "Calm, focused, slightly serious delivery. "
-            "Speak clearly and deliberately. "
-            "Do not sound dramatic or theatrical."
-        ),
+    "serious": (
+        "Young adult American male gaming commentator. "
+        "Neutral United States accent. "
+        "Lower the energy slightly. "
+        "Sound focused and serious. "
+        "Speak clearly and deliberately without becoming theatrical."
+    ),
 }
 
 
@@ -861,9 +1139,9 @@ def generate_voices(
     plan
 ):
 
-    print("\n" + "=" * 60)
-    print("GENERATING EMOTIONAL VOICES")
-    print("=" * 60)
+    print("\n" + "=" * 65)
+    print("GENERATING CONTEXT-AWARE VOICE")
+    print("=" * 65)
 
     beats = []
 
@@ -877,7 +1155,16 @@ def generate_voices(
 
         output = (
             VOICES /
-            f"voice_{i:02d}_{delivery}.mp3"
+            f"v4_voice_{i:02d}_{delivery}.mp3"
+        )
+
+        print(
+            f"\nVoice {i + 1}: "
+            f"{delivery.upper()}"
+        )
+
+        print(
+            beat["text"]
         )
 
         with (
@@ -908,175 +1195,241 @@ def generate_voices(
                 output
             )
 
-        beat["file"] = output
-
-        beat["duration"] = duration(
+        voice_duration = duration(
             output
         )
 
-        beats.append(beat)
+        new_beat = dict(
+            beat
+        )
 
-        print(
-            f"{i}: "
-            f"{delivery.upper()} | "
-            f"{beat['text']}"
+        new_beat["file"] = output
+
+        new_beat["duration"] = (
+            voice_duration
+        )
+
+        beats.append(
+            new_beat
         )
 
     return beats
 
 
 # ============================================================
-# TEXT FILES
-# ============================================================
-
-def make_text_file(
-    name,
-    text,
-    width=None
-):
-
-    text = clean_text(text)
-
-    if width:
-
-        text = "\n".join(
-            textwrap.wrap(
-                text,
-                width=width
-            )
-        )
-
-    path = (
-        TEXTS /
-        f"{name}.txt"
-    )
-
-    path.write_text(
-        text,
-        encoding="utf-8"
-    )
-
-    return path
-
-
-# ============================================================
 # VIDEO FILTER
 # ============================================================
 
-def build_video_filter(plan):
+def build_video_filter(
+    plan,
+    captions
+):
 
-    headline = make_text_file(
-        "headline",
+    headline_file = make_text_file(
+        "v4_headline",
         str(
             plan["headline"]
         ).upper(),
-        18
+        width=18,
     )
 
-    credit = make_text_file(
-        "credit",
+    credit_file = make_text_file(
+        "v4_credit",
         f"@{CHANNEL}  •  VIRALSPAWNTV"
     )
 
-    filters = [
+    filters = []
 
-        # Blurred vertical background
-        (
-            "[0:v]"
-            "scale=1080:1920:"
-            "force_original_aspect_ratio=increase,"
-            "crop=1080:1920,"
-            "boxblur=25:12"
-            "[bg]"
-        ),
+    # ========================================================
+    # BACKGROUND
+    # ========================================================
 
-        # Main uncropped source
-        (
-            "[0:v]"
-            "scale=1080:-2"
-            "[main]"
-        ),
+    filters.append(
+        "[0:v]"
+        "scale=1080:1920:"
+        "force_original_aspect_ratio=increase,"
+        "crop=1080:1920,"
+        "boxblur=28:14,"
+        "eq=brightness=-0.10"
+        "[background]"
+    )
 
-        (
-            "[bg][main]"
-            "overlay=(W-w)/2:(H-h)/2"
-            "[base]"
-        ),
-    ]
+    # ========================================================
+    # MAIN SOURCE
+    # ========================================================
 
-    current = "base"
+    filters.append(
+        "[0:v]"
+        "scale=1080:-2"
+        "[foreground]"
+    )
 
-    # --------------------------------------------------------
-    # TOP HEADLINE
-    # --------------------------------------------------------
+    filters.append(
+        "[background][foreground]"
+        "overlay="
+        "x=(W-w)/2:"
+        "y=(H-h)/2"
+        "[composite]"
+    )
 
-    next_label = "headlinevideo"
+    current = "composite"
+
+    # ========================================================
+    # PUNCH ZOOM EFFECT
+    #
+    # Rather than trying to dynamically rescale the entire
+    # graph, create temporary zoom overlays from source.
+    # ========================================================
+
+    for i, impact in enumerate(
+        plan["impacts"]
+    ):
+
+        moment = float(
+            impact["time"]
+        )
+
+        intensity = int(
+            impact["intensity"]
+        )
+
+        zoom_duration = (
+            0.45
+            +
+            0.12 * intensity
+        )
+
+        zoom_factor = {
+            1: 1.04,
+            2: 1.07,
+            3: 1.11,
+        }[intensity]
+
+        zoom_width = int(
+            1080 *
+            zoom_factor
+        )
+
+        #
+        # Make width even for H.264.
+        #
+
+        if zoom_width % 2:
+            zoom_width += 1
+
+        zoom_height = int(
+            608 *
+            zoom_factor
+        )
+
+        if zoom_height % 2:
+            zoom_height += 1
+
+        zoom_source = (
+            f"zoomsource{i}"
+        )
+
+        filters.append(
+            f"[0:v]"
+            f"scale="
+            f"{zoom_width}:"
+            f"{zoom_height}"
+            f"[{zoom_source}]"
+        )
+
+        zoom_output = (
+            f"zoomoverlay{i}"
+        )
+
+        filters.append(
+            f"[{current}]"
+            f"[{zoom_source}]"
+            f"overlay="
+            f"x=(W-w)/2:"
+            f"y=(H-h)/2:"
+            f"enable='between(t,"
+            f"{moment:.3f},"
+            f"{moment + zoom_duration:.3f})'"
+            f"[{zoom_output}]"
+        )
+
+        current = zoom_output
+
+    # ========================================================
+    # HEADLINE
+    # ========================================================
 
     filters.append(
         f"[{current}]"
         "drawbox="
-        "x=0:y=0:"
-        "w=iw:h=245:"
+        "x=0:"
+        "y=0:"
+        "w=iw:"
+        "h=245:"
         "color=black@0.48:"
-        "t=fill,"
-        f"drawtext="
+        "t=fill:"
+        "enable='between(t,0,4.5)',"
+
+        "drawtext="
         f"fontfile={FONT}:"
-        f"textfile={headline}:"
+        f"textfile={headline_file}:"
         "fontcolor=white:"
         "fontsize=64:"
         "line_spacing=8:"
         "x=(w-text_w)/2:"
         "y=58:"
-        "borderw=4:"
+        "borderw=5:"
         "bordercolor=black:"
         "enable='between(t,0,4.5)'"
-        f"[{next_label}]"
+        "[headline]"
     )
 
-    current = next_label
+    current = "headline"
 
-    # --------------------------------------------------------
-    # DYNAMIC CAPTIONS
-    # --------------------------------------------------------
+    # ========================================================
+    # REAL TIMESTAMPED CAPTIONS
+    # ========================================================
 
     for i, caption in enumerate(
-        plan["captions"]
+        captions
     ):
 
-        caption_file = make_text_file(
-            f"caption_{i:02d}",
-            caption["text"].upper(),
-            22
+        text_file = make_text_file(
+            f"v4_caption_{i:03d}",
+            caption["text"],
+            width=18,
         )
 
-        label = f"caption{i}"
+        output_label = (
+            f"caption{i}"
+        )
 
         filters.append(
             f"[{current}]"
-            f"drawtext="
+            "drawtext="
             f"fontfile={FONT}:"
-            f"textfile={caption_file}:"
-            f"fontcolor=white:"
-            f"fontsize=58:"
-            f"line_spacing=8:"
-            f"x=(w-text_w)/2:"
-            f"y=1420:"
-            f"borderw=6:"
-            f"bordercolor=black:"
-            f"box=1:"
-            f"boxcolor=black@0.32:"
-            f"boxborderw=18:"
+            f"textfile={text_file}:"
+            "fontcolor=white:"
+            "fontsize=62:"
+            "line_spacing=6:"
+            "x=(w-text_w)/2:"
+            "y=1400:"
+            "borderw=7:"
+            "bordercolor=black:"
+            "shadowx=3:"
+            "shadowy=3:"
+            "shadowcolor=black@0.8:"
             f"enable='between(t,"
             f"{caption['start']:.3f},"
             f"{caption['end']:.3f})'"
-            f"[{label}]"
+            f"[{output_label}]"
         )
 
-        current = label
+        current = output_label
 
-    # --------------------------------------------------------
-    # IMPACT / WOW MOMENTS
-    # --------------------------------------------------------
+    # ========================================================
+    # WOW EFFECTS
+    # ========================================================
 
     for i, impact in enumerate(
         plan["impacts"]
@@ -1090,155 +1443,286 @@ def build_video_filter(plan):
             "style"
         ]
 
-        text_file = make_text_file(
-            f"impact_{i:02d}",
-            impact["text"],
-            14
+        intensity = int(
+            impact["intensity"]
         )
 
-        #
-        # Quick flash for celebration/shock.
-        #
+        impact_text = make_text_file(
+            f"v4_impact_{i}",
+            impact["text"],
+            width=13,
+        )
+
+        # ----------------------------------------------------
+        # FLASH
+        # ----------------------------------------------------
 
         if style in {
             "celebration",
             "shock"
         }:
 
-            flash_label = (
+            flash_duration = (
+                0.07
+                +
+                intensity * 0.035
+            )
+
+            label = (
                 f"flash{i}"
             )
 
             filters.append(
                 f"[{current}]"
-                f"drawbox="
-                f"x=0:y=0:"
-                f"w=iw:h=ih:"
-                f"color=white@0.55:"
-                f"t=fill:"
+                "drawbox="
+                "x=0:"
+                "y=0:"
+                "w=iw:"
+                "h=ih:"
+                "color=white@0.65:"
+                "t=fill:"
                 f"enable='between(t,"
                 f"{moment:.3f},"
-                f"{moment + 0.10:.3f})'"
-                f"[{flash_label}]"
+                f"{moment + flash_duration:.3f})'"
+                f"[{label}]"
             )
 
-            current = flash_label
+            current = label
 
+        # ----------------------------------------------------
+        # SCREEN SHAKE FEEL
         #
-        # Giant impact text.
-        #
+        # Add quick black edge pulses on high intensity
+        # shock/tension moments.
+        # ----------------------------------------------------
 
-        impact_label = (
-            f"impactvideo{i}"
-        )
+        if (
+            style in {
+                "shock",
+                "tension"
+            }
+            and
+            intensity >= 2
+        ):
 
-        if style == "celebration":
-            fontsize = 105
-
-        elif style == "shock":
-            fontsize = 115
-
-        elif style == "tension":
-            fontsize = 100
-
-        else:
-            fontsize = 95
-
-        filters.append(
-            f"[{current}]"
-            f"drawtext="
-            f"fontfile={FONT}:"
-            f"textfile={text_file}:"
-            f"fontcolor=white:"
-            f"fontsize={fontsize}:"
-            f"x=(w-text_w)/2:"
-            f"y=(h-text_h)/2:"
-            f"borderw=10:"
-            f"bordercolor=black:"
-            f"box=1:"
-            f"boxcolor=black@0.35:"
-            f"boxborderw=25:"
-            f"enable='between(t,"
-            f"{moment:.3f},"
-            f"{moment + 1.15:.3f})'"
-            f"[{impact_label}]"
-        )
-
-        current = impact_label
-
-        #
-        # FIREWORK / PARTICLE-STYLE WOW EFFECT
-        #
-        # Uses expanding circles via FFmpeg drawbox approximations.
-        # No external graphics are required.
-        #
-
-        if style == "celebration":
-
-            positions = [
-                (150, 450),
-                (850, 420),
-                (240, 1180),
-                (820, 1200),
-                (530, 380),
-                (530, 1280),
-            ]
-
-            for p, (x, y) in enumerate(
-                positions
+            for pulse in range(
+                intensity + 1
             ):
 
-                particle_label = (
-                    f"particle{i}_{p}"
+                pulse_start = (
+                    moment
+                    +
+                    pulse * 0.09
                 )
 
-                particle_start = (
-                    moment +
-                    (p * 0.035)
+                pulse_end = (
+                    pulse_start
+                    +
+                    0.045
                 )
 
-                particle_end = (
-                    particle_start +
-                    0.55
+                side = (
+                    8
+                    +
+                    intensity * 5
+                )
+
+                label = (
+                    f"shake_{i}_{pulse}"
                 )
 
                 filters.append(
                     f"[{current}]"
-                    f"drawbox="
+                    "drawbox="
+                    f"x={side}:"
+                    "y=0:"
+                    f"w=iw-{side * 2}:"
+                    "h=ih:"
+                    "color=black@0.12:"
+                    "t=fill:"
+                    f"enable='between(t,"
+                    f"{pulse_start:.3f},"
+                    f"{pulse_end:.3f})'"
+                    f"[{label}]"
+                )
+
+                current = label
+
+        # ----------------------------------------------------
+        # CELEBRATION BURST
+        # ----------------------------------------------------
+
+        if style == "celebration":
+
+            center_x = 540
+            center_y = 930
+
+            particle_count = (
+                10
+                +
+                intensity * 6
+            )
+
+            for particle in range(
+                particle_count
+            ):
+
+                angle = (
+                    2 *
+                    math.pi *
+                    particle /
+                    particle_count
+                )
+
+                radius = (
+                    170
+                    +
+                    (
+                        particle % 3
+                    ) * 70
+                )
+
+                x = int(
+                    center_x
+                    +
+                    math.cos(angle)
+                    *
+                    radius
+                )
+
+                y = int(
+                    center_y
+                    +
+                    math.sin(angle)
+                    *
+                    radius
+                )
+
+                size = (
+                    12
+                    +
+                    (
+                        particle % 4
+                    ) * 5
+                )
+
+                delay = (
+                    (
+                        particle % 5
+                    )
+                    *
+                    0.025
+                )
+
+                particle_start = (
+                    moment
+                    +
+                    delay
+                )
+
+                particle_end = (
+                    particle_start
+                    +
+                    0.45
+                    +
+                    intensity * 0.10
+                )
+
+                label = (
+                    f"burst_{i}_{particle}"
+                )
+
+                filters.append(
+                    f"[{current}]"
+                    "drawbox="
                     f"x={x}:"
                     f"y={y}:"
-                    f"w=22:h=22:"
-                    f"color=white@0.90:"
-                    f"t=fill:"
+                    f"w={size}:"
+                    f"h={size}:"
+                    "color=white@0.95:"
+                    "t=fill:"
                     f"enable='between(t,"
                     f"{particle_start:.3f},"
                     f"{particle_end:.3f})'"
-                    f"[{particle_label}]"
+                    f"[{label}]"
                 )
 
-                current = (
-                    particle_label
-                )
+                current = label
 
-    # --------------------------------------------------------
-    # BRANDING
-    # --------------------------------------------------------
+        # ----------------------------------------------------
+        # GIANT IMPACT TEXT
+        # ----------------------------------------------------
+
+        if intensity == 1:
+            font_size = 90
+
+        elif intensity == 2:
+            font_size = 112
+
+        else:
+            font_size = 132
+
+        impact_duration = (
+            0.80
+            +
+            intensity * 0.18
+        )
+
+        label = (
+            f"impacttext{i}"
+        )
+
+        filters.append(
+            f"[{current}]"
+            "drawtext="
+            f"fontfile={FONT}:"
+            f"textfile={impact_text}:"
+            "fontcolor=white:"
+            f"fontsize={font_size}:"
+            "x=(w-text_w)/2:"
+            "y=(h-text_h)/2:"
+            "borderw=11:"
+            "bordercolor=black:"
+            "shadowx=5:"
+            "shadowy=5:"
+            "shadowcolor=black@0.8:"
+            f"enable='between(t,"
+            f"{moment:.3f},"
+            f"{moment + impact_duration:.3f})'"
+            f"[{label}]"
+        )
+
+        current = label
+
+    # ========================================================
+    # PERMANENT BRANDING
+    # ========================================================
 
     filters.append(
         f"[{current}]"
-        f"drawtext="
+        "drawbox="
+        "x=0:"
+        "y=h-125:"
+        "w=iw:"
+        "h=125:"
+        "color=black@0.25:"
+        "t=fill,"
+
+        "drawtext="
         f"fontfile={FONT}:"
-        f"textfile={credit}:"
-        f"fontcolor=white:"
-        f"fontsize=30:"
-        f"x=(w-text_w)/2:"
-        f"y=h-92:"
-        f"borderw=3:"
-        f"bordercolor=black"
-        f"[finalvideo]"
+        f"textfile={credit_file}:"
+        "fontcolor=white:"
+        "fontsize=31:"
+        "x=(w-text_w)/2:"
+        "y=h-82:"
+        "borderw=3:"
+        "bordercolor=black"
+        "[finalvideo]"
     )
 
-    return ";".join(filters)
+    return ";".join(
+        filters
+    )
 
 
 # ============================================================
@@ -1247,7 +1731,15 @@ def build_video_filter(plan):
 
 def build_audio_filter(beats):
 
-    source_volume = "1"
+    filters = []
+
+    #
+    # More robust than the V3 multiplied volume expression.
+    #
+    # Start with source audio at full volume.
+    #
+
+    source_chain = "[0:a]volume=1.0"
 
     for beat in beats:
 
@@ -1256,32 +1748,32 @@ def build_audio_filter(beats):
         )
 
         end = (
-            start +
+            start
+            +
             float(
                 beat["duration"]
             )
             +
-            0.15
+            0.12
         )
 
-        source_volume += (
-            f"*if("
-            f"between(t,"
+        source_chain += (
+            ",volume="
+            "volume=0.20:"
+            f"enable='between(t,"
             f"{start:.3f},"
-            f"{end:.3f}),"
-            f"0.20,"
-            f"1)"
+            f"{end:.3f})'"
         )
 
-    filters = [
-        (
-            f"[0:a]"
-            f"volume='{source_volume}'"
-            f"[sourceaudio]"
-        )
-    ]
+    source_chain += (
+        "[sourceaudio]"
+    )
 
-    inputs = [
+    filters.append(
+        source_chain
+    )
+
+    mix_inputs = [
         "[sourceaudio]"
     ]
 
@@ -1289,35 +1781,61 @@ def build_audio_filter(beats):
         beats
     ):
 
-        delay = int(
+        delay_ms = int(
             float(
                 beat["time"]
             )
-            * 1000
+            *
+            1000
+        )
+
+        delivery = beat[
+            "delivery"
+        ]
+
+        #
+        # Small volume boost for excited delivery,
+        # but not enough to distort.
+        #
+
+        voice_volume = {
+            "normal": 1.24,
+            "excited": 1.30,
+            "hype": 1.33,
+            "amused": 1.27,
+            "serious": 1.22,
+        }.get(
+            delivery,
+            1.25
         )
 
         filters.append(
             f"[{i + 1}:a]"
-            f"adelay={delay}|{delay},"
-            f"volume=1.30"
+            f"adelay={delay_ms}:all=1,"
+            f"volume={voice_volume}"
             f"[voice{i}]"
         )
 
-        inputs.append(
+        mix_inputs.append(
             f"[voice{i}]"
         )
 
     filters.append(
-        "".join(inputs)
+        "".join(
+            mix_inputs
+        )
         +
-        f"amix="
-        f"inputs={len(inputs)}:"
-        f"duration=first:"
-        f"dropout_transition=0"
-        f"[finalaudio]"
+        "amix="
+        f"inputs={len(mix_inputs)}:"
+        "duration=first:"
+        "dropout_transition=0:"
+        "normalize=0"
+        "[finalaudio]"
     )
 
-    return ";".join(filters)
+    return ";".join(
+        filters
+    )
 
 
 # ============================================================
@@ -1327,12 +1845,13 @@ def build_audio_filter(beats):
 def render(
     clip,
     plan,
-    beats
+    beats,
+    captions
 ):
 
-    print("\n" + "=" * 60)
-    print("RENDERING VIRALSPAWNTV V3")
-    print("=" * 60)
+    print("\n" + "=" * 65)
+    print("RENDERING VIRALSPAWNTV V4")
+    print("=" * 65)
 
     start = float(
         plan["segment_start"]
@@ -1342,14 +1861,22 @@ def render(
         plan["segment_end"]
     )
 
-    clip_length = end - start
-
-    video_filter = build_video_filter(
-        plan
+    clip_length = (
+        end -
+        start
     )
 
-    audio_filter = build_audio_filter(
-        beats
+    video_filter = (
+        build_video_filter(
+            plan,
+            captions
+        )
+    )
+
+    audio_filter = (
+        build_audio_filter(
+            beats
+        )
     )
 
     filter_complex = (
@@ -1371,7 +1898,9 @@ def render(
         str(clip_length),
 
         "-i",
-        str(clip["video"]),
+        str(
+            clip["video"]
+        ),
     ]
 
     for beat in beats:
@@ -1380,7 +1909,7 @@ def render(
             "-i",
             str(
                 beat["file"]
-            )
+            ),
         ])
 
     command.extend([
@@ -1400,7 +1929,7 @@ def render(
         "medium",
 
         "-crf",
-        "20",
+        "19",
 
         "-pix_fmt",
         "yuv420p",
@@ -1421,33 +1950,111 @@ def render(
         "+faststart",
 
         "-t",
-        str(clip_length),
+        str(
+            clip_length
+        ),
 
-        str(FINAL_VIDEO),
+        str(
+            FINAL_VIDEO
+        ),
     ])
 
-    run(command)
+    run(
+        command
+    )
 
     if not FINAL_VIDEO.exists():
 
         raise RuntimeError(
-            "Final V3 video not created."
+            "V4 final video "
+            "was not created."
         )
 
-    print("\n" + "=" * 60)
-    print("V3 SHORT CREATED")
-    print("=" * 60)
+    final_duration = duration(
+        FINAL_VIDEO
+    )
 
-    print(FINAL_VIDEO)
+    final_size = (
+        FINAL_VIDEO
+        .stat()
+        .st_size
+        /
+        1_000_000
+    )
+
+    print("\n" + "=" * 65)
+    print("V4 SHORT CREATED SUCCESSFULLY")
+    print("=" * 65)
+
+    print(
+        f"\nFile: "
+        f"{FINAL_VIDEO}"
+    )
 
     print(
         f"Duration: "
-        f"{duration(FINAL_VIDEO):.2f}s"
+        f"{final_duration:.2f}s"
     )
 
     print(
         f"Size: "
-        f"{FINAL_VIDEO.stat().st_size / 1_000_000:.2f} MB"
+        f"{final_size:.2f} MB"
+    )
+
+
+# ============================================================
+# SAVE METADATA
+# ============================================================
+
+def save_metadata(
+    clip,
+    plan
+):
+
+    metadata = {
+        "channel": "ViralSpawnTV",
+        "creator": clip[
+            "creator"
+        ],
+        "source": clip[
+            "clip_url"
+        ],
+        "clip_id": clip[
+            "clip_id"
+        ],
+        "title": plan[
+            "title"
+        ],
+        "description": plan[
+            "description"
+        ],
+        "headline": plan[
+            "headline"
+        ],
+        "segment_start": plan[
+            "segment_start"
+        ],
+        "segment_end": plan[
+            "segment_end"
+        ],
+        "commentary": plan[
+            "commentary"
+        ],
+        "impacts": plan[
+            "impacts"
+        ],
+        "publish_status": "NOT_UPLOADED",
+    }
+
+    (
+        WORK /
+        "ViralSpawnTV_V4_metadata.json"
+    ).write_text(
+        json.dumps(
+            metadata,
+            indent=2
+        ),
+        encoding="utf-8"
     )
 
 
@@ -1457,60 +2064,131 @@ def render(
 
 def main():
 
-    print("\n" + "=" * 60)
-    print("VIRALSPAWNTV V3 AUTOMATED EDITOR")
-    print("=" * 60)
+    print("\n" + "=" * 65)
+    print("VIRALSPAWNTV V4 AUTOMATED SHORTS EDITOR")
+    print("=" * 65)
+
+    if not os.getenv(
+        "OPENAI_API_KEY"
+    ):
+
+        raise RuntimeError(
+            "OPENAI_API_KEY is missing."
+        )
 
     client = OpenAI()
 
+    # --------------------------------------------------------
+    # 1. Acquire authorized media
+    # --------------------------------------------------------
+
     clip = acquire_clip()
 
-    seconds, frames = extract_frames(
-        clip["video"]
+    # --------------------------------------------------------
+    # 2. Analyze video
+    # --------------------------------------------------------
+
+    seconds, frames = (
+        extract_frames(
+            clip["video"]
+        )
     )
+
+    # --------------------------------------------------------
+    # 3. Extract source audio
+    # --------------------------------------------------------
 
     audio = extract_audio(
         clip["video"]
     )
 
-    transcript = transcribe(
-        client,
-        audio
+    # --------------------------------------------------------
+    # 4. Timestamped transcription
+    # --------------------------------------------------------
+
+    transcript, segments = (
+        transcribe_timestamped(
+            client,
+            audio
+        )
     )
+
+    # --------------------------------------------------------
+    # 5. AI editing decisions
+    # --------------------------------------------------------
 
     plan = create_plan(
         client,
         clip,
         seconds,
         frames,
-        transcript
+        transcript,
+        segments
     )
+
+    # --------------------------------------------------------
+    # 6. Generate captions from REAL timestamps
+    # --------------------------------------------------------
+
+    captions = create_real_captions(
+        segments,
+        float(
+            plan["segment_start"]
+        ),
+        float(
+            plan["segment_end"]
+        ),
+    )
+
+    # --------------------------------------------------------
+    # 7. Generate context-sensitive AI narration
+    # --------------------------------------------------------
 
     beats = generate_voices(
         client,
         plan
     )
 
+    # --------------------------------------------------------
+    # 8. Render
+    # --------------------------------------------------------
+
     render(
         clip,
         plan,
-        beats
+        beats,
+        captions
     )
 
-    print("\n" + "=" * 60)
-    print("VIRALSPAWNTV V3 COMPLETE")
-    print("=" * 60)
+    # --------------------------------------------------------
+    # 9. Save metadata for future YouTube uploader
+    # --------------------------------------------------------
+
+    save_metadata(
+        clip,
+        plan
+    )
+
+    print("\n" + "=" * 65)
+    print("VIRALSPAWNTV V4 COMPLETE")
+    print("=" * 65)
 
     print(
-        "\nFinished file:"
+        "\nFinished Short:"
     )
 
     print(
-        "ViralSpawnTV_Short_V3.mp4"
+        "ViralSpawnTV_Short_V4.mp4"
     )
 
     print(
-        "\nYouTube auto-publishing remains OFF."
+        "\nYouTube publishing is still OFF."
+    )
+
+    print(
+        "\nIf this video passes visual QC, "
+        "the next stage is YouTube OAuth + "
+        "automatic private uploading."
     )
 
 
