@@ -25,13 +25,18 @@ jobs:
       - name: Install Chromium
         run: playwright install --with-deps chromium
 
-      - name: Run Kick download test
+      - name: Install FFmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+
+      - name: Run Kick acquisition test
         run: python kick_download_test.py
 
-      - name: Upload Kick diagnostics
+      - name: Upload Kick result
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: kick-test-diagnostics
+          name: kick-test-result
           path: work/kick_downloads/
           if-no-files-found: warn
