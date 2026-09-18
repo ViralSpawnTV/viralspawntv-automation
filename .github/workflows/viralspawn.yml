@@ -1,4 +1,4 @@
-name: ViralSpawnTV Pipeline
+name: ViralSpawnTV Production Test
 
 on:
   workflow_dispatch:
@@ -30,13 +30,15 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y ffmpeg
 
-      - name: Run Kick acquisition test
-        run: python kick_download_test.py
+      - name: Run ViralSpawnTV production test
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: python production_test.py
 
-      - name: Upload Kick result
+      - name: Upload production result
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: kick-test-result
-          path: work/kick_downloads/
+          name: viralspawntv-production-test
+          path: work/production/
           if-no-files-found: warn
