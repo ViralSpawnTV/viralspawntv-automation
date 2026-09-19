@@ -7,7 +7,7 @@ from pathlib import Path
 from playwright.sync_api import sync_playwright
 
 
-MANIFEST_PATH = Path("work/v11_candidate_manifest.json")
+RANKED_PATH = Path("work/v12_ranked_candidates.json")
 REJECTED_PATH = Path("work/rejected_clip_ids.json")
 OUTPUT_DIR = Path("work/kick_gaming")
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
@@ -17,11 +17,6 @@ USER_AGENT = (
     "AppleWebKit/537.36 (KHTML, like Gecko) "
     "Chrome/130.0.0.0 Safari/537.36"
 )
-
-GAMBLING_TERMS = {
-    "casino", "slots", "slot machine", "gambling", "roulette",
-    "blackjack", "sportsbook", "sports betting", "betting",
-}
 
 
 def rejected_ids():
@@ -34,49 +29,32 @@ def rejected_ids():
         return set()
 
 
-def inspect_clip(clip_url, clip_id):
+def find_playlist(clip_url, clip_id):
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
         page = browser.new_page(
             user_agent=USER_AGENT,
-            viewport={"width": 1440, "height": 1000},
+            viewport={"width": 1280, "height": 800},
         )
-
-        network_urls = []
+        urls = []
 
         def capture(request):
             if ".m3u8" in request.url:
-                network_urls.append(request.url)
+                urls.append(request.url)
 
         page.on("request", capture)
         page.goto(clip_url, wait_until="domcontentloaded", timeout=60000)
-        page.wait_for_timeout(4500)
-
+        page.wait_for_timeout(3500)
         html = page.content()
-        title = page.title() or ""
-
-        description = ""
-        try:
-            node = page.locator('meta[name="description"]')
-            if node.count():
-                description = node.first.get_attribute("content") or ""
-        except Exception:
-            pass
-
         browser.close()
 
-    context = f"{title} {description}".lower()
-    gambling = [term for term in GAMBLING_TERMS if term in context]
-    if gambling:
-        raise RuntimeError(f"gambling metadata: {', '.join(gambling[:3])}")
-
-    html_urls = re.findall(
+    urls += re.findall(
         r'https?[^"\'\\\s]+?\.m3u8[^"\'\\\s<]*',
         html,
     )
 
     cleaned = []
-    for value in network_urls + html_urls:
+    for value in urls:
         value = (
             value.replace("\\u0026", "&")
             .replace("\\/", "/")
@@ -85,11 +63,11 @@ def inspect_clip(clip_url, clip_id):
         if value not in cleaned:
             cleaned.append(value)
 
-    exact = [url for url in cleaned if clip_id in url]
+    exact = [u for u in cleaned if clip_id in u]
     if not exact:
-        raise RuntimeError("No media playlist for this clip.")
+        raise RuntimeError("No exact media playlist found.")
 
-    return exact[0], title, description
+    return exact[0]
 
 
 def download(playlist, clip_url, output):
@@ -105,35 +83,30 @@ def download(playlist, clip_url, output):
     ], check=True)
 
     if not output.exists() or output.stat().st_size < 10000:
-        raise RuntimeError("Downloaded clip is missing or unexpectedly small.")
+        raise RuntimeError("Downloaded source is missing or too small.")
 
 
 def main():
-    if not MANIFEST_PATH.exists():
-        raise RuntimeError("Missing V11 candidate manifest.")
+    if not RANKED_PATH.exists():
+        raise RuntimeError("Missing V12 ranked candidate batch.")
 
-    manifest = json.loads(MANIFEST_PATH.read_text(encoding="utf-8"))
+    data = json.loads(RANKED_PATH.read_text(encoding="utf-8"))
     rejected = rejected_ids()
     output = OUTPUT_DIR / "selected_kick_gaming_source.mp4"
 
-    # Important: this does NOT rescan categories. It walks the already-built
-    # candidate batch until it acquires one usable candidate.
-    for rank, candidate in enumerate(manifest.get("candidates", []), start=1):
-        clip_id = candidate["clip_id"]
-
-        if clip_id in rejected:
+    for rank, candidate in enumerate(data.get("candidates", []), start=1):
+        clip_id = candidate.get("clip_id")
+        if not clip_id or clip_id in rejected:
             continue
 
         print(
-            f"V11 candidate {rank}: {candidate['game']} / "
-            f"{candidate['channel']} / {clip_id}"
+            f"V12 ranked candidate {rank}: "
+            f"score={candidate.get('v12_metadata_score')} | "
+            f"{candidate.get('game')} | {candidate.get('channel')}"
         )
 
         try:
-            playlist, title, description = inspect_clip(
-                candidate["clip_url"],
-                clip_id,
-            )
+            playlist = find_playlist(candidate["clip_url"], clip_id)
 
             if output.exists():
                 output.unlink()
@@ -143,8 +116,6 @@ def main():
             result = {
                 **candidate,
                 "candidate_rank": rank,
-                "page_title": title,
-                "page_description": description,
                 "video_path": str(output),
                 "rights_status": "unverified",
                 "creator_permission_verified": False,
@@ -158,18 +129,18 @@ def main():
                 encoding="utf-8",
             )
 
-            print("V11 acquisition success.")
+            print("V12 ranked acquisition success.")
             return
 
         except Exception as exc:
-            print(f"Candidate unusable; moving through existing batch: {exc}")
+            print(f"Ranked candidate unusable; trying next: {exc}")
 
-    raise RuntimeError("V11 exhausted the discovered candidate batch.")
+    raise RuntimeError("V12 exhausted the ranked candidate batch.")
 
 
 if __name__ == "__main__":
     try:
         main()
     except Exception as exc:
-        print(f"V11 ACQUISITION FAILED: {exc}")
+        print(f"V12 ACQUISITION FAILED: {exc}")
         sys.exit(1)
