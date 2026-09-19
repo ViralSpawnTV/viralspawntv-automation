@@ -1,0 +1,54 @@
+name: ViralSpawnTV Long-Form V1 - Daily Gaming Episode
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "30 15 * * *"
+
+concurrency:
+  group: viralspawntv-longform
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  produce-longform:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install FFmpeg
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt
+
+      - name: Install Playwright Chromium
+        run: python -m playwright install --with-deps chromium
+
+      - name: Produce and publish long-form episode
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          YOUTUBE_TOKEN_JSON: ${{ secrets.YOUTUBE_TOKEN_JSON }}
+        run: python longform_pipeline.py
+
+      - name: Upload long-form diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: viralspawntv-longform-v1-production
+          retention-days: 7
+          path: |
+            work/v11_candidate_manifest.json
+            work/longform/ranked_sources.json
+            work/longform/acquired_sources.json
+            work/longform/ViralSpawnTV_Longform_V1_metadata.json
+            work/longform/youtube_longform_upload_result.json
