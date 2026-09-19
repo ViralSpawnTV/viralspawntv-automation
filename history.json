@@ -45,6 +45,17 @@
       "youtube_video_id": "zY8CtblDaIs",
       "privacy_status": "public",
       "rights_status": "unverified"
+    },
+    {
+      "clip_id": "clip_01M2RGG0A516Z905ADCZ5ZWMXZ",
+      "platform": "kick",
+      "channel": "misterarther",
+      "clip_url": "https://kick.com/misterarther/clips/clip_01M2RGG0A516Z905ADCZ5ZWMXZ",
+      "processed_at_utc": "2026-09-19T04:01:34.624478+00:00",
+      "youtube_title": "He Begged a Dead Teammate for Help",
+      "youtube_video_id": "_91Z9yHB69s",
+      "privacy_status": "public",
+      "rights_status": "unverified"
     }
   ]
 }
