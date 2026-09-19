@@ -2,7 +2,7 @@ import json
 import re
 import subprocess
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
 from playwright.sync_api import sync_playwright
@@ -14,6 +14,9 @@ OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 HISTORY_PATH = Path("history.json")
 TEMP_REJECTED_PATH = Path("work/rejected_clip_ids.json")
 MAX_CLIPS_PER_CHANNEL = 15
+MAX_PUBLIC_UPLOADS_PER_CREATOR_24H = 2
+DIVERSITY_WINDOW_HOURS = 24
+
 
 USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -25,8 +28,7 @@ USER_AGENT = (
 # Discovery/acquisition candidates are not claims of permission.
 # Add/remove Kick gaming channels here as we expand testing.
 TEST_GAMING_CHANNELS = [
-    # Larger gaming-only discovery pool.
-    # A dead/offline/no-clips channel is skipped automatically.
+    # Proven/current pool
     "dona",
     "xqc",
     "piipou4k",
@@ -43,6 +45,48 @@ TEST_GAMING_CHANNELS = [
     "ohnourkourt",
     "misterarther",
     "soyminatita",
+
+    # Expanded gaming discovery pool
+    "adinross",
+    "trainwreckstv",
+    "n3on",
+    "westcol",
+    "ac7ionman",
+    "iceposeidon",
+    "cuffem",
+    "sweatergxd",
+    "roshtein",
+    "santana",
+    "clix",
+    "mongraal",
+    "tfue",
+    "symfuhny",
+    "nickmercs",
+    "scump",
+    "shotzzy",
+    "formal",
+    "methodz",
+    "cloakzy",
+    "summit1g",
+    "shroud",
+    "tarik",
+    "sacy",
+    "gaules",
+    "fps_shaka",
+    "elraenn",
+    "brucedropemoff",
+    "yourrage",
+    "rayasianboy",
+    "carrington",
+    "sneako",
+    "rage",
+    "agent00",
+    "stable_ronaldo",
+    "ronaldo",
+    "ninja",
+    "timthetatman",
+    "lacy",
+    "jasontheween",
 ]
 
 GAMBLING_TERMS = {
@@ -118,6 +162,46 @@ def temporarily_rejected_clip_ids():
         return set()
 
     return {str(value) for value in data if value}
+
+
+
+
+def parse_utc(value):
+    if not value:
+        return None
+    try:
+        return datetime.fromisoformat(
+            str(value).replace("Z", "+00:00")
+        ).astimezone(timezone.utc)
+    except Exception:
+        return None
+
+
+def creator_public_upload_counts(history):
+    cutoff = datetime.now(timezone.utc) - timedelta(
+        hours=DIVERSITY_WINDOW_HOURS
+    )
+    counts = {}
+
+    for item in history.get("used_clips", []):
+        if str(item.get("privacy_status", "")).lower() != "public":
+            continue
+
+        channel = str(item.get("channel", "")).strip().lower()
+        processed_at = parse_utc(item.get("processed_at_utc"))
+
+        if not channel or processed_at is None or processed_at < cutoff:
+            continue
+
+        counts[channel] = counts.get(channel, 0) + 1
+
+    return counts
+
+
+def creator_is_capped(channel, public_counts):
+    return public_counts.get(str(channel).lower(), 0) >= (
+        MAX_PUBLIC_UPLOADS_PER_CREATOR_24H
+    )
 
 
 
@@ -254,9 +338,30 @@ def candidate_score(channel, position, context):
 def discover_candidates(history):
     used = used_clip_ids(history)
     used.update(temporarily_rejected_clip_ids())
+    public_counts = creator_public_upload_counts(history)
+
+    capped_creators = sorted(
+        channel for channel, count in public_counts.items()
+        if count >= MAX_PUBLIC_UPLOADS_PER_CREATOR_24H
+    )
+    print(
+        "V10 creator diversity: "
+        f"{MAX_PUBLIC_UPLOADS_PER_CREATOR_24H} public uploads/creator/"
+        f"{DIVERSITY_WINDOW_HOURS}h max"
+    )
+    print(f"Currently capped creators: {capped_creators or 'none'}")
+
     candidates = []
 
     for channel in TEST_GAMING_CHANNELS:
+        if creator_is_capped(channel, public_counts):
+            print(
+                f"Skipping {channel}: already has "
+                f"{public_counts.get(channel.lower(), 0)} public uploads "
+                f"in the last {DIVERSITY_WINDOW_HOURS} hours."
+            )
+            continue
+
         print()
         print(f"Searching gaming channel: {channel}")
 
@@ -409,7 +514,7 @@ def choose_and_acquire(history):
 def main():
     print()
     print("================================================")
-    print("ViralSpawnTV V9 Kick Source Rotation")
+    print("ViralSpawnTV V10 Kick Source Rotation")
     print("================================================")
     print(
         "PRIVATE pipeline test only. Public publishing remains blocked."
