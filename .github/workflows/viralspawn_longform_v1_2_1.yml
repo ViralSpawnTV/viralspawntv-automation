@@ -1,17 +1,13 @@
-name: ViralSpawnTV Long-Form V1.2 - Continuous Gameplay
-
+name: ViralSpawnTV Long-Form V1.2.1 - Continuous Gameplay Fix
 on:
   workflow_dispatch:
   schedule:
     - cron: "30 15 * * *"
-
 concurrency:
   group: viralspawntv-longform
   cancel-in-progress: false
-
 permissions:
   contents: read
-
 jobs:
   produce-longform:
     runs-on: ubuntu-latest
@@ -27,22 +23,22 @@ jobs:
         run: pip install -r requirements.txt
       - name: Install Playwright Chromium
         run: python -m playwright install --with-deps chromium
-      - name: Produce and publish V1.2
+      - name: Produce and publish V1.2.1
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           YOUTUBE_TOKEN_JSON: ${{ secrets.YOUTUBE_TOKEN_JSON }}
-        run: python longform_pipeline_v1_2.py
-      - name: Upload V1.2 diagnostics and episode
+        run: python longform_pipeline_v1_2_1.py
+      - name: Upload V1.2.1 diagnostics and episode
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: viralspawntv-longform-v1-2-production
+          name: viralspawntv-longform-v1-2-1-production
           retention-days: 7
           path: |
             work/v11_candidate_manifest.json
             work/longform/ranked_sources.json
             work/longform/acquired_sources.json
             work/longform/screened_sources.json
-            work/longform/ViralSpawnTV_Longform_V1_2.mp4
-            work/longform/ViralSpawnTV_Longform_V1_2_metadata.json
-            work/longform/youtube_longform_upload_result_v1_2.json
+            work/longform/ViralSpawnTV_Longform_V1_2_1.mp4
+            work/longform/ViralSpawnTV_Longform_V1_2_1_metadata.json
+            work/longform/youtube_longform_upload_result_v1_2_1.json
