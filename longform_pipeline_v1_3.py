@@ -9,9 +9,9 @@ def main():
     run("longform_ranker.py")
     run("longform_collect.py")
     run("longform_source_gate_v1_1.py")
-    run("longform_production_v1_2_1.py")
-    run("longform_upload_v1_2_1.py")
+    run("longform_production_v1_3.py")
+    run("longform_upload_v1_3.py")
 if __name__=="__main__":
     try: main()
     except Exception as e:
-        print("LONGFORM V1.2.1 PIPELINE FAILED:",e); sys.exit(1)
+        print("LONGFORM V1.3 PIPELINE FAILED:",e);sys.exit(1)
