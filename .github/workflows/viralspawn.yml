@@ -1,4 +1,4 @@
-name: ViralSpawnTV V7 - 12 Daily Private Shorts
+name: ViralSpawnTV V8 - 12 Daily Public Shorts
 
 on:
   workflow_dispatch:
@@ -52,6 +52,11 @@ jobs:
           test -f work/kick_gaming/acquisition_result.json
           cat work/kick_gaming/acquisition_result.json
 
+      - name: Screen source for commercial music risk
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: python music_gate.py
+
       - name: Produce ViralSpawnTV V5 Short
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
@@ -63,7 +68,7 @@ jobs:
           test -f work/production/ViralSpawnTV_V4_metadata.json
           ls -lh work/production/ViralSpawnTV_Short_V4.mp4
 
-      - name: Upload Short to YouTube as PRIVATE
+      - name: Upload Short to YouTube as PUBLIC
         env:
           YOUTUBE_TOKEN_JSON: ${{ secrets.YOUTUBE_TOKEN_JSON }}
         run: python youtube_upload.py
@@ -122,7 +127,7 @@ jobs:
                       upload.get("video_id")
                       or upload.get("id")
                   ),
-                  "privacy_status": "private",
+                  "privacy_status": upload.get("privacy_status", "public"),
                   "rights_status": acquisition.get(
                       "rights_status",
                       "unverified"
@@ -155,7 +160,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: viralspawntv-v7-kick-source
+          name: viralspawntv-v8-kick-source
           path: work/kick_gaming/
           if-no-files-found: warn
           retention-days: 7
@@ -164,7 +169,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: viralspawntv-v7-production
+          name: viralspawntv-v8-production
           path: work/production/
           if-no-files-found: warn
           retention-days: 7
