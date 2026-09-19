@@ -1,1 +1,17 @@
-{"processed": []}
+{
+  "processed": [],
+  "version": 1,
+  "used_clips": [
+    {
+      "clip_id": "clip_01M2CBGJRZEK6DSBR16W7RFRMS",
+      "platform": "kick",
+      "channel": "dona",
+      "clip_url": "https://kick.com/dona/clips/clip_01M2CBGJRZEK6DSBR16W7RFRMS",
+      "processed_at_utc": "2026-09-19T02:56:51.895844+00:00",
+      "youtube_title": "Dona’s Mouse Breaks During a Chaotic Fortnite Fight",
+      "youtube_video_id": "za9JRlNcG0A",
+      "privacy_status": "private",
+      "rights_status": "unverified"
+    }
+  ]
+}
