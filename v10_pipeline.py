@@ -90,7 +90,7 @@ def main():
     for attempt_number in range(1, MAX_ATTEMPTS + 1):
         print()
         print("#" * 70)
-        print(f"V9 PRODUCTION ATTEMPT {attempt_number}/{MAX_ATTEMPTS}")
+        print(f"V10 PRODUCTION ATTEMPT {attempt_number}/{MAX_ATTEMPTS}")
         print("#" * 70)
 
         clean_attempt_outputs()
@@ -151,7 +151,7 @@ def main():
 
         print()
         print("=" * 70)
-        print("V9 FOUND A PUBLISHABLE SHORT")
+        print("V10 FOUND A PUBLISHABLE SHORT")
         print("=" * 70)
         print(f"Clip ID: {clip_id}")
         return
@@ -167,5 +167,5 @@ if __name__ == "__main__":
     try:
         main()
     except Exception as exc:
-        print(f"V9 ORCHESTRATOR FAILED: {exc}")
+        print(f"V10 ORCHESTRATOR FAILED: {exc}")
         sys.exit(1)
