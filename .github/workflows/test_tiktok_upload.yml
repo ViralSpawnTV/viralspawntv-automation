@@ -1,0 +1,93 @@
+name: Test TikTok Sandbox Upload
+
+on:
+  workflow_dispatch:
+
+jobs:
+  tiktok-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install requests
+
+      - name: Find latest ViralSpawnTV Short artifact
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p work/production
+          
+          echo "Looking for a recent Shorts workflow artifact..."
+
+          RUN_ID=$(gh run list \
+            --workflow "viralspawn_v12_1.yml" \
+            --status success \
+            --limit 10 \
+            --json databaseId \
+            --jq '.[0].databaseId')
+
+          if [ -z "$RUN_ID" ]; then
+            echo "No successful Shorts workflow run found."
+            exit 1
+          fi
+
+          echo "Using Shorts workflow run: $RUN_ID"
+
+          gh run download "$RUN_ID" \
+            --dir /tmp/viralspawn_artifacts
+
+          echo "Searching downloaded artifacts for finished Short..."
+
+          VIDEO=$(find /tmp/viralspawn_artifacts \
+            -type f \
+            -name "ViralSpawnTV_Short_V4.mp4" \
+            | head -n 1)
+
+          if [ -z "$VIDEO" ]; then
+            echo "Finished Short was not found in the artifact."
+            echo "Files that were downloaded:"
+            find /tmp/viralspawn_artifacts -type f
+            exit 1
+          fi
+
+          cp "$VIDEO" \
+            work/production/ViralSpawnTV_Short_V4.mp4
+
+          METADATA=$(find /tmp/viralspawn_artifacts \
+            -type f \
+            -name "ViralSpawnTV_V4_metadata.json" \
+            | head -n 1)
+
+          if [ -n "$METADATA" ]; then
+            cp "$METADATA" \
+              work/production/ViralSpawnTV_V4_metadata.json
+          fi
+
+          echo "TikTok test video ready:"
+          ls -lh work/production/ViralSpawnTV_Short_V4.mp4
+
+      - name: Upload Short to TikTok Sandbox
+        env:
+          TIKTOK_AUTOMATION_SECRET: ${{ secrets.TIKTOK_AUTOMATION_SECRET }}
+        run: |
+          python tiktok_upload.py
+
+      - name: Upload TikTok test result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tiktok-sandbox-test-result
+          path: |
+            work/production/tiktok_upload_result.json
+          if-no-files-found: ignore
+          retention-days: 7
