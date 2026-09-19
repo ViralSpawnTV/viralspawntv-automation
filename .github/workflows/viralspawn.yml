@@ -1,7 +1,15 @@
-name: ViralSpawnTV V6 Rotation + Private YouTube Upload
+name: ViralSpawnTV V7 - 12 Daily Private Shorts
 
 on:
   workflow_dispatch:
+  schedule:
+    # Every 2 hours = 12 scheduled runs per day.
+    # GitHub scheduled workflows use UTC and may start a little late.
+    - cron: "0 */2 * * *"
+
+concurrency:
+  group: viralspawntv-production
+  cancel-in-progress: false
 
 permissions:
   contents: write
@@ -147,7 +155,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: viralspawntv-v6-kick-source
+          name: viralspawntv-v7-kick-source
           path: work/kick_gaming/
           if-no-files-found: warn
           retention-days: 7
@@ -156,7 +164,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: viralspawntv-v6-production
+          name: viralspawntv-v7-production
           path: work/production/
           if-no-files-found: warn
           retention-days: 7
