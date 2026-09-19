@@ -34,9 +34,31 @@ def load_json(path):
 def segment_text(transcript, start, end):
     pieces = []
 
-    segments = transcript.get("segments", [])
-    if not isinstance(segments, list):
+    # production_test.py currently writes timestamped_transcript.json
+    # as a LIST of segment dictionaries. Also support dict-shaped
+    # transcripts so this gate remains compatible with either format.
+    if isinstance(transcript, list):
+        segments = transcript
+        fallback_text = " ".join(
+            str(seg.get("text", "")).strip()
+            for seg in transcript
+            if isinstance(seg, dict)
+            and str(seg.get("text", "")).strip()
+        )
+
+    elif isinstance(transcript, dict):
+        segments = transcript.get("segments", [])
+
+        if not isinstance(segments, list):
+            segments = []
+
+        fallback_text = str(
+            transcript.get("text", "")
+        ).strip()
+
+    else:
         segments = []
+        fallback_text = ""
 
     for seg in segments:
         if not isinstance(seg, dict):
@@ -52,14 +74,14 @@ def segment_text(transcript, start, end):
             continue
 
         text = str(seg.get("text", "")).strip()
+
         if text:
             pieces.append(text)
 
-    # Fallback only when timestamped segments are unavailable.
-    if not pieces:
-        return str(transcript.get("text", "")).strip()
+    if pieces:
+        return " ".join(pieces)
 
-    return " ".join(pieces)
+    return fallback_text
 
 
 def normalize(text):
