@@ -1,4 +1,4 @@
-name: ViralSpawnTV V8.1 - 12 Daily Public Shorts
+name: ViralSpawnTV V9 - 12 Daily Smart Public Shorts
 
 on:
   workflow_dispatch:
@@ -43,35 +43,23 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y ffmpeg
 
-      - name: Acquire fresh Kick gaming clip
-        run: python kick_gaming_acquisition.py
-
-      - name: Verify selected source
-        run: |
-          test -f work/kick_gaming/selected_kick_gaming_source.mp4
-          test -f work/kick_gaming/acquisition_result.json
-          cat work/kick_gaming/acquisition_result.json
-
-      - name: Screen source for commercial music risk
+      - name: Find and produce best publishable gaming Short
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-        run: python music_gate.py
+        run: python v9_pipeline.py
 
-      - name: Produce ViralSpawnTV V5 Short
-        env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-        run: python production_test.py
-
-      - name: Verify finished Short
+      - name: Verify V9 finished Short
         run: |
           test -f work/production/ViralSpawnTV_Short_V4.mp4
           test -f work/production/ViralSpawnTV_V4_metadata.json
+          test -f work/production/final_content_gate.json
+          test -f work/music_gate/music_gate_result.json
+          test -f work/v9_attempt_log.json
+          echo "===== V9 ATTEMPT LOG ====="
+          cat work/v9_attempt_log.json
+          echo "===== FINAL METADATA ====="
+          cat work/production/ViralSpawnTV_V4_metadata.json
           ls -lh work/production/ViralSpawnTV_Short_V4.mp4
-
-      - name: Check final selected segment for gambling content
-        env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-        run: python final_content_gate.py
 
       - name: Upload Short to YouTube as PUBLIC
         env:
@@ -165,7 +153,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: viralspawntv-v8-1-kick-source
+          name: viralspawntv-v9-kick-source
           path: work/kick_gaming/
           if-no-files-found: warn
           retention-days: 7
@@ -174,7 +162,11 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: viralspawntv-v8-1-production
-          path: work/production/
+          name: viralspawntv-v9-production
+          path: |
+            work/production/
+            work/viral_gate/
+            work/music_gate/
+            work/v9_attempt_log.json
           if-no-files-found: warn
           retention-days: 7
