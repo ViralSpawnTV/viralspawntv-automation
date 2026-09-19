@@ -12,6 +12,7 @@ OUTPUT_DIR = Path("work/kick_gaming")
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 HISTORY_PATH = Path("history.json")
+TEMP_REJECTED_PATH = Path("work/rejected_clip_ids.json")
 MAX_CLIPS_PER_CHANNEL = 15
 
 USER_AGENT = (
@@ -100,6 +101,25 @@ def used_clip_ids(history):
                 ids.add(str(value))
 
     return ids
+
+
+def temporarily_rejected_clip_ids():
+    if not TEMP_REJECTED_PATH.exists():
+        return set()
+
+    try:
+        data = json.loads(
+            TEMP_REJECTED_PATH.read_text(encoding="utf-8")
+        )
+    except Exception:
+        return set()
+
+    if not isinstance(data, list):
+        return set()
+
+    return {str(value) for value in data if value}
+
+
 
 
 def get_clip_links(channel):
@@ -233,6 +253,7 @@ def candidate_score(channel, position, context):
 
 def discover_candidates(history):
     used = used_clip_ids(history)
+    used.update(temporarily_rejected_clip_ids())
     candidates = []
 
     for channel in TEST_GAMING_CHANNELS:
@@ -388,7 +409,7 @@ def choose_and_acquire(history):
 def main():
     print()
     print("================================================")
-    print("ViralSpawnTV V8.1 Kick Source Rotation")
+    print("ViralSpawnTV V9 Kick Source Rotation")
     print("================================================")
     print(
         "PRIVATE pipeline test only. Public publishing remains blocked."
