@@ -275,12 +275,21 @@ def extract_frames(video):
             str(path),
         ])
 
-        frames.append(
-            (
-                timestamp,
-                path
+        # FFmpeg can return success for a timestamp near the end of a
+        # variable-frame-rate/stream-copied clip without actually writing
+        # an output frame. Only pass real image files to the AI planner.
+        if path.exists() and path.stat().st_size > 0:
+            frames.append(
+                (
+                    timestamp,
+                    path
+                )
             )
-        )
+        else:
+            print(
+                f"Skipping unavailable analysis frame at "
+                f"{timestamp:.1f}s: {path.name}"
+            )
 
     return seconds, frames
 
