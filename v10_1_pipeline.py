@@ -5,7 +5,7 @@ import sys
 from pathlib import Path
 
 
-MAX_ATTEMPTS = 4
+MAX_ATTEMPTS = 3
 
 ACQUISITION = Path("work/kick_gaming/acquisition_result.json")
 REJECTED = Path("work/rejected_clip_ids.json")
@@ -90,7 +90,7 @@ def main():
     for attempt_number in range(1, MAX_ATTEMPTS + 1):
         print()
         print("#" * 70)
-        print(f"V10 PRODUCTION ATTEMPT {attempt_number}/{MAX_ATTEMPTS}")
+        print(f"V10.1 PRODUCTION ATTEMPT {attempt_number}/{MAX_ATTEMPTS}")
         print("#" * 70)
 
         clean_attempt_outputs()
@@ -151,7 +151,7 @@ def main():
 
         print()
         print("=" * 70)
-        print("V10 FOUND A PUBLISHABLE SHORT")
+        print("V10.1 FOUND A PUBLISHABLE SHORT")
         print("=" * 70)
         print(f"Clip ID: {clip_id}")
         return
@@ -167,5 +167,5 @@ if __name__ == "__main__":
     try:
         main()
     except Exception as exc:
-        print(f"V10 ORCHESTRATOR FAILED: {exc}")
+        print(f"V10.1 ORCHESTRATOR FAILED: {exc}")
         sys.exit(1)
