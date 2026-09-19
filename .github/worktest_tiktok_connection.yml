@@ -1,0 +1,40 @@
+name: Test TikTok Connection
+
+on:
+  workflow_dispatch:
+
+jobs:
+  test-tiktok:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Test TikTok token bridge
+        env:
+          TIKTOK_AUTOMATION_SECRET: ${{ secrets.TIKTOK_AUTOMATION_SECRET }}
+        run: |
+          HTTP_CODE=$(curl -sS \
+            -o /tmp/tiktok_response.json \
+            -w "%{http_code}" \
+            -X POST \
+            -H "Authorization: Bearer $TIKTOK_AUTOMATION_SECRET" \
+            -H "Content-Type: application/json" \
+            "https://viralspawntv-tiktok.srwalker3333.workers.dev/automation/token")
+
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "TikTok bridge FAILED (HTTP $HTTP_CODE)"
+            cat /tmp/tiktok_response.json
+            exit 1
+          fi
+
+          python3 - <<'PY'
+          import json
+
+          with open("/tmp/tiktok_response.json", "r") as f:
+              data = json.load(f)
+
+          if not data.get("access_token"):
+              raise SystemExit("FAILED: No TikTok access token returned.")
+
+          print("SUCCESS: GitHub securely obtained a TikTok access token.")
+          print("TikTok automation bridge is working.")
+          PY
