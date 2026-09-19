@@ -1,10 +1,10 @@
-name: ViralSpawnTV Gaming V4 + Private YouTube Upload
+name: ViralSpawnTV V6 Rotation + Private YouTube Upload
 
 on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   produce-and-upload:
@@ -14,6 +14,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -33,69 +35,128 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y ffmpeg
 
-      # ========================================================
-      # 1. ACQUIRE GAMING CLIP FROM KICK
-      # ========================================================
-
-      - name: Acquire Kick gaming clip
+      - name: Acquire fresh Kick gaming clip
         run: python kick_gaming_acquisition.py
 
-      - name: Verify Kick gaming source
+      - name: Verify selected source
         run: |
           test -f work/kick_gaming/selected_kick_gaming_source.mp4
           test -f work/kick_gaming/acquisition_result.json
-
-          echo "Kick gaming source acquired."
-          ls -lh work/kick_gaming/selected_kick_gaming_source.mp4
           cat work/kick_gaming/acquisition_result.json
 
-      # ========================================================
-      # 2. CREATE VIRALSPAWNTV V4 GAMING SHORT
-      # ========================================================
-
-      - name: Produce ViralSpawnTV gaming Short
+      - name: Produce ViralSpawnTV V5 Short
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: python production_test.py
 
-      - name: Verify finished gaming Short
+      - name: Verify finished Short
         run: |
           test -f work/production/ViralSpawnTV_Short_V4.mp4
           test -f work/production/ViralSpawnTV_V4_metadata.json
-
-          echo "Finished gaming Short found."
           ls -lh work/production/ViralSpawnTV_Short_V4.mp4
 
-          echo "===== METADATA ====="
-          cat work/production/ViralSpawnTV_V4_metadata.json
-
-      # ========================================================
-      # 3. PRIVATE YOUTUBE UPLOAD
-      # ========================================================
-
-      - name: Upload gaming Short to YouTube as PRIVATE
+      - name: Upload Short to YouTube as PRIVATE
         env:
           YOUTUBE_TOKEN_JSON: ${{ secrets.YOUTUBE_TOKEN_JSON }}
         run: python youtube_upload.py
 
-      # ========================================================
-      # 4. SAVE EVERYTHING FOR QC
-      # ========================================================
+      - name: Record successful clip in persistent history
+        run: |
+          python - <<'PY'
+          import json
+          from datetime import datetime, timezone
+          from pathlib import Path
+
+          acquisition_path = Path("work/kick_gaming/acquisition_result.json")
+          metadata_path = Path("work/production/ViralSpawnTV_V4_metadata.json")
+          upload_path = Path("work/production/youtube_upload_result.json")
+          history_path = Path("history.json")
+
+          acquisition = json.loads(acquisition_path.read_text(encoding="utf-8"))
+          metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+          upload = json.loads(upload_path.read_text(encoding="utf-8"))
+
+          if history_path.exists():
+              try:
+                  history = json.loads(history_path.read_text(encoding="utf-8"))
+              except Exception:
+                  history = {}
+          else:
+              history = {}
+
+          if isinstance(history, list):
+              history = {"version": 1, "used_clips": history}
+
+          if not isinstance(history, dict):
+              history = {}
+
+          history.setdefault("version", 1)
+          history.setdefault("used_clips", [])
+
+          clip_id = acquisition["clip_id"]
+
+          already_used = False
+          for item in history["used_clips"]:
+              if isinstance(item, str) and item == clip_id:
+                  already_used = True
+              elif isinstance(item, dict) and item.get("clip_id") == clip_id:
+                  already_used = True
+
+          if not already_used:
+              history["used_clips"].append({
+                  "clip_id": clip_id,
+                  "platform": "kick",
+                  "channel": acquisition.get("channel"),
+                  "clip_url": acquisition.get("clip_url"),
+                  "processed_at_utc": datetime.now(timezone.utc).isoformat(),
+                  "youtube_title": metadata.get("title"),
+                  "youtube_video_id": (
+                      upload.get("video_id")
+                      or upload.get("id")
+                  ),
+                  "privacy_status": "private",
+                  "rights_status": acquisition.get(
+                      "rights_status",
+                      "unverified"
+                  ),
+              })
+
+          history_path.write_text(
+              json.dumps(history, indent=2, ensure_ascii=False) + "\n",
+              encoding="utf-8",
+          )
+
+          print(f"Recorded successful clip: {clip_id}")
+          PY
+
+      - name: Commit updated duplicate history
+        run: |
+          if git diff --quiet -- history.json; then
+            echo "No history change to commit."
+            exit 0
+          fi
+
+          git config user.name "ViralSpawnTV Automation"
+          git config user.email "actions@users.noreply.github.com"
+
+          git add history.json
+          git commit -m "Record processed ViralSpawnTV clip"
+          git push
 
       - name: Collect Kick source artifact
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: viralspawntv-kick-source
+          name: viralspawntv-v6-kick-source
           path: work/kick_gaming/
           if-no-files-found: warn
           retention-days: 7
 
-      - name: Collect finished gaming production
+      - name: Collect finished production
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: viralspawntv-gaming-v4-production
+          name: viralspawntv-v6-production
           path: work/production/
           if-no-files-found: warn
           retention-days: 7
