@@ -4,8 +4,8 @@ from openai import OpenAI
 
 ROOT = Path("work/longform")
 SCREENED = ROOT / "screened_sources.json"
-OUT = ROOT / "ViralSpawnTV_Longform_V1_2.mp4"
-OUTMETA = ROOT / "ViralSpawnTV_Longform_V1_2_metadata.json"
+OUT = ROOT / "ViralSpawnTV_Longform_V1_2_1.mp4"
+OUTMETA = ROOT / "ViralSpawnTV_Longform_V1_2_1_metadata.json"
 VOICE = "onyx"
 
 def run(cmd):
@@ -24,36 +24,20 @@ def has_audio(path):
     ], capture_output=True, text=True).stdout.strip())
 
 def tts(client, text, path):
-    text = (text or "").strip()
-    if not text:
-        text = "Watch this."
+    text = (text or "").strip() or "Watch this."
     with client.audio.speech.with_streaming_response.create(
         model="gpt-4o-mini-tts",
         voice=VOICE,
         input=text,
         instructions=(
             "Young adult American male, neutral U.S. accent. Natural gaming commentary, "
-            "medium-fast, crisp, conversational. React like a real gaming creator. "
-            "Use excitement only when the moment earns it. Never sound like an announcer."
+            "medium-fast, crisp and conversational. Selective excitement. Never announcer-like."
         )
     ) as r:
         r.stream_to_file(path)
 
-def make_gameplay_piece(src, start, end, narration, dest, narration_name):
-    """Continuous gameplay. Narration overlays gameplay; source audio ducks beneath it."""
-    dur = max(4.0, end - start)
-    narr = ROOT / narration_name
-    tts(CLIENT, narration, narr)
-    ndur = probe_duration(narr)
-
-    # Give narration room while keeping the actual clip payoff intact.
-    # If narration is longer than the selected clip, extend the source window where possible.
-    total = probe_duration(src)
-    needed = max(dur, ndur + 1.0)
-    end = min(total, start + needed)
-    dur = max(4.0, end - start)
-
-    vf = (
+def video_filter():
+    return (
         "[0:v]split=2[v1][v2];"
         "[v1]scale=1920:1080:force_original_aspect_ratio=increase,"
         "crop=1920:1080,boxblur=20:10[bg];"
@@ -61,15 +45,26 @@ def make_gameplay_piece(src, start, end, narration, dest, narration_name):
         "[bg][fg]overlay=(W-w)/2:(H-h)/2,format=yuv420p[v]"
     )
 
+def make_gameplay_piece(src, start, end, narration, dest, narration_name):
+    narr = ROOT / narration_name
+    tts(CLIENT, narration, narr)
+    ndur = probe_duration(narr)
+    total = probe_duration(src)
+    dur = max(4.0, end-start, ndur+1.0)
+    end = min(total, start+dur)
+    dur = max(0.5, end-start)
+
     if has_audio(src):
-        # narration begins almost immediately; game audio ducks while voice is active.
+        # FIX: sidechaincompress consumes both inputs, so split narrator audio first.
+        # One copy drives the compressor sidechain; the other is mixed into final audio.
         fc = (
-            vf +
-            f";[0:a]aresample=48000,volume=1.0[game];"
-            f"[1:a]aresample=48000,volume=1.35[voice];"
-            f"[game][voice]sidechaincompress=threshold=0.02:ratio=10:"
-            f"attack=20:release=350[ducked];"
-            f"[ducked][voice]amix=inputs=2:duration=first:dropout_transition=0[a]"
+            video_filter() +
+            ";[0:a]aresample=48000,volume=1.0[game];"
+            "[1:a]aresample=48000,volume=1.35,asplit=2[voice_sc][voice_mix];"
+            "[game][voice_sc]sidechaincompress="
+            "threshold=0.02:ratio=10:attack=20:release=350[ducked];"
+            "[ducked][voice_mix]amix=inputs=2:duration=first:"
+            "dropout_transition=0[a]"
         )
         run([
             "ffmpeg","-y","-ss",str(start),"-t",str(dur),"-i",str(src),
@@ -79,7 +74,7 @@ def make_gameplay_piece(src, start, end, narration, dest, narration_name):
             "-c:a","aac","-ar","48000","-ac","2","-t",str(dur),str(dest)
         ])
     else:
-        fc = vf + ";[1:a]aresample=48000,apad[a]"
+        fc = video_filter() + ";[1:a]aresample=48000,volume=1.35,apad[a]"
         run([
             "ffmpeg","-y","-ss",str(start),"-t",str(dur),"-i",str(src),
             "-i",str(narr),"-filter_complex",fc,
@@ -88,17 +83,9 @@ def make_gameplay_piece(src, start, end, narration, dest, narration_name):
             "-c:a","aac","-ar","48000","-ac","2","-t",str(dur),str(dest)
         ])
 
-    return dest
-
 def make_source_only(src, start, end, dest):
-    dur=max(4.0,end-start)
-    vf=(
-        "[0:v]split=2[v1][v2];"
-        "[v1]scale=1920:1080:force_original_aspect_ratio=increase,"
-        "crop=1920:1080,boxblur=20:10[bg];"
-        "[v2]scale=1920:1080:force_original_aspect_ratio=decrease[fg];"
-        "[bg][fg]overlay=(W-w)/2:(H-h)/2,format=yuv420p[v]"
-    )
+    dur=max(0.5,end-start)
+    vf=video_filter()
     if has_audio(src):
         run(["ffmpeg","-y","-ss",str(start),"-t",str(dur),"-i",str(src),
              "-filter_complex",vf,"-map","[v]","-map","0:a:0",
@@ -130,41 +117,34 @@ def main():
         })
 
     prompt=f"""
-Build a fast-moving ViralSpawnTV gaming episode using 6-10 of these approved clips.
+Create a fast-moving ViralSpawnTV gaming compilation using 6-10 approved clips.
 
-CRITICAL EDITING RULE: there are NO narration cards and NO black/dark narration screens.
-Gameplay must be moving continuously from the first frame of the episode.
-Narration is spoken OVER gameplay. The source/game audio becomes prominent for the payoff.
-Do not write long setups. Hook quickly.
+There must be NO black screens and NO narration cards.
+Moving gameplay is visible continuously from frame one.
+Narration is spoken over gameplay, then stops before the key payoff so original clip audio
+can breathe. Keep setups concise.
 
-For each selected source choose:
-- start/end: total excerpt 18-40 sec
-- setup: 1-3 concise sentences spoken over the opening gameplay
-- payoff_start: seconds after the excerpt starts where narration should stop and the original
-  clip should breathe. Prefer at least 6-15 seconds of source-only payoff.
-- reaction: OPTIONAL very short reaction. Use empty string if the source moment is stronger alone.
-
-The intro is 1-2 punchy sentences spoken over a rapid preview of the strongest first clip.
-The outro is one short CTA spoken over the final gameplay, never a separate card.
+For each segment choose an excerpt of roughly 20-40 seconds.
+payoff_start is seconds after the selected excerpt begins and should leave roughly 7-18
+seconds of source-only payoff whenever possible.
 
 Return ONLY JSON:
 {{
- "title":"accurate clickable title",
+ "title":"clickable accurate title",
  "description":"2-4 sentences",
  "thumbnail_text":"2-5 words",
- "intro":"short cold open",
+ "intro":"1-2 sentence cold open",
  "segments":[
-  {{"source_number":1,"start":0,"end":30,"setup":"short setup",
-    "payoff_start":12,"reaction":"short optional reaction"}}
+  {{"source_number":1,"start":0,"end":30,"setup":"short setup","payoff_start":12}}
  ],
- "outro":"short CTA"
+ "outro":"one short CTA"
 }}
 
 SOURCES:
 {json.dumps(compact,ensure_ascii=False)}
 """
-    r=CLIENT.responses.create(model="gpt-5.6",input=prompt)
-    raw=re.sub(r"^```json\s*|\s*```$","",r.output_text.strip())
+    resp=CLIENT.responses.create(model="gpt-5.6",input=prompt)
+    raw=re.sub(r"^```json\s*|\s*```$","",resp.output_text.strip())
     plan=json.loads(raw)
 
     bynum={x["source_number"]:x for x in compact}
@@ -172,52 +152,43 @@ SOURCES:
     used=[]
 
     for idx,seg in enumerate(plan.get("segments",[])):
-        try:
-            n=int(seg["source_number"])
-            info=bynum[n]
-            source=sources[n-1]
-            src=Path(source["local_path"])
-            total=float(info["duration"])
-            start=max(0.0,min(float(seg.get("start",0)),max(0,total-6)))
-            end=max(start+6,min(float(seg.get("end",start+30)),total))
-            relative_payoff=float(seg.get("payoff_start",10))
-            payoff=max(start+4,min(start+relative_payoff,end-4))
-        except Exception:
-            continue
+        n=int(seg["source_number"])
+        if n not in bynum: continue
+        info=bynum[n]
+        source=sources[n-1]
+        src=Path(source["local_path"])
+        total=float(info["duration"])
+        start=max(0.0,min(float(seg.get("start",0)),max(0,total-8)))
+        end=max(start+8,min(float(seg.get("end",start+30)),total))
+        payoff=max(start+5,min(start+float(seg.get("payoff_start",12)),end-5))
 
-        # First clip carries the episode cold-open plus its setup over moving gameplay.
         setup=(seg.get("setup") or "").strip()
         if idx==0:
             setup=((plan.get("intro") or "").strip()+" "+setup).strip()
 
-        # Part A: moving gameplay + narration.
-        a=ROOT/f"v12_{idx:02d}_setup.mp4"
-        make_gameplay_piece(src,start,payoff,setup,a,f"v12_{idx:02d}_setup.mp3")
+        a=ROOT/f"v121_{idx:02d}_setup.mp4"
+        make_gameplay_piece(src,start,payoff,setup,a,f"v121_{idx:02d}_setup.mp3")
         pieces.append(a)
 
-        # Part B: source-only payoff. No narrator talking over the key moment.
-        b=ROOT/f"v12_{idx:02d}_payoff.mp4"
+        b=ROOT/f"v121_{idx:02d}_payoff.mp4"
         make_source_only(src,payoff,end,b)
         pieces.append(b)
-
-        # Reactions are intentionally omitted as separate pieces because that would
-        # recreate dead time. The next segment's setup supplies the transition.
         used.append(source)
 
     if len(used)<5:
-        raise RuntimeError(f"Only {len(used)} usable clips in episode plan.")
+        raise RuntimeError(f"Only {len(used)} usable planned clips.")
 
-    # Outro is over the final seconds of existing gameplay in spirit; V1.2 avoids
-    # adding any standalone visual card. Metadata retains CTA for later overlay work.
-    concat=ROOT/"concat_v1_2.txt"
-    concat.write_text("\n".join(f"file '{p.resolve().as_posix()}'" for p in pieces),encoding="utf-8")
+    concat=ROOT/"concat_v1_2_1.txt"
+    concat.write_text("\n".join(f"file '{x.resolve().as_posix()}'" for x in pieces),encoding="utf-8")
 
+    # Re-encode final concat for resilience instead of stream-copying.
     run(["ffmpeg","-y","-f","concat","-safe","0","-i",str(concat),
-         "-c","copy","-movflags","+faststart",str(OUT)])
+         "-c:v","libx264","-preset","veryfast","-pix_fmt","yuv420p","-r","30",
+         "-c:a","aac","-ar","48000","-ac","2","-movflags","+faststart",str(OUT)])
 
     duration=probe_duration(OUT)
     meta={
-        "version":"1.2",
+        "version":"1.2.1",
         "title":plan["title"][:100],
         "description":plan["description"],
         "thumbnail_text":plan["thumbnail_text"],
@@ -236,17 +207,13 @@ SOURCES:
         "publish_status":"READY_FOR_UPLOAD"
     }
     OUTMETA.write_text(json.dumps(meta,indent=2,ensure_ascii=False),encoding="utf-8")
-
     if duration<150:
         raise RuntimeError(f"Episode only {duration/60:.1f} minutes; refusing upload.")
-
-    print(f"LONG-FORM V1.2 CREATED: {duration/60:.2f} minutes")
-    print("Continuous gameplay: YES")
-    print("Narration cards: NONE")
+    print(f"LONG-FORM V1.2.1 CREATED: {duration/60:.2f} minutes")
+    print("Continuous gameplay: YES | Narration cards: NONE")
 
 if __name__=="__main__":
-    try:
-        main()
+    try: main()
     except Exception as e:
-        print("LONGFORM V1.2 PRODUCTION FAILED:",e)
+        print("LONGFORM V1.2.1 PRODUCTION FAILED:",e)
         sys.exit(1)
