@@ -1,4 +1,4 @@
-name: ViralSpawnTV V11 - Game-First Batch Discovery
+name: ViralSpawnTV V12 - Ranked Game-First Discovery
 
 on:
   workflow_dispatch:
@@ -46,17 +46,17 @@ jobs:
       - name: Find and produce best publishable gaming Short
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-        run: python v11_pipeline.py
+        run: python v12_pipeline.py
 
-      - name: Verify V11 finished Short
+      - name: Verify V12 finished Short
         run: |
           test -f work/production/ViralSpawnTV_Short_V4.mp4
           test -f work/production/ViralSpawnTV_V4_metadata.json
           test -f work/production/final_content_gate.json
           test -f work/music_gate/music_gate_result.json
-          test -f work/v11_attempt_log.json
-          echo "===== V11 ATTEMPT LOG ====="
-          cat work/v11_attempt_log.json
+          test -f work/v12_attempt_log.json
+          echo "===== V12 ATTEMPT LOG ====="
+          cat work/v12_attempt_log.json
           echo "===== FINAL METADATA ====="
           cat work/production/ViralSpawnTV_V4_metadata.json
           ls -lh work/production/ViralSpawnTV_Short_V4.mp4
@@ -153,7 +153,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: viralspawntv-v11-kick-source
+          name: viralspawntv-v12-kick-source
           path: work/kick_gaming/
           if-no-files-found: warn
           retention-days: 7
@@ -162,12 +162,13 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: viralspawntv-v11-production
+          name: viralspawntv-v12-production
           path: |
             work/production/
             work/viral_gate/
             work/music_gate/
-            work/v11_attempt_log.json
+            work/v12_attempt_log.json
             work/v11_candidate_manifest.json
+            work/v12_ranked_candidates.json
           if-no-files-found: warn
           retention-days: 7
