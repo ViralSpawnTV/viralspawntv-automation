@@ -456,6 +456,15 @@ record, speedrun, glitch, strategy, competition, or other visible
 gaming moment. Do not invent context that is not supported by the
 video or transcript.
 
+LANGUAGE REQUIREMENT:
+ViralSpawnTV is an English-language channel.
+The source streamer may speak ANY language.
+You must return ALL generated text in natural American English:
+headline, title, description, commentary text, and impact text.
+Translate the meaning of non-English source dialogue when needed.
+Never answer in the source language merely because the transcript
+is non-English.
+
 CREATOR:
 {clip["creator"]}
 
@@ -599,6 +608,17 @@ ridiculous/funny payoff.
 Use bounce-like impact text.
 
 Never celebrate financial loss.
+
+============================================================
+ENGLISH CAPTIONS
+============================================================
+
+Create "english_caption_segments" for the selected segment.
+Use timestamps relative to the START of the selected segment.
+Translate the source dialogue into concise, natural American English.
+If the source dialogue is already English, preserve its meaning while
+cleaning it up for readable Shorts captions.
+Do not invent dialogue. Keep each caption segment short and faithful.
 
 ============================================================
 YOUTUBE METADATA
@@ -875,6 +895,43 @@ Return ONLY valid JSON:
             })
 
     plan["impacts"] = impacts
+
+    # ---------------------------------------------
+    # English translated caption validation
+    # ---------------------------------------------
+
+    english_caption_segments = []
+
+    for item in plan.get(
+        "english_caption_segments",
+        []
+    ):
+        try:
+            cstart = float(item.get("start", 0))
+            cend = float(item.get("end", 0))
+        except Exception:
+            continue
+
+        ctext = clean_text(
+            item.get("text", "")
+        )
+
+        if (
+            ctext
+            and
+            0 <= cstart < clip_length
+            and
+            cend > cstart
+        ):
+            english_caption_segments.append({
+                "start": cstart,
+                "end": min(cend, clip_length),
+                "text": ctext,
+            })
+
+    plan["english_caption_segments"] = (
+        english_caption_segments
+    )
 
     (
         WORK /
@@ -2107,18 +2164,96 @@ def main():
     )
 
     # --------------------------------------------------------
+    # 5B. English-output safety gate
+    # --------------------------------------------------------
+
+    generated_text = " ".join([
+        str(plan.get("headline", "")),
+        str(plan.get("title", "")),
+        str(plan.get("description", "")),
+        " ".join(
+            str(x.get("text", ""))
+            for x in plan.get("commentary", [])
+        ),
+        " ".join(
+            str(x.get("text", ""))
+            for x in plan.get("impacts", [])
+        ),
+    ])
+
+    # Common Portuguese/Spanish function words are used only as
+    # a last-resort guard. The primary language control is the
+    # explicit model instruction above.
+    suspicious_words = {
+        " você ", " vocês ", " não ", " uma ", " para ",
+        " porque ", " então ", " muito ", " está ", " com ",
+        " pero ", " porque ", " entonces ", " muy ", " está ",
+        " una ", " para ", " con ", " que ",
+    }
+
+    normalized_generated = (
+        " " + generated_text.lower() + " "
+    )
+
+    suspicious_hits = sum(
+        1
+        for word in suspicious_words
+        if word in normalized_generated
+    )
+
+    if suspicious_hits >= 4:
+        raise RuntimeError(
+            "English-output safety gate failed: "
+            "generated ViralSpawnTV text appears to be "
+            "non-English. Upload stopped."
+        )
+
+    # --------------------------------------------------------
     # 6. Generate captions from REAL timestamps
     # --------------------------------------------------------
 
-    captions = create_real_captions(
-        segments,
-        float(
-            plan["segment_start"]
-        ),
-        float(
-            plan["segment_end"]
-        ),
-    )
+    if plan.get("english_caption_segments"):
+        captions = [
+            {
+                "start": float(item["start"]),
+                "end": float(item["end"]),
+                "text": clean_text(
+                    item["text"]
+                ).upper(),
+            }
+            for item in plan[
+                "english_caption_segments"
+            ]
+        ]
+
+        (
+            WORK /
+            "v4_captions.json"
+        ).write_text(
+            json.dumps(
+                captions,
+                indent=2
+            ),
+            encoding="utf-8"
+        )
+
+        print(
+            f"English caption chunks: "
+            f"{len(captions)}"
+        )
+
+    else:
+        # Fallback for an English source or if the model
+        # returns no translated caption segments.
+        captions = create_real_captions(
+            segments,
+            float(
+                plan["segment_start"]
+            ),
+            float(
+                plan["segment_end"]
+            ),
+        )
 
     # --------------------------------------------------------
     # 7. Generate context-sensitive AI narration
