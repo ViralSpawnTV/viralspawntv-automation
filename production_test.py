@@ -24,9 +24,12 @@ TEXTS = WORK / "texts"
 for folder in [WORK, FRAMES, VOICES, TEXTS]:
     folder.mkdir(parents=True, exist_ok=True)
 
-CHANNEL = "ayezee"
-CREATOR = "AyeZee"
-CLIPS_URL = f"https://kick.com/{CHANNEL}/clips"
+CHANNEL = "unknown"
+CREATOR = "Unknown Creator"
+
+KICK_WORK = ROOT / "work" / "kick_gaming"
+KICK_VIDEO = KICK_WORK / "selected_kick_gaming_source.mp4"
+KICK_RESULT = KICK_WORK / "acquisition_result.json"
 
 FINAL_VIDEO = WORK / "ViralSpawnTV_Short_V4.mp4"
 
@@ -113,153 +116,108 @@ def make_text_file(name, text, width=None):
 
 
 # ============================================================
-# KICK ACQUISITION
+# KICK GAMING INPUT
 # ============================================================
 
 def acquire_clip():
 
+    global CHANNEL
+    global CREATOR
+
     print("\n" + "=" * 65)
-    print("ACQUIRING AUTHORIZED KICK CLIP")
+    print("LOADING ACQUIRED KICK GAMING CLIP")
     print("=" * 65)
 
-    with sync_playwright() as p:
-
-        browser = p.chromium.launch(
-            headless=True
+    if not KICK_VIDEO.exists():
+        raise RuntimeError(
+            "Kick gaming source video was not found. "
+            "Run kick_gaming_acquisition.py before production."
         )
 
-        context = browser.new_context(
-            viewport={
-                "width": 1440,
-                "height": 1000
-            }
+    if not KICK_RESULT.exists():
+        raise RuntimeError(
+            "Kick acquisition_result.json was not found. "
+            "Run kick_gaming_acquisition.py before production."
         )
 
-        page = context.new_page()
+    result = json.loads(
+        KICK_RESULT.read_text(encoding="utf-8")
+    )
 
-        page.goto(
-            CLIPS_URL,
-            wait_until="domcontentloaded",
-            timeout=60000,
+    clip_url = str(
+        result.get("clip_url", "")
+    ).strip()
+
+    if not clip_url:
+        raise RuntimeError(
+            "Kick acquisition result is missing clip_url."
         )
 
-        page.wait_for_timeout(6000)
+    CHANNEL = str(
+        result.get("channel", "unknown")
+    ).strip() or "unknown"
 
-        links = page.locator(
-            f'a[href^="/{CHANNEL}/clips/clip_"]'
-        )
+    CREATOR = str(
+        result.get("creator")
+        or CHANNEL
+    ).strip() or CHANNEL
 
-        if links.count() == 0:
-            links = page.locator(
-                'a[href*="/clips/clip_"]'
-            )
+    rights_status = str(
+        result.get("rights_status", "unverified")
+    )
 
-        if links.count() == 0:
-            raise RuntimeError(
-                "No Kick clips found."
-            )
+    public_publish_allowed = bool(
+        result.get("public_publish_allowed", False)
+    )
 
-        href = links.first.get_attribute(
-            "href"
-        )
+    clip_id_match = re.search(
+        r"(clip_[A-Za-z0-9_-]+)",
+        clip_url,
+    )
 
-        if not href:
-            raise RuntimeError(
-                "Clip URL missing."
-            )
+    clip_id = (
+        clip_id_match.group(1)
+        if clip_id_match
+        else "kick_gaming_clip"
+    )
 
-        match = re.search(
-            r"(clip_[A-Za-z0-9]+)",
-            href
-        )
-
-        if not match:
-            raise RuntimeError(
-                "Could not identify clip ID."
-            )
-
-        clip_id = match.group(1)
-
-        clip_url = (
-            "https://kick.com" + href
-            if href.startswith("/")
-            else href
-        )
-
-        print("\nSelected clip:")
-        print(clip_url)
-
-        page.goto(
-            clip_url,
-            wait_until="domcontentloaded",
-            timeout=60000,
-        )
-
-        page.wait_for_timeout(6000)
-
-        html = page.content()
-
-        pattern = (
-            r'https://clips\.kick\.com/'
-            r'clips/[^"\'\\<>\s]+/'
-            + re.escape(clip_id)
-            + r'/playlist\.m3u8'
-        )
-
-        playlists = list(
-            dict.fromkeys(
-                re.findall(
-                    pattern,
-                    html
-                )
-            )
-        )
-
-        if not playlists:
-            raise RuntimeError(
-                "Selected clip playlist not found."
-            )
-
-        video = WORK / f"{clip_id}.mp4"
-
-        run([
-            "ffmpeg",
-            "-y",
-
-            "-user_agent",
-            (
-                "Mozilla/5.0 "
-                "(Windows NT 10.0; Win64; x64) "
-                "AppleWebKit/537.36 "
-                "(KHTML, like Gecko) "
-                "Chrome/140.0 Safari/537.36"
-            ),
-
-            "-headers",
-            (
-                "Referer: https://kick.com/\r\n"
-                "Origin: https://kick.com\r\n"
-            ),
-
-            "-i",
-            playlists[0],
-
-            "-c",
-            "copy",
-
-            "-movflags",
-            "+faststart",
-
-            str(video),
-        ])
-
-        browser.close()
+    print(f"Channel: @{CHANNEL}")
+    print(f"Creator: {CREATOR}")
+    print(f"Source: {clip_url}")
+    print(f"Video: {KICK_VIDEO}")
+    print(f"Rights status: {rights_status}")
+    print(
+        "Public publishing allowed: "
+        f"{public_publish_allowed}"
+    )
 
     return {
         "creator": CREATOR,
+        "channel": CHANNEL,
         "clip_id": clip_id,
         "clip_url": clip_url,
-        "video": video,
+        "video": KICK_VIDEO,
+        "rights_status": rights_status,
+        "creator_permission_verified": bool(
+            result.get(
+                "creator_permission_verified",
+                False,
+            )
+        ),
+        "game_rights_verified": bool(
+            result.get(
+                "game_rights_verified",
+                False,
+            )
+        ),
+        "public_publish_allowed":
+            public_publish_allowed,
+        "acquisition_context": str(
+            result.get(
+                "acquisition_context",
+                "private_pipeline_test",
+            )
+        ),
     }
 
 
@@ -490,7 +448,13 @@ def create_plan(
     prompt = f"""
 You are the senior automated Shorts editor for ViralSpawnTV.
 
-Analyze this REAL streamer clip.
+Analyze this REAL gaming streamer clip.
+
+This ViralSpawnTV pipeline is GAMING ONLY.
+Focus on the gameplay, gaming challenge, clutch, fail, reaction,
+record, speedrun, glitch, strategy, competition, or other visible
+gaming moment. Do not invent context that is not supported by the
+video or transcript.
 
 CREATOR:
 {clip["creator"]}
@@ -635,11 +599,6 @@ ridiculous/funny payoff.
 Use bounce-like impact text.
 
 Never celebrate financial loss.
-
-For gambling footage:
-describe events neutrally.
-Do not encourage gambling.
-Do not portray gambling as reliable income.
 
 ============================================================
 YOUTUBE METADATA
@@ -2022,6 +1981,27 @@ def save_metadata(
         "clip_id": clip[
             "clip_id"
         ],
+        "source_platform": "kick",
+        "rights_status": clip.get(
+            "rights_status",
+            "unverified"
+        ),
+        "creator_permission_verified": clip.get(
+            "creator_permission_verified",
+            False
+        ),
+        "game_rights_verified": clip.get(
+            "game_rights_verified",
+            False
+        ),
+        "public_publish_allowed": clip.get(
+            "public_publish_allowed",
+            False
+        ),
+        "acquisition_context": clip.get(
+            "acquisition_context",
+            "private_pipeline_test"
+        ),
         "title": plan[
             "title"
         ],
@@ -2079,7 +2059,7 @@ def main():
     client = OpenAI()
 
     # --------------------------------------------------------
-    # 1. Acquire authorized media
+    # 1. Load media acquired by kick_gaming_acquisition.py
     # --------------------------------------------------------
 
     clip = acquire_clip()
@@ -2182,13 +2162,12 @@ def main():
     )
 
     print(
-        "\nYouTube publishing is still OFF."
+        "\nV4 gaming render complete."
     )
 
     print(
-        "\nIf this video passes visual QC, "
-        "the next stage is YouTube OAuth + "
-        "automatic private uploading."
+        "\nThe GitHub workflow may now pass this file "
+        "to youtube_upload.py for PRIVATE upload only."
     )
 
 
