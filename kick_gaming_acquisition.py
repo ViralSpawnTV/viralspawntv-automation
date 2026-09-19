@@ -12,7 +12,7 @@ OUTPUT_DIR = Path("work/kick_gaming")
 OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
 
 HISTORY_PATH = Path("history.json")
-MAX_CLIPS_PER_CHANNEL = 12
+MAX_CLIPS_PER_CHANNEL = 15
 
 USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -24,8 +24,24 @@ USER_AGENT = (
 # Discovery/acquisition candidates are not claims of permission.
 # Add/remove Kick gaming channels here as we expand testing.
 TEST_GAMING_CHANNELS = [
+    # Larger gaming-only discovery pool.
+    # A dead/offline/no-clips channel is skipped automatically.
     "dona",
     "xqc",
+    "piipou4k",
+    "zitomo2",
+    "crimsonskorpio",
+    "sliccgaming",
+    "sadatonn",
+    "big_mikey",
+    "30ibra",
+    "thelostdrake",
+    "brozak",
+    "reaperreapz",
+    "finesse-hlg",
+    "ohnourkourt",
+    "misterarther",
+    "soyminatita",
 ]
 
 GAMBLING_TERMS = {
@@ -313,11 +329,11 @@ def choose_and_acquire(history):
 
     # Try ranked fresh candidates until one is both usable and not
     # obviously gambling based on available page metadata.
-    for rank, candidate in enumerate(candidates[:20], start=1):
+    for rank, candidate in enumerate(candidates[:40], start=1):
         print()
         print(
             f"Trying ranked candidate {rank}/"
-            f"{min(len(candidates), 20)}"
+            f"{min(len(candidates), 40)}"
         )
         print(candidate["clip_url"])
 
