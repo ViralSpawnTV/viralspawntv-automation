@@ -34,6 +34,17 @@
       "youtube_video_id": "GSjE6K3hOsE",
       "privacy_status": "private",
       "rights_status": "unverified"
+    },
+    {
+      "clip_id": "clip_01M2BZ5XA75531EJR2JRFKX16J",
+      "platform": "kick",
+      "channel": "soyminatita",
+      "clip_url": "https://kick.com/soyminatita/clips/clip_01M2BZ5XA75531EJR2JRFKX16J",
+      "processed_at_utc": "2026-09-19T03:31:19.284678+00:00",
+      "youtube_title": "A Fortnite Elimination Turns Into Instant Rage",
+      "youtube_video_id": "zY8CtblDaIs",
+      "privacy_status": "public",
+      "rights_status": "unverified"
     }
   ]
 }
