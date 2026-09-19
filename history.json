@@ -56,6 +56,17 @@
       "youtube_video_id": "_91Z9yHB69s",
       "privacy_status": "public",
       "rights_status": "unverified"
+    },
+    {
+      "clip_id": "clip_01M2E9MZW64CQ0VHRHPB8P910S",
+      "platform": "kick",
+      "channel": "soyminatita",
+      "clip_url": "https://kick.com/soyminatita/clips/clip_01M2E9MZW64CQ0VHRHPB8P910S",
+      "processed_at_utc": "2026-09-19T04:18:52.917683+00:00",
+      "youtube_title": "Fortnite Squad Scrambles in a Tiny Final Circle",
+      "youtube_video_id": "UlaoSv7oCB8",
+      "privacy_status": "public",
+      "rights_status": "unverified"
     }
   ]
 }
