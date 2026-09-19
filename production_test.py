@@ -615,10 +615,24 @@ ENGLISH CAPTIONS
 
 Create "english_caption_segments" for the selected segment.
 Use timestamps relative to the START of the selected segment.
-Translate the source dialogue into concise, natural American English.
-If the source dialogue is already English, preserve its meaning while
-cleaning it up for readable Shorts captions.
-Do not invent dialogue. Keep each caption segment short and faithful.
+
+These are SELECTIVE VIRAL CAPTIONS, not full subtitles.
+Only caption dialogue that materially helps the viewer understand the
+setup, tension, payoff, joke, clutch, fail, or reaction.
+
+Translate important non-English dialogue into concise, natural
+American English. If the source is already English, preserve its
+meaning while cleaning it up for readable Shorts captions.
+
+Do NOT caption every sentence.
+Prefer roughly 6-14 useful caption moments across a 25-45 second Short.
+Leave intentional gaps with no captions.
+Do not invent dialogue.
+Keep each caption short, ideally 2-7 words.
+
+IMPORTANT:
+Avoid captions during ViralSpawnTV commentary whenever possible.
+The narrator should have visual and audio space to speak clearly.
 
 ============================================================
 YOUTUBE METADATA
@@ -1098,6 +1112,137 @@ def create_real_captions(
     )
 
     return captions
+
+
+# ============================================================
+# CAPTION / NARRATION COLLISION CONTROL
+# ============================================================
+
+def suppress_captions_during_narration(
+    captions,
+    beats,
+    padding=0.18
+):
+
+    print("\n" + "=" * 65)
+    print("SUPPRESSING CAPTIONS DURING NARRATION")
+    print("=" * 65)
+
+    if not captions or not beats:
+        return captions
+
+    narration_windows = []
+
+    for beat in beats:
+
+        start = max(
+            0.0,
+            float(beat["time"]) - padding
+        )
+
+        end = (
+            float(beat["time"])
+            +
+            float(beat["duration"])
+            +
+            padding
+        )
+
+        narration_windows.append(
+            (start, end)
+        )
+
+    output = []
+
+    for caption in captions:
+
+        pieces = [(
+            float(caption["start"]),
+            float(caption["end"])
+        )]
+
+        for nstart, nend in narration_windows:
+
+            new_pieces = []
+
+            for pstart, pend in pieces:
+
+                # No overlap.
+                if pend <= nstart or pstart >= nend:
+                    new_pieces.append(
+                        (pstart, pend)
+                    )
+                    continue
+
+                # Keep usable portion before narration.
+                if nstart - pstart >= 0.55:
+                    new_pieces.append(
+                        (pstart, nstart)
+                    )
+
+                # Keep usable portion after narration.
+                if pend - nend >= 0.55:
+                    new_pieces.append(
+                        (nend, pend)
+                    )
+
+            pieces = new_pieces
+
+            if not pieces:
+                break
+
+        for pstart, pend in pieces:
+
+            if pend - pstart < 0.55:
+                continue
+
+            output.append({
+                "start": pstart,
+                "end": pend,
+                "text": caption["text"],
+            })
+
+    # Prevent pathological caption density even if the model ignores
+    # the selective-caption instruction.
+    max_captions = 14
+
+    if len(output) > max_captions:
+
+        # Evenly sample across the finished Short so we retain context
+        # from beginning, middle and end instead of only early captions.
+        if max_captions == 1:
+            output = [output[0]]
+        else:
+            indexes = [
+                round(
+                    i * (len(output) - 1)
+                    / (max_captions - 1)
+                )
+                for i in range(max_captions)
+            ]
+
+            output = [
+                output[i]
+                for i in indexes
+            ]
+
+    (
+        WORK /
+        "v4_captions_final.json"
+    ).write_text(
+        json.dumps(
+            output,
+            indent=2
+        ),
+        encoding="utf-8"
+    )
+
+    print(
+        f"Captions after narration suppression: "
+        f"{len(output)}"
+    )
+
+    return output
 
 
 # ============================================================
@@ -2262,6 +2407,15 @@ def main():
     beats = generate_voices(
         client,
         plan
+    )
+
+    # --------------------------------------------------------
+    # 7B. Remove captions that compete with narration
+    # --------------------------------------------------------
+
+    captions = suppress_captions_during_narration(
+        captions,
+        beats
     )
 
     # --------------------------------------------------------
