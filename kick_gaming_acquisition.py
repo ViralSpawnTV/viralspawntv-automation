@@ -4,7 +4,6 @@ import subprocess
 import sys
 from pathlib import Path
 
-import requests
 from playwright.sync_api import sync_playwright
 
 
@@ -17,28 +16,24 @@ USER_AGENT = (
     "Chrome/130.0.0.0 Safari/537.36"
 )
 
+# PRIVATE TEST ONLY.
+# These are discovery/acquisition candidates, not claims of permission.
+TEST_GAMING_CHANNELS = [
+    "dona",
+]
+
 
 def get_clip_links(channel):
-    """
-    Find public clips listed on a Kick channel.
-
-    This does NOT imply permission to republish them.
-    Rights authorization is handled separately.
-    """
-
     url = f"https://kick.com/{channel}/clips"
 
-    print(f"Opening Kick clips page: {url}")
+    print(f"Opening Kick gaming clips page: {url}")
 
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
 
         page = browser.new_page(
             user_agent=USER_AGENT,
-            viewport={
-                "width": 1440,
-                "height": 1000,
-            },
+            viewport={"width": 1440, "height": 1000},
         )
 
         page.goto(
@@ -50,38 +45,35 @@ def get_clip_links(channel):
         page.wait_for_timeout(7000)
 
         html = page.content()
-
         browser.close()
 
-    pattern = (
-        rf'href=["\']'
-        rf'(/[^"\']+/clips/clip_[A-Za-z0-9]+)'
-        rf'["\']'
-    )
-
-    matches = re.findall(pattern, html)
+    patterns = [
+        r'href=["\'](/[^"\']+/clips/clip_[A-Za-z0-9_-]+)["\']',
+        r'https://kick\.com/[^"\'\\\s]+/clips/clip_[A-Za-z0-9_-]+',
+    ]
 
     links = []
 
-    for match in matches:
-        full_url = f"https://kick.com{match}"
+    for pattern in patterns:
+        matches = re.findall(pattern, html)
 
-        if full_url not in links:
-            links.append(full_url)
+        for match in matches:
+            if match.startswith("http"):
+                full_url = match
+            else:
+                full_url = f"https://kick.com{match}"
 
-    print(f"Found {len(links)} public Kick clip links.")
+            if full_url not in links:
+                links.append(full_url)
+
+    print(f"Found {len(links)} clip links for {channel}.")
 
     return links
 
 
 def get_clip_playlist(clip_url):
-    """
-    Open one Kick clip page and locate the media playlist
-    associated with that exact clip ID.
-    """
-
     clip_id_match = re.search(
-        r"(clip_[A-Za-z0-9]+)",
+        r"(clip_[A-Za-z0-9_-]+)",
         clip_url,
     )
 
@@ -92,18 +84,27 @@ def get_clip_playlist(clip_url):
 
     clip_id = clip_id_match.group(1)
 
-    print(f"Inspecting Kick clip: {clip_id}")
+    print(f"Inspecting clip: {clip_id}")
 
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
 
         page = browser.new_page(
             user_agent=USER_AGENT,
-            viewport={
-                "width": 1440,
-                "height": 1000,
-            },
+            viewport={"width": 1440, "height": 1000},
         )
+
+        # Collect network requests too. This makes the adapter
+        # more robust than relying only on HTML.
+        network_urls = []
+
+        def capture_request(request):
+            url = request.url
+
+            if ".m3u8" in url:
+                network_urls.append(url)
+
+        page.on("request", capture_request)
 
         page.goto(
             clip_url,
@@ -111,23 +112,21 @@ def get_clip_playlist(clip_url):
             timeout=60000,
         )
 
-        page.wait_for_timeout(5000)
+        page.wait_for_timeout(7000)
 
         html = page.content()
-
         browser.close()
 
-    # We only accept playlists containing the exact selected
-    # clip ID so a live-stream playlist cannot be mistaken for
-    # the clip.
-    urls = re.findall(
+    html_urls = re.findall(
         r'https?[^"\'\\\s]+?\.m3u8[^"\'\\\s<]*',
         html,
     )
 
+    candidates = network_urls + html_urls
+
     cleaned = []
 
-    for value in urls:
+    for value in candidates:
         value = (
             value
             .replace("\\u0026", "&")
@@ -135,20 +134,25 @@ def get_clip_playlist(clip_url):
             .replace("&amp;", "&")
         )
 
-        if clip_id in value and value not in cleaned:
+        if value not in cleaned:
             cleaned.append(value)
 
-    if not cleaned:
-        raise RuntimeError(
-            "No media playlist belonging to the selected "
-            "Kick clip was found."
-        )
+    # Prefer a playlist containing the exact clip ID.
+    exact = [
+        url
+        for url in cleaned
+        if clip_id in url
+    ]
 
-    playlist = cleaned[0]
+    if exact:
+        print("Exact clip playlist located.")
+        return exact[0]
 
-    print("Exact clip playlist located.")
-
-    return playlist
+    # Do NOT blindly use an unrelated playlist.
+    raise RuntimeError(
+        "No media playlist belonging to the selected "
+        "Kick clip was found."
+    )
 
 
 def download_clip(
@@ -156,12 +160,6 @@ def download_clip(
     clip_url,
     output_path,
 ):
-    """
-    Remux the Kick clip playlist into an MP4.
-
-    No re-encoding here; V4 handles editing later.
-    """
-
     command = [
         "ffmpeg",
         "-y",
@@ -187,7 +185,7 @@ def download_clip(
         str(output_path),
     ]
 
-    print("Downloading selected Kick clip...")
+    print("Acquiring Kick clip for PRIVATE pipeline test...")
 
     subprocess.run(
         command,
@@ -199,91 +197,119 @@ def download_clip(
             "FFmpeg completed but no MP4 was created."
         )
 
+    if output_path.stat().st_size < 10000:
+        raise RuntimeError(
+            "Downloaded MP4 is unexpectedly small."
+        )
+
     print(
-        f"Downloaded: {output_path}"
+        f"Acquired {output_path} "
+        f"({output_path.stat().st_size:,} bytes)"
     )
 
 
-def acquire_from_source(source):
-    """
-    Acquisition is only allowed when the rights database
-    explicitly enables the source.
-    """
-
-    source_id = source.get("id")
-    channel = source.get("kick_channel")
-
-    if not source.get("production_enabled"):
-        raise RuntimeError(
-            f"{source_id}: production_enabled is false."
-        )
-
-    if not source.get("creator_clipping_allowed"):
-        raise RuntimeError(
-            f"{source_id}: creator clipping permission missing."
-        )
-
-    if not source.get(
-        "platform_monetization_allowed"
-    ):
-        raise RuntimeError(
-            f"{source_id}: monetization permission missing."
-        )
-
-    if (
-        source.get("authorized_acquisition_method")
-        != "kick_public_clip_download"
-    ):
-        raise RuntimeError(
-            f"{source_id}: Kick acquisition not authorized "
-            "in gaming_sources.json."
-        )
-
-    if not channel:
-        raise RuntimeError(
-            f"{source_id}: kick_channel is missing."
-        )
-
+def try_channel(channel):
     links = get_clip_links(channel)
 
     if not links:
-        raise RuntimeError(
-            f"No public clips found for {channel}."
+        return None
+
+    # Try several clips instead of failing because the first
+    # clip happens to have an unusable page/media structure.
+    for index, clip_url in enumerate(
+        links[:10],
+        start=1,
+    ):
+        print()
+        print(
+            f"Trying {channel} clip "
+            f"{index}/{min(len(links), 10)}"
+        )
+        print(clip_url)
+
+        try:
+            playlist = get_clip_playlist(
+                clip_url
+            )
+
+            output_path = (
+                OUTPUT_DIR
+                / "selected_kick_gaming_source.mp4"
+            )
+
+            download_clip(
+                playlist,
+                clip_url,
+                output_path,
+            )
+
+            return {
+                "platform": "kick",
+                "channel": channel,
+                "clip_url": clip_url,
+                "video_path": str(output_path),
+
+                # IMPORTANT:
+                # Downloadability is not being treated as
+                # republication permission.
+                "rights_status": "unverified",
+
+                "creator_permission_verified": False,
+                "game_rights_verified": False,
+
+                "acquisition_context":
+                    "private_pipeline_test",
+
+                "public_publish_allowed": False,
+            }
+
+        except Exception as exc:
+            print(
+                f"Clip attempt failed: {exc}"
+            )
+
+    return None
+
+
+def main():
+    print()
+    print("=======================================")
+    print("ViralSpawnTV Kick Gaming Private Test")
+    print("=======================================")
+    print()
+    print(
+        "This mode may acquire a public Kick clip "
+        "for a PRIVATE production-pipeline test."
+    )
+    print(
+        "It does NOT mark the clip as cleared for "
+        "public publication."
+    )
+
+    result = None
+
+    for channel in TEST_GAMING_CHANNELS:
+        print()
+        print(
+            f"Searching gaming channel: {channel}"
         )
 
-    # TEMPORARY:
-    # First acquisition test uses the first available clip.
-    # Our selector will later choose the highest-scoring unused
-    # eligible clip instead.
-    selected_url = links[0]
+        try:
+            result = try_channel(channel)
 
-    playlist = get_clip_playlist(
-        selected_url
-    )
+        except Exception as exc:
+            print(
+                f"Channel failed: {exc}"
+            )
 
-    output_path = (
-        OUTPUT_DIR
-        / f"{source_id}_source.mp4"
-    )
+        if result:
+            break
 
-    download_clip(
-        playlist,
-        selected_url,
-        output_path,
-    )
-
-    result = {
-        "source_id": source_id,
-        "creator": source.get("creator"),
-        "organization": source.get("organization"),
-        "kick_channel": channel,
-        "clip_url": selected_url,
-        "video_path": str(output_path),
-        "permission_url":
-            source.get("permission_url"),
-        "acquisition_method":
-            "kick_public_clip_download",
-    }
+    if not result:
+        raise RuntimeError(
+            "No usable Kick gaming clip could be acquired "
+            "from the configured private-test channels."
+        )
 
     result_path = (
         OUTPUT_DIR
@@ -302,62 +328,20 @@ def acquire_from_source(source):
             ensure_ascii=False,
         )
 
-    return result
-
-
-def main():
-    source_file = Path(
-        "gaming_sources.json"
-    )
-
-    if not source_file.exists():
-        raise RuntimeError(
-            "gaming_sources.json not found."
-        )
-
-    with open(
-        source_file,
-        "r",
-        encoding="utf-8",
-    ) as f:
-        database = json.load(f)
-
-    enabled = [
-        source
-        for source in database.get(
-            "sources",
-            []
-        )
-        if source.get("production_enabled")
-    ]
-
     print()
     print("=======================================")
-    print("ViralSpawnTV Kick Gaming Acquisition")
+    print("PRIVATE GAMING ACQUISITION SUCCESS")
     print("=======================================")
-
-    if not enabled:
-        print()
-        print("NO ENABLED GAMING SOURCE")
-        print()
-        print(
-            "Acquisition correctly stopped before "
-            "downloading any media."
-        )
-        return
-
-    # One source for this test.
-    source = enabled[0]
-
-    result = acquire_from_source(source)
-
-    print()
-    print("=======================================")
-    print("KICK GAMING ACQUISITION SUCCESS")
-    print("=======================================")
-    print(f"Creator: {result['creator']}")
+    print(f"Channel: {result['channel']}")
     print(f"Clip: {result['clip_url']}")
-    print(f"File: {result['video_path']}")
+    print(f"Video: {result['video_path']}")
+    print(
+        f"Rights status: "
+        f"{result['rights_status']}"
+    )
+    print(
+        "Public publishing: BLOCKED"
+    )
 
 
 if __name__ == "__main__":
@@ -367,7 +351,7 @@ if __name__ == "__main__":
     except Exception as exc:
         print()
         print("=======================================")
-        print("ACQUISITION FAILED")
+        print("PRIVATE ACQUISITION FAILED")
         print("=======================================")
         print(str(exc))
         sys.exit(1)
