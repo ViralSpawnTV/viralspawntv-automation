@@ -28,7 +28,6 @@ USER_AGENT = (
 # Discovery/acquisition candidates are not claims of permission.
 # Add/remove Kick gaming channels here as we expand testing.
 TEST_GAMING_CHANNELS = [
-    # Proven/current pool
     "dona",
     "xqc",
     "piipou4k",
@@ -45,48 +44,6 @@ TEST_GAMING_CHANNELS = [
     "ohnourkourt",
     "misterarther",
     "soyminatita",
-
-    # Expanded gaming discovery pool
-    "adinross",
-    "trainwreckstv",
-    "n3on",
-    "westcol",
-    "ac7ionman",
-    "iceposeidon",
-    "cuffem",
-    "sweatergxd",
-    "roshtein",
-    "santana",
-    "clix",
-    "mongraal",
-    "tfue",
-    "symfuhny",
-    "nickmercs",
-    "scump",
-    "shotzzy",
-    "formal",
-    "methodz",
-    "cloakzy",
-    "summit1g",
-    "shroud",
-    "tarik",
-    "sacy",
-    "gaules",
-    "fps_shaka",
-    "elraenn",
-    "brucedropemoff",
-    "yourrage",
-    "rayasianboy",
-    "carrington",
-    "sneako",
-    "rage",
-    "agent00",
-    "stable_ronaldo",
-    "ronaldo",
-    "ninja",
-    "timthetatman",
-    "lacy",
-    "jasontheween",
 ]
 
 GAMBLING_TERMS = {
@@ -101,6 +58,32 @@ GAMING_TERMS = {
     "counter-strike", "gaming", "game", "ranked", "clutch",
     "kill", "kills", "elim", "elimination", "boss", "speedrun",
 }
+
+STRONG_GAMING_TERMS = {
+    "fortnite", "minecraft", "valorant", "warzone", "call of duty",
+    "gta", "elden ring", "marvel rivals", "rocket league", "apex",
+    "overwatch", "cs2", "counter-strike", "ranked", "clutch",
+    "kill", "kills", "elim", "elimination", "boss", "speedrun",
+    "gameplay", "gaming",
+}
+
+
+def metadata_prefilter(context):
+    text = (context or "").lower()
+
+    gambling_hits = sorted(
+        term for term in GAMBLING_TERMS if term in text
+    )
+    if gambling_hits:
+        return False, f"gambling metadata: {', '.join(gambling_hits[:3])}"
+
+    gaming_hits = sorted(
+        term for term in STRONG_GAMING_TERMS if term in text
+    )
+    if not gaming_hits:
+        return False, "no strong gaming signal in title/description"
+
+    return True, f"gaming metadata: {', '.join(gaming_hits[:4])}"
 
 
 def utc_now():
@@ -425,7 +408,7 @@ def download_clip(playlist_url, clip_url, output_path):
         str(output_path),
     ]
 
-    print("Acquiring selected Kick clip for PRIVATE pipeline test...")
+    print("Acquiring selected Kick gaming clip...")
     subprocess.run(command, check=True)
 
     if not output_path.exists():
@@ -467,6 +450,11 @@ def choose_and_acquire(history):
             inspected = inspect_clip(candidate["clip_url"])
             context = inspected["context"]
 
+            passed_metadata, metadata_reason = metadata_prefilter(context)
+            if not passed_metadata:
+                print(f"Cheap metadata prefilter rejected clip: {metadata_reason}")
+                continue
+
             score = candidate_score(
                 candidate["channel"],
                 candidate["position"],
@@ -476,6 +464,8 @@ def choose_and_acquire(history):
             if score < 0:
                 print("Rejected by gambling/non-gaming metadata gate.")
                 continue
+
+            print(f"Cheap metadata prefilter passed: {metadata_reason}")
 
             download_clip(
                 inspected["playlist"],
@@ -514,10 +504,10 @@ def choose_and_acquire(history):
 def main():
     print()
     print("================================================")
-    print("ViralSpawnTV V10 Kick Source Rotation")
+    print("ViralSpawnTV V10.1 Kick Source Rotation")
     print("================================================")
     print(
-        "PRIVATE pipeline test only. Public publishing remains blocked."
+        "Automated public pipeline acquisition; downstream gates still required."
     )
 
     history = load_history()
@@ -536,7 +526,7 @@ def main():
 
     print()
     print("================================================")
-    print("V6 PRIVATE GAMING ACQUISITION SUCCESS")
+    print("V10.1 GAMING ACQUISITION SUCCESS")
     print("================================================")
     print(f"Channel: {result['channel']}")
     print(f"Clip ID: {result['clip_id']}")
@@ -552,7 +542,7 @@ if __name__ == "__main__":
     except Exception as exc:
         print()
         print("================================================")
-        print("V6 PRIVATE ACQUISITION FAILED")
+        print("V10.1 ACQUISITION FAILED")
         print("================================================")
         print(str(exc))
         sys.exit(1)
