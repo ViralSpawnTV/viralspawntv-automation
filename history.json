@@ -89,6 +89,17 @@
       "youtube_video_id": "bMV0r1uOu0g",
       "privacy_status": "public",
       "rights_status": "unverified"
+    },
+    {
+      "clip_id": "clip_01M2R6DZ18EWZMFQA4QMTW1BRY",
+      "platform": "kick",
+      "channel": "howuplaydiz",
+      "clip_url": "https://kick.com/howuplaydiz/clips/clip_01M2R6DZ18EWZMFQA4QMTW1BRY",
+      "processed_at_utc": "2026-09-19T14:19:09.423249+00:00",
+      "youtube_title": "They Pulled the Trigger at the Same Time",
+      "youtube_video_id": "GJyQLKYrqSY",
+      "privacy_status": "public",
+      "rights_status": "unverified"
     }
   ]
 }
