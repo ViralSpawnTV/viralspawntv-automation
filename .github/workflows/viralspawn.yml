@@ -1,4 +1,4 @@
-name: ViralSpawnTV V8 - 12 Daily Public Shorts
+name: ViralSpawnTV V8.1 - 12 Daily Public Shorts
 
 on:
   workflow_dispatch:
@@ -67,6 +67,11 @@ jobs:
           test -f work/production/ViralSpawnTV_Short_V4.mp4
           test -f work/production/ViralSpawnTV_V4_metadata.json
           ls -lh work/production/ViralSpawnTV_Short_V4.mp4
+
+      - name: Check final selected segment for gambling content
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: python final_content_gate.py
 
       - name: Upload Short to YouTube as PUBLIC
         env:
@@ -160,7 +165,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: viralspawntv-v8-kick-source
+          name: viralspawntv-v8-1-kick-source
           path: work/kick_gaming/
           if-no-files-found: warn
           retention-days: 7
@@ -169,7 +174,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: viralspawntv-v8-production
+          name: viralspawntv-v8-1-production
           path: work/production/
           if-no-files-found: warn
           retention-days: 7
