@@ -78,6 +78,17 @@
       "youtube_video_id": "JIc1W2NtA9k",
       "privacy_status": "public",
       "rights_status": "unverified"
+    },
+    {
+      "clip_id": "clip_01M2K6B2CMSMYSNH1TDCJ0VQ9K",
+      "platform": "kick",
+      "channel": "m2cg",
+      "clip_url": "https://kick.com/m2cg/clips/clip_01M2K6B2CMSMYSNH1TDCJ0VQ9K",
+      "processed_at_utc": "2026-09-19T13:56:27.770515+00:00",
+      "youtube_title": "Rocket Kill Turns Into a Rust Ambush",
+      "youtube_video_id": "bMV0r1uOu0g",
+      "privacy_status": "public",
+      "rights_status": "unverified"
     }
   ]
 }
