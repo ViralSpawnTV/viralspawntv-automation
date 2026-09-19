@@ -1,237 +1,175 @@
-import json
-import re
-import sys
+import json, re, sys
 from pathlib import Path
-
 from openai import OpenAI
 from playwright.sync_api import sync_playwright
 
-
 MANIFEST = Path("work/v11_candidate_manifest.json")
-RANKED = Path("work/v12_ranked_candidates.json")
-MAX_INSPECT = 36
+OUT = Path("work/v12_ranked_candidates.json")
+
+MAX_INSPECT = 60
 MAX_RANKED = 15
+MIN_SCORE = 40
 
-USER_AGENT = (
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-    "AppleWebKit/537.36 (KHTML, like Gecko) "
-    "Chrome/130.0.0.0 Safari/537.36"
-)
-
-BAD_TERMS = {
-    "casino", "gambling", "slots", "roulette", "blackjack",
-    "sportsbook", "betting", "stake", "crypto", "prediction market",
+BLOCKED = {
+    "casino","gambling","roulette","blackjack","sportsbook","betting","slots",
+    "slot machine","stake","crypto","prediction market"
+}
+# Deterministic pre-download commercial-music warning terms.
+MUSIC_BLOCKED = {
+    "song","music","remix","lyrics","singing","karaoke","official audio",
+    "music video","soundtrack"
+}
+ACTION = {
+    "clutch","1v","kill","kills","win","ace","rage","insane","crazy","sniper",
+    "headshot","fight","final","boss","record","speedrun","comeback","fail",
+    "funny","reaction","elim","wiped","squad","ranked","overtime","last second",
+    "1 hp","quad","triple","double","ambush","rocket","movement"
 }
 
-ACTION_TERMS = {
-    "clutch", "1v", "kill", "kills", "win", "wins", "ace", "rage",
-    "insane", "crazy", "sniper", "snipe", "headshot", "fight",
-    "final", "boss", "record", "speedrun", "comeback", "fail",
-    "funny", "reaction", "elim", "elimination", "wiped", "squad",
-    "ranked", "overtime", "last second", "1 hp",
-}
+def norm(s):
+    return re.sub(r"\s+", " ", (s or "")).strip()
 
+def hits(text, words):
+    t = text.lower()
+    return sorted([w for w in words if w in t])
 
-def page_metadata(page, candidate):
-    try:
-        page.goto(
-            candidate["clip_url"],
-            wait_until="domcontentloaded",
-            timeout=45000,
-        )
-        page.wait_for_timeout(1200)
-
-        title = page.title() or ""
-        description = ""
-
-        node = page.locator('meta[name="description"]')
-        if node.count():
-            description = node.first.get_attribute("content") or ""
-
-        text = f"{title} {description}".strip()
-        lowered = text.lower()
-
-        bad_hits = sorted(term for term in BAD_TERMS if term in lowered)
-        action_hits = sorted(term for term in ACTION_TERMS if term in lowered)
-
-        return {
-            **candidate,
-            "page_title": title,
-            "page_description": description,
-            "metadata_text": text[:1200],
-            "bad_hits": bad_hits,
-            "action_hits": action_hits,
-        }
-    except Exception as exc:
-        return {
-            **candidate,
-            "page_title": "",
-            "page_description": "",
-            "metadata_text": "",
-            "bad_hits": [],
-            "action_hits": [],
-            "metadata_error": str(exc),
-        }
-
-
-def ai_rank(client, inspected):
-    compact = []
-    for i, item in enumerate(inspected):
-        compact.append({
-            "index": i,
-            "game": item.get("game"),
-            "channel": item.get("channel"),
-            "title": item.get("page_title"),
-            "description": item.get("page_description"),
-            "action_hits": item.get("action_hits"),
-            "bad_hits": item.get("bad_hits"),
-        })
-
-    prompt = f"""
-You are cheaply pre-ranking source clips for ViralSpawnTV, a gaming Shorts
-channel. This is NOT the expensive visual/transcript viral gate.
-
-Rank candidates using ONLY game/category + clip page title/description.
-
-Prefer metadata suggesting:
-- clutch, high-kill, final-circle, boss, ace, comeback, rage, funny fail
-- impressive play, challenge, surprise, intense fight, record, reaction
-- a clear event with likely setup and payoff
-
-Strongly penalize:
-- generic conversation/podcast/movie/politics/IRL material
-- crypto/prediction markets
-- gambling/casino
-- titles with no identifiable gaming event
-
-Do not overvalue creator fame.
-Do not force game diversity over quality.
-
-Return ONLY JSON:
-{{
-  "ranked": [
-    {{
-      "index": 0,
-      "score": 0,
-      "reason": "short reason"
-    }}
-  ]
-}}
-
-Return at most {MAX_RANKED} candidates, strongest first.
-Only include candidates with a plausible gaming-Short score of 45 or higher.
-
-CANDIDATES:
-{json.dumps(compact, ensure_ascii=False)}
-"""
-
-    response = client.responses.create(
-        model="gpt-5.6",
-        input=prompt,
-    )
-    raw = response.output_text.strip()
-    raw = re.sub(r"^```json\s*", "", raw)
-    raw = re.sub(r"\s*```$", "", raw)
-    return json.loads(raw)
-
+def inspect_metadata(page, candidate):
+    page.goto(candidate["clip_url"], wait_until="domcontentloaded", timeout=30000)
+    page.wait_for_timeout(800)
+    title = norm(page.title())
+    desc = ""
+    for selector in [
+        'meta[name="description"]',
+        'meta[property="og:description"]',
+        'meta[name="twitter:description"]'
+    ]:
+        try:
+            v = page.locator(selector).first.get_attribute("content")
+            if v:
+                desc = norm(v)
+                break
+        except Exception:
+            pass
+    text = norm(f"{title} {desc}")
+    row = dict(candidate)
+    row.update({
+        "page_title": title,
+        "page_description": desc,
+        "metadata_text": text,
+        "bad_hits": hits(text, BLOCKED),
+        "music_hits": hits(text, MUSIC_BLOCKED),
+        "action_hits": hits(text, ACTION),
+    })
+    return row
 
 def main():
     if not MANIFEST.exists():
-        raise RuntimeError("Missing V11 discovery manifest.")
-
-    manifest = json.loads(MANIFEST.read_text(encoding="utf-8"))
-    source = manifest.get("candidates", [])[:MAX_INSPECT]
-
-    if not source:
-        raise RuntimeError("Discovery manifest contains no candidates.")
+        raise RuntimeError("Missing work/v11_candidate_manifest.json")
+    data = json.loads(MANIFEST.read_text(encoding="utf-8"))
+    candidates = data.get("candidates", [])[:MAX_INSPECT]
 
     inspected = []
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
-        page = browser.new_page(
-            user_agent=USER_AGENT,
-            viewport={"width": 1280, "height": 800},
-        )
-
-        for candidate in source:
-            row = page_metadata(page, candidate)
-
-            # Hard reject obvious bad metadata before paying for AI ranking.
-            if row.get("bad_hits"):
-                print(
-                    f"Metadata reject: {row.get('game')} / "
-                    f"{row.get('channel')} / {row.get('bad_hits')}"
-                )
-                continue
-
-            inspected.append(row)
-
+        page = browser.new_page()
+        for i, c in enumerate(candidates, 1):
+            try:
+                row = inspect_metadata(page, c)
+                if row["bad_hits"]:
+                    print(f"[{i}/{len(candidates)}] HARD REJECT gambling/blocked metadata: {c['clip_id']} {row['bad_hits']}")
+                    continue
+                if row["music_hits"]:
+                    print(f"[{i}/{len(candidates)}] HARD REJECT music metadata: {c['clip_id']} {row['music_hits']}")
+                    continue
+                inspected.append(row)
+            except Exception as e:
+                print(f"[{i}/{len(candidates)}] metadata inspect failed: {c.get('clip_id')} {e}")
         browser.close()
 
     if not inspected:
-        raise RuntimeError("No candidates survived cheap metadata inspection.")
+        OUT.parent.mkdir(parents=True, exist_ok=True)
+        OUT.write_text(json.dumps({
+            "version":"12.1","source_candidate_count":len(data.get("candidates",[])),
+            "metadata_inspected_count":len(candidates),"ranked_count":0,"candidates":[]
+        }, indent=2), encoding="utf-8")
+        raise RuntimeError("No candidates survived deterministic metadata screening.")
 
-    client = OpenAI()
-    ranking = ai_rank(client, inspected)
-
-    ranked = []
-    seen = set()
-
-    for result in ranking.get("ranked", []):
-        try:
-            idx = int(result["index"])
-            score = int(result["score"])
-        except Exception:
-            continue
-
-        if idx < 0 or idx >= len(inspected) or score < 45:
-            continue
-
-        candidate = inspected[idx]
-        clip_id = candidate.get("clip_id")
-        if not clip_id or clip_id in seen:
-            continue
-        seen.add(clip_id)
-
-        ranked.append({
-            **candidate,
-            "v12_metadata_score": score,
-            "v12_metadata_reason": result.get("reason", ""),
+    compact = []
+    for i, r in enumerate(inspected):
+        compact.append({
+            "id": i,
+            "game": r.get("game",""),
+            "channel": r.get("channel",""),
+            "title": r.get("page_title",""),
+            "description": r.get("page_description",""),
+            "action_hits": r.get("action_hits",[])
         })
 
+    client = OpenAI()
+    prompt = f"""
+Rank gaming clips for a vertical YouTube Shorts pipeline using ONLY the metadata below.
+Do not invent what happens in the video. Metadata is a cheap first-pass filter; the real
+video will be analyzed later.
+
+Prefer metadata that plausibly signals:
+- a clear gaming action, fail, clutch, surprise, reaction, funny moment, impressive play,
+  close call, win/loss, or obvious payoff
+- enough context to turn into a short piece of original commentary
+- actual gameplay rather than unrelated conversation
+
+Do NOT force game diversity over quality.
+Return up to {MAX_RANKED} candidates.
+Score 0-100. Include candidates scoring at least {MIN_SCORE}; when metadata is sparse but
+still plausibly gaming, a score in the 40s is acceptable because the downstream multimodal
+gate will make the real quality decision.
+
+Return ONLY JSON:
+{{"ranked":[{{"id":0,"score":72,"reason":"brief reason"}}]}}
+
+CANDIDATES:
+{json.dumps(compact, ensure_ascii=False)}
+"""
+    resp = client.responses.create(model="gpt-5.6", input=prompt)
+    raw = re.sub(r"^```json\s*|\s*```$", "", resp.output_text.strip())
+    ranked_json = json.loads(raw).get("ranked", [])
+
+    ranked = []
+    used_ids = set()
+    for item in sorted(ranked_json, key=lambda x: float(x.get("score",0)), reverse=True):
+        try:
+            idx = int(item["id"])
+            score = float(item.get("score",0))
+        except Exception:
+            continue
+        if idx < 0 or idx >= len(inspected) or idx in used_ids or score < MIN_SCORE:
+            continue
+        used_ids.add(idx)
+        row = dict(inspected[idx])
+        row["v12_metadata_score"] = round(score, 1)
+        row["v12_metadata_reason"] = norm(item.get("reason",""))
+        ranked.append(row)
         if len(ranked) >= MAX_RANKED:
             break
 
-    if not ranked:
-        raise RuntimeError("AI pre-ranker found no plausible gaming candidates.")
-
-    output = {
-        "version": 12,
-        "source_candidate_count": len(manifest.get("candidates", [])),
-        "metadata_inspected_count": len(inspected),
-        "ranked_count": len(ranked),
-        "candidates": ranked,
+    OUT.parent.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "version":"12.1",
+        "source_candidate_count":len(data.get("candidates",[])),
+        "metadata_inspected_count":len(candidates),
+        "survived_deterministic_screen":len(inspected),
+        "ranked_count":len(ranked),
+        "min_metadata_score":MIN_SCORE,
+        "candidates":ranked
     }
-
-    RANKED.write_text(
-        json.dumps(output, indent=2, ensure_ascii=False),
-        encoding="utf-8",
-    )
-
-    print("================================================")
-    print("V12 CHEAP BATCH RANKING COMPLETE")
-    print("================================================")
-    for i, row in enumerate(ranked[:10], start=1):
-        print(
-            f"{i}. score={row['v12_metadata_score']} | "
-            f"{row['game']} | {row['channel']} | "
-            f"{row.get('page_title', '')[:90]}"
-        )
-
+    OUT.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
+    print(f"V12.1: {len(data.get('candidates',[]))} discovered -> {len(candidates)} inspected -> "
+          f"{len(inspected)} deterministic survivors -> {len(ranked)} ranked.")
+    if not ranked:
+        raise RuntimeError("No candidates promoted by V12.1 metadata ranker.")
 
 if __name__ == "__main__":
     try:
         main()
-    except Exception as exc:
-        print(f"V12 RANKER FAILED: {exc}")
+    except Exception as e:
+        print("V12.1 RANKER FAILED:", e)
         sys.exit(1)
