@@ -23,6 +23,17 @@
       "youtube_video_id": "TrdIYzk04_w",
       "privacy_status": "private",
       "rights_status": "unverified"
+    },
+    {
+      "clip_id": "clip_01M2NEXKAK2GYT2DXFHZ52CTTZ",
+      "platform": "kick",
+      "channel": "brozak",
+      "clip_url": "https://kick.com/brozak/clips/clip_01M2NEXKAK2GYT2DXFHZ52CTTZ",
+      "processed_at_utc": "2026-09-19T03:15:52.359958+00:00",
+      "youtube_title": "One Window Peek Nearly Ends Everything",
+      "youtube_video_id": "GSjE6K3hOsE",
+      "privacy_status": "private",
+      "rights_status": "unverified"
     }
   ]
 }
