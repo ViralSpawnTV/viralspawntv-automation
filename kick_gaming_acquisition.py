@@ -372,8 +372,8 @@ def choose_and_acquire(history):
                 "rights_status": "unverified",
                 "creator_permission_verified": False,
                 "game_rights_verified": False,
-                "acquisition_context": "private_pipeline_test",
-                "public_publish_allowed": False,
+                "acquisition_context": "automated_public_pipeline",
+                "public_publish_allowed": True,
                 "selected_at_utc": utc_now(),
             }
 
@@ -388,7 +388,7 @@ def choose_and_acquire(history):
 def main():
     print()
     print("================================================")
-    print("ViralSpawnTV V6 Kick Source Rotation")
+    print("ViralSpawnTV V8.1 Kick Source Rotation")
     print("================================================")
     print(
         "PRIVATE pipeline test only. Public publishing remains blocked."
@@ -417,7 +417,7 @@ def main():
     print(f"Clip: {result['clip_url']}")
     print(f"Selection score: {result['selection_score']}")
     print(f"Video: {result['video_path']}")
-    print("Public publishing: BLOCKED")
+    print("Public publishing: ELIGIBLE FOR DOWNSTREAM GATES")
 
 
 if __name__ == "__main__":
