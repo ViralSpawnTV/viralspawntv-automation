@@ -67,6 +67,17 @@
       "youtube_video_id": "UlaoSv7oCB8",
       "privacy_status": "public",
       "rights_status": "unverified"
+    },
+    {
+      "clip_id": "clip_01M2C7BV3750AD2K1Z1D2PKGB5",
+      "platform": "kick",
+      "channel": "dona",
+      "clip_url": "https://kick.com/dona/clips/clip_01M2C7BV3750AD2K1Z1D2PKGB5",
+      "processed_at_utc": "2026-09-19T04:41:06.046859+00:00",
+      "youtube_title": "They Only Needed 30 More Seconds...",
+      "youtube_video_id": "JIc1W2NtA9k",
+      "privacy_status": "public",
+      "rights_status": "unverified"
     }
   ]
 }
