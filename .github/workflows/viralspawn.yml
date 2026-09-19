@@ -1,4 +1,4 @@
-name: ViralSpawnTV V4 + Private YouTube Upload
+name: ViralSpawnTV Gaming V4 + Private YouTube Upload
 
 on:
   workflow_dispatch:
@@ -33,27 +33,69 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y ffmpeg
 
-      - name: Produce ViralSpawnTV V4 Short
+      # ========================================================
+      # 1. ACQUIRE GAMING CLIP FROM KICK
+      # ========================================================
+
+      - name: Acquire Kick gaming clip
+        run: python kick_gaming_acquisition.py
+
+      - name: Verify Kick gaming source
+        run: |
+          test -f work/kick_gaming/selected_kick_gaming_source.mp4
+          test -f work/kick_gaming/acquisition_result.json
+
+          echo "Kick gaming source acquired."
+          ls -lh work/kick_gaming/selected_kick_gaming_source.mp4
+          cat work/kick_gaming/acquisition_result.json
+
+      # ========================================================
+      # 2. CREATE VIRALSPAWNTV V4 GAMING SHORT
+      # ========================================================
+
+      - name: Produce ViralSpawnTV gaming Short
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: python production_test.py
 
-      - name: Verify finished video
+      - name: Verify finished gaming Short
         run: |
           test -f work/production/ViralSpawnTV_Short_V4.mp4
-          echo "V4 video found."
+          test -f work/production/ViralSpawnTV_V4_metadata.json
+
+          echo "Finished gaming Short found."
           ls -lh work/production/ViralSpawnTV_Short_V4.mp4
 
-      - name: Upload V4 Short to YouTube as PRIVATE
+          echo "===== METADATA ====="
+          cat work/production/ViralSpawnTV_V4_metadata.json
+
+      # ========================================================
+      # 3. PRIVATE YOUTUBE UPLOAD
+      # ========================================================
+
+      - name: Upload gaming Short to YouTube as PRIVATE
         env:
           YOUTUBE_TOKEN_JSON: ${{ secrets.YOUTUBE_TOKEN_JSON }}
         run: python youtube_upload.py
 
-      - name: Upload production artifacts
+      # ========================================================
+      # 4. SAVE EVERYTHING FOR QC
+      # ========================================================
+
+      - name: Collect Kick source artifact
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: viralspawntv-v4-youtube-test
+          name: viralspawntv-kick-source
+          path: work/kick_gaming/
+          if-no-files-found: warn
+          retention-days: 7
+
+      - name: Collect finished gaming production
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: viralspawntv-gaming-v4-production
           path: work/production/
           if-no-files-found: warn
           retention-days: 7
