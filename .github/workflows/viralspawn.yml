@@ -1,4 +1,4 @@
-name: ViralSpawnTV V10 - 12 Daily Diverse Public Shorts
+name: ViralSpawnTV V10.1 - Fast Diverse Public Shorts
 
 on:
   workflow_dispatch:
@@ -46,16 +46,16 @@ jobs:
       - name: Find and produce best publishable gaming Short
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-        run: python v10_pipeline.py
+        run: python v10_1_pipeline.py
 
-      - name: Verify V10 finished Short
+      - name: Verify V10.1 finished Short
         run: |
           test -f work/production/ViralSpawnTV_Short_V4.mp4
           test -f work/production/ViralSpawnTV_V4_metadata.json
           test -f work/production/final_content_gate.json
           test -f work/music_gate/music_gate_result.json
           test -f work/v9_attempt_log.json
-          echo "===== V10 ATTEMPT LOG ====="
+          echo "===== V10.1 ATTEMPT LOG ====="
           cat work/v9_attempt_log.json
           echo "===== FINAL METADATA ====="
           cat work/production/ViralSpawnTV_V4_metadata.json
@@ -153,7 +153,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: viralspawntv-v10-kick-source
+          name: viralspawntv-v10-1-kick-source
           path: work/kick_gaming/
           if-no-files-found: warn
           retention-days: 7
@@ -162,7 +162,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: viralspawntv-v10-production
+          name: viralspawntv-v10-1-production
           path: |
             work/production/
             work/viral_gate/
