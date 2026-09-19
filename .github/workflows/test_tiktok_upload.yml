@@ -26,11 +26,11 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           mkdir -p work/production
-          
+
           echo "Looking for a recent Shorts workflow artifact..."
 
           RUN_ID=$(gh run list \
-            --workflow "viralspawn_v12_1.yml" \
+            --workflow "ViralSpawnTV Shorts V12.1 - 12 Per Day" \
             --status success \
             --limit 10 \
             --json databaseId \
@@ -42,6 +42,8 @@ jobs:
           fi
 
           echo "Using Shorts workflow run: $RUN_ID"
+
+          mkdir -p /tmp/viralspawn_artifacts
 
           gh run download "$RUN_ID" \
             --dir /tmp/viralspawn_artifacts
