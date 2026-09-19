@@ -1,0 +1,54 @@
+name: ViralSpawnTV Shorts V12.1 - 12 Per Day
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 */2 * * *"
+
+concurrency:
+  group: viralspawntv-production
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  short:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install FFmpeg
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt
+      - name: Install Playwright Chromium
+        run: python -m playwright install --with-deps chromium
+      - name: Produce V12.1 Short
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: python v12_1_pipeline.py
+      - name: Upload public Short
+        env:
+          YOUTUBE_TOKEN_JSON: ${{ secrets.YOUTUBE_TOKEN_JSON }}
+        run: python youtube_upload.py
+      - name: Upload V12.1 diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: viralspawntv-v12-1-production
+          retention-days: 7
+          path: |
+            work/v11_candidate_manifest.json
+            work/v12_ranked_candidates.json
+            work/v12_attempt_log.json
+            work/kick_gaming/acquisition_result.json
+            work/viral_gate/viral_gate_result.json
+            work/music_gate/music_gate_result.json
+            work/production/final_content_gate.json
+            work/production/ViralSpawnTV_Short_V4.mp4
+            work/production/ViralSpawnTV_V4_metadata.json
+            work/production/youtube_upload_result.json
