@@ -97,22 +97,14 @@ def main():
 
         body={
             "snippet": {
-                "title":
-                    m["title"],
-
-                "description":
-                    m["description"],
-
-                "categoryId":
-                    "20"
+                "title": m["title"],
+                "description": m["description"],
+                "categoryId": "20"
             },
 
             "status": {
-                "privacyStatus":
-                    "public",
-
-                "selfDeclaredMadeForKids":
-                    False
+                "privacyStatus": "public",
+                "selfDeclaredMadeForKids": False
             }
         },
 
@@ -126,9 +118,7 @@ def main():
     response = None
 
     while response is None:
-
-        _,
-        response = req.next_chunk()
+        _, response = req.next_chunk()
 
     # --------------------------------------------------
     # Save successful publication state
@@ -136,9 +126,7 @@ def main():
 
     m["publish_status"] = "PUBLIC"
 
-    m["youtube_video_id"] = (
-        response["id"]
-    )
+    m["youtube_video_id"] = response["id"]
 
     META.write_text(
         json.dumps(
@@ -152,26 +140,13 @@ def main():
     RESULT.write_text(
         json.dumps(
             {
-                "success":
-                    True,
-
-                "video_id":
-                    response["id"],
-
-                "privacy_status":
-                    "public",
-
-                "title":
-                    m["title"],
-
-                "version":
-                    "1.4",
-
-                "motion_gate_passed":
-                    True,
-
-                "visual_activity_gate_passed":
-                    True
+                "success": True,
+                "video_id": response["id"],
+                "privacy_status": "public",
+                "title": m["title"],
+                "version": "1.4",
+                "motion_gate_passed": True,
+                "visual_activity_gate_passed": True
             },
             indent=2
         ),
@@ -187,7 +162,6 @@ def main():
 if __name__ == "__main__":
 
     try:
-
         main()
 
     except Exception as e:
