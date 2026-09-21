@@ -23,7 +23,9 @@ OUTMETA = (
 VOICE = "onyx"
 
 MIN_GOOD_CLIPS = 5
-MAX_GOOD_CLIPS = 12
+MAX_GOOD_CLIPS = 28
+TARGET_MIN_SECONDS = 480.0
+TARGET_MAX_SECONDS = 600.0
 
 INTRO_IMAGE = Path("viralspawntv_intro.png")
 OUTRO_IMAGE = Path("viralspawntv_outro.png")
@@ -471,7 +473,7 @@ def main():
         )
 
     prompt = f"""
-Plan a fast-moving ViralSpawnTV gaming compilation.
+Plan a fast-moving ViralSpawnTV gaming compilation targeting 8-10 minutes.
 
 Rank ALL supplied approved sources in the order they should be attempted so
 replacements are available when a clip fails the visual activity test.
@@ -492,6 +494,8 @@ CRITICAL EDITING RULES:
   almost nothing visually changes.
 - Start as close to the meaningful action as possible.
 - For each candidate choose a roughly 20-40 second excerpt where possible.
+- Supply enough strong candidates to build at least 8 minutes after quality/activity rejections.
+- Do not stretch weak footage just to increase runtime.
 - payoff_start is seconds AFTER excerpt start.
 - Leave approximately 7-18 seconds for the source-only payoff.
 - The viewer should not have to wait through dead footage for the moment.
@@ -549,6 +553,8 @@ SOURCES:
 
     used = []
 
+    accepted_gameplay_seconds = 0.0
+
     rejected = []
 
     seen = set()
@@ -559,6 +565,9 @@ SOURCES:
     ):
 
         if len(used) >= MAX_GOOD_CLIPS:
+            break
+
+        if accepted_gameplay_seconds >= TARGET_MIN_SECONDS:
             break
 
         try:
@@ -795,6 +804,8 @@ SOURCES:
 
             used.append(s)
 
+            accepted_gameplay_seconds += probe_duration(a) + probe_duration(b)
+
             print(
                 "\nV1.5 ACTIVITY PASS: "
                 f"{s.get('game')} / "
@@ -962,6 +973,26 @@ SOURCES:
     )
 
     # -----------------------------------------------------
+    # V1.5 duration target
+    # -----------------------------------------------------
+
+    if duration < TARGET_MIN_SECONDS:
+
+        raise RuntimeError(
+            f"Episode only {duration / 60:.2f} minutes; "
+            f"V1.5 requires at least {TARGET_MIN_SECONDS / 60:.0f} minutes "
+            "of final runtime before upload."
+        )
+
+    if duration > TARGET_MAX_SECONDS:
+        print(
+            f"V1.5 NOTE: final runtime is {duration / 60:.2f} minutes, "
+            f"slightly above the {TARGET_MAX_SECONDS / 60:.0f}-minute target. "
+            "Keeping the completed quality-approved episode rather than "
+            "cutting an approved clip mid-story."
+        )
+
+    # -----------------------------------------------------
     # Metadata
     # -----------------------------------------------------
 
@@ -993,6 +1024,15 @@ SOURCES:
 
         "source_count":
             len(used),
+
+        "target_min_seconds":
+            TARGET_MIN_SECONDS,
+
+        "target_max_seconds":
+            TARGET_MAX_SECONDS,
+
+        "accepted_gameplay_seconds":
+            accepted_gameplay_seconds,
 
         "continuous_gameplay":
             True,
@@ -1082,17 +1122,6 @@ SOURCES:
         encoding="utf-8"
     )
 
-    # -----------------------------------------------------
-    # Duration floor
-    # -----------------------------------------------------
-
-    if duration < 150:
-
-        raise RuntimeError(
-            f"Episode only "
-            f"{duration / 60:.1f} minutes; "
-            "refusing upload."
-        )
 
     print(
         "\n"
