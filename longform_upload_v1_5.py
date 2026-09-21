@@ -11,7 +11,10 @@ from googleapiclient.http import MediaFileUpload
 
 ROOT = Path("work/longform")
 
-VIDEO = ROOT / "ViralSpawnTV_Longform_V1_5.mp4"
+VIDEO = (
+    ROOT /
+    "ViralSpawnTV_Longform_V1_5.mp4"
+)
 
 METADATA = (
     ROOT /
@@ -33,6 +36,13 @@ def fail(message):
 
 
 def load_longform_history():
+    """
+    Load permanent long-form source history.
+
+    Missing history is normal on the first successful
+    long-form upload.
+    """
+
     if not LONGFORM_HISTORY.exists():
         return {
             "version": 1,
@@ -84,6 +94,11 @@ def load_longform_history():
 
 
 def normalize_source(source):
+    """
+    Normalize one production source record into the
+    permanent history format.
+    """
+
     if not isinstance(
         source,
         dict,
@@ -115,6 +130,12 @@ def normalize_source(source):
         or ""
     ).strip()
 
+    rights_status = str(
+        source.get("rights_status")
+        or "unverified"
+    ).strip()
+
+    # We need at least one permanent identifier.
     if not clip_id and not clip_url:
         return None
 
@@ -123,23 +144,23 @@ def normalize_source(source):
         "clip_url": clip_url,
         "channel": channel,
         "game": game,
+        "rights_status": rights_status,
     }
 
 
 def extract_used_sources(meta):
     """
-    Extract ONLY the source clips that production says were
-    actually used in the finished episode.
+    Extract ONLY source clips that production confirms were
+    actually used in the final episode.
 
-    Several field names are supported so this remains compatible
-    with V1.5 metadata variations.
+    V1.5 production currently writes these to "source_clips".
 
-    We intentionally do NOT fall back to screened_sources.json or
-    acquired_sources.json because those contain clips that may not
-    have appeared in the final episode.
+    Other names remain supported for compatibility with future
+    production versions.
     """
 
     possible_fields = [
+        "source_clips",
         "used_sources",
         "sources_used",
         "used_clips",
@@ -171,6 +192,7 @@ def extract_used_sources(meta):
     seen_urls = set()
 
     for source in raw_sources:
+
         row = normalize_source(
             source
         )
@@ -178,9 +200,15 @@ def extract_used_sources(meta):
         if not row:
             continue
 
-        clip_id = row["clip_id"]
-        clip_url = row["clip_url"]
+        clip_id = row[
+            "clip_id"
+        ]
 
+        clip_url = row[
+            "clip_url"
+        ]
+
+        # Prevent duplicate entries inside the same episode.
         if (
             clip_id
             and clip_id in seen_ids
@@ -214,35 +242,98 @@ def extract_used_sources(meta):
     )
 
 
+def verify_branding(meta):
+    """
+    V1.5 production currently records the actual branding
+    asset paths as:
+
+        branding_intro
+        branding_outro
+
+    Older/newer metadata may instead contain boolean
+    branded_intro / branded_outro fields.
+
+    Either representation is accepted, but both intro and
+    outro must be explicitly confirmed.
+    """
+
+    intro_value = meta.get(
+        "branding_intro"
+    )
+
+    outro_value = meta.get(
+        "branding_outro"
+    )
+
+    intro_confirmed = bool(
+        intro_value
+    ) or bool(
+        meta.get(
+            "branded_intro",
+            False,
+        )
+    )
+
+    outro_confirmed = bool(
+        outro_value
+    ) or bool(
+        meta.get(
+            "branded_outro",
+            False,
+        )
+    )
+
+    if not intro_confirmed:
+        fail(
+            "ViralSpawnTV branded intro "
+            "was not confirmed by V1.5 metadata."
+        )
+
+    if not outro_confirmed:
+        fail(
+            "ViralSpawnTV branded outro "
+            "was not confirmed by V1.5 metadata."
+        )
+
+    return {
+        "intro_confirmed":
+            True,
+        "outro_confirmed":
+            True,
+        "intro_metadata":
+            intro_value,
+        "outro_metadata":
+            outro_value,
+    }
+
+
 def save_successful_longform_history(
-    meta,
+    used_sources,
+    source_field,
     video_id,
     title,
 ):
     """
-    Record every source clip actually used in the successfully
-    uploaded long-form episode.
+    Permanently record every source clip actually used in the
+    successfully published episode.
 
-    This function is called ONLY after YouTube returns a valid
+    IMPORTANT:
+    This function is called only AFTER YouTube returns a valid
     video ID.
 
-    Failed production runs and failed uploads therefore do not
-    burn source clips.
+    Failed production attempts and failed uploads therefore do
+    not burn clips.
     """
-
-    used_sources, source_field = (
-        extract_used_sources(meta)
-    )
 
     if not used_sources:
         fail(
-            "YouTube upload succeeded, but V1.5 "
-            "metadata did not contain identifiable "
-            "used source clips. Refusing to create "
-            "an inaccurate longform history."
+            "Cannot update long-form history because "
+            "no used sources were supplied."
         )
 
-    history = load_longform_history()
+    history = (
+        load_longform_history()
+    )
 
     existing_ids = set()
     existing_urls = set()
@@ -251,6 +342,7 @@ def save_successful_longform_history(
         "used_clips",
         [],
     ):
+
         if not isinstance(
             item,
             dict,
@@ -293,6 +385,7 @@ def save_successful_longform_history(
     already_recorded = 0
 
     for source in used_sources:
+
         clip_id = source[
             "clip_id"
         ]
@@ -325,22 +418,35 @@ def save_successful_longform_history(
             {
                 "clip_id":
                     clip_id,
+
                 "clip_url":
                     clip_url,
+
+                # "channel" always means SOURCE creator.
                 "channel":
                     source[
                         "channel"
                     ],
+
                 "game":
                     source[
                         "game"
                     ],
+
+                "rights_status":
+                    source[
+                        "rights_status"
+                    ],
+
                 "youtube_video_id":
                     video_id,
+
                 "youtube_title":
                     title,
+
                 "privacy_status":
                     "public",
+
                 "uploaded_at":
                     uploaded_at,
             }
@@ -367,16 +473,22 @@ def save_successful_longform_history(
     ] = {
         "youtube_video_id":
             video_id,
+
         "youtube_title":
             title,
+
         "uploaded_at":
             uploaded_at,
+
         "metadata_source_field":
             source_field,
+
         "episode_source_count":
             len(used_sources),
+
         "new_history_entries":
             added,
+
         "already_recorded":
             already_recorded,
     }
@@ -417,10 +529,13 @@ def save_successful_longform_history(
     return {
         "source_field":
             source_field,
+
         "used_source_count":
             len(used_sources),
+
         "history_entries_added":
             added,
+
         "already_recorded":
             already_recorded,
     }
@@ -434,7 +549,8 @@ def main():
 
     if not VIDEO.exists():
         fail(
-            f"V1.5 video does not exist: {VIDEO}"
+            f"V1.5 video does not exist: "
+            f"{VIDEO}"
         )
 
     if VIDEO.stat().st_size <= 0:
@@ -444,7 +560,8 @@ def main():
 
     if not METADATA.exists():
         fail(
-            f"V1.5 metadata does not exist: {METADATA}"
+            f"V1.5 metadata does not exist: "
+            f"{METADATA}"
         )
 
     # ---------------------------------------------------------
@@ -459,12 +576,11 @@ def main():
 
     # ---------------------------------------------------------
     # HARD V1.5 SAFETY CHECKS
-    #
-    # Nothing reaches YouTube unless production explicitly
-    # confirms every required gate.
     # ---------------------------------------------------------
 
-    if str(meta.get("version")) != "1.5":
+    if str(
+        meta.get("version")
+    ) != "1.5":
         fail(
             "Uploader expected V1.5 metadata."
         )
@@ -480,7 +596,7 @@ def main():
 
     if not meta.get(
         "motion_gate_passed",
-        False
+        False,
     ):
         fail(
             "V1.5 motion gate did not pass."
@@ -488,7 +604,7 @@ def main():
 
     if not meta.get(
         "visual_activity_gate_passed",
-        False
+        False,
     ):
         fail(
             "V1.5 visual activity gate "
@@ -497,7 +613,7 @@ def main():
 
     if not meta.get(
         "quality_gate_passed",
-        False
+        False,
     ):
         fail(
             "V1.5 quality gate did not pass."
@@ -505,7 +621,7 @@ def main():
 
     if not meta.get(
         "audio_continuity_gate_passed",
-        False
+        False,
     ):
         fail(
             "V1.5 audio continuity gate "
@@ -514,7 +630,7 @@ def main():
 
     if not meta.get(
         "continuous_gameplay",
-        False
+        False,
     ):
         fail(
             "Continuous gameplay requirement "
@@ -523,33 +639,19 @@ def main():
 
     if meta.get(
         "narration_cards",
-        True
+        True,
     ):
         fail(
             "Narration cards are not allowed."
         )
 
     # ---------------------------------------------------------
-    # Branding checks
+    # Branding compatibility
     # ---------------------------------------------------------
 
-    if not meta.get(
-        "branded_intro",
-        False
-    ):
-        fail(
-            "ViralSpawnTV branded intro "
-            "was not confirmed."
-        )
-
-    if not meta.get(
-        "branded_outro",
-        False
-    ):
-        fail(
-            "ViralSpawnTV branded outro "
-            "was not confirmed."
-        )
+    branding = verify_branding(
+        meta
+    )
 
     # ---------------------------------------------------------
     # Duration protection
@@ -558,7 +660,7 @@ def main():
     duration = float(
         meta.get(
             "duration_seconds",
-            0
+            0,
         )
         or 0
     )
@@ -571,14 +673,17 @@ def main():
         )
 
     # ---------------------------------------------------------
-    # Verify used-source metadata BEFORE upload
+    # Verify exact USED sources BEFORE uploading
     #
-    # We need this information for permanent duplicate
-    # prevention after the successful upload.
+    # Production's "source_clips" contains only clips that
+    # actually passed the gates and were added to the episode.
     # ---------------------------------------------------------
 
-    used_sources, source_field = (
-        extract_used_sources(meta)
+    (
+        used_sources,
+        source_field,
+    ) = extract_used_sources(
+        meta
     )
 
     if not used_sources:
@@ -586,15 +691,34 @@ def main():
             "V1.5 metadata does not contain "
             "identifiable source clips actually "
             "used in the final episode. "
-            "Refusing upload until history tracking "
-            "can be guaranteed."
+            "Refusing upload until permanent "
+            "history tracking can be guaranteed."
         )
 
     print(
-        f"V1.5 metadata contains "
-        f"{len(used_sources)} used sources "
-        f"from field '{source_field}'."
+        "\nV1.5 USED-SOURCE VERIFICATION"
     )
+
+    print(
+        f"Metadata field: "
+        f"{source_field}"
+    )
+
+    print(
+        f"Sources actually used: "
+        f"{len(used_sources)}"
+    )
+
+    for i, source in enumerate(
+        used_sources,
+        1,
+    ):
+        print(
+            f"{i}. "
+            f"{source.get('clip_id', '')} | "
+            f"{source.get('game', '')} | "
+            f"{source.get('channel', '')}"
+        )
 
     # ---------------------------------------------------------
     # YouTube token
@@ -618,7 +742,8 @@ def main():
         Credentials.from_authorized_user_info(
             token_data,
             scopes=[
-                "https://www.googleapis.com/auth/youtube.upload"
+                "https://www.googleapis.com/"
+                "auth/youtube.upload"
             ],
         )
     )
@@ -631,7 +756,7 @@ def main():
     )
 
     # ---------------------------------------------------------
-    # Metadata
+    # YouTube metadata
     # ---------------------------------------------------------
 
     title = (
@@ -657,14 +782,22 @@ def main():
 
     body = {
         "snippet": {
-            "title": title,
-            "description": description,
-            "categoryId": "20",
+            "title":
+                title,
+
+            "description":
+                description,
+
+            "categoryId":
+                "20",
         },
 
         "status": {
-            "privacyStatus": "public",
-            "selfDeclaredMadeForKids": False,
+            "privacyStatus":
+                "public",
+
+            "selfDeclaredMadeForKids":
+                False,
         },
     }
 
@@ -679,18 +812,24 @@ def main():
         resumable=True,
     )
 
-    request = youtube.videos().insert(
-        part="snippet,status",
-        body=body,
-        media_body=media,
+    request = (
+        youtube.videos().insert(
+            part="snippet,status",
+            body=body,
+            media_body=media,
+        )
     )
 
     response = None
 
     while response is None:
-        _, response = request.next_chunk()
+        _, response = (
+            request.next_chunk()
+        )
 
-    video_id = response.get("id")
+    video_id = response.get(
+        "id"
+    )
 
     if not video_id:
         fail(
@@ -698,42 +837,91 @@ def main():
             "returning a video ID."
         )
 
+    print(
+        "\nYouTube returned video ID: "
+        f"{video_id}"
+    )
+
     # ---------------------------------------------------------
     # PERMANENT LONG-FORM HISTORY
     #
-    # Only reached after YouTube returned a real video ID.
+    # This occurs ONLY after YouTube returns a valid ID.
     # ---------------------------------------------------------
 
     history_result = (
         save_successful_longform_history(
-            meta=meta,
-            video_id=video_id,
-            title=title,
+            used_sources=
+                used_sources,
+
+            source_field=
+                source_field,
+
+            video_id=
+                video_id,
+
+            title=
+                title,
         )
     )
 
+    # ---------------------------------------------------------
+    # Upload result
+    # ---------------------------------------------------------
+
     result = {
-        "version": "1.5",
-        "status": "UPLOADED",
-        "video_id": video_id,
-        "title": title,
-        "privacy_status": "public",
-        "duration_seconds": duration,
-        "quality_gate_passed": True,
-        "audio_continuity_gate_passed": True,
-        "motion_gate_passed": True,
-        "visual_activity_gate_passed": True,
-        "branded_intro": True,
-        "branded_outro": True,
-        "longform_history_updated": True,
+        "version":
+            "1.5",
+
+        "status":
+            "UPLOADED",
+
+        "video_id":
+            video_id,
+
+        "title":
+            title,
+
+        "privacy_status":
+            "public",
+
+        "duration_seconds":
+            duration,
+
+        "quality_gate_passed":
+            True,
+
+        "audio_continuity_gate_passed":
+            True,
+
+        "motion_gate_passed":
+            True,
+
+        "visual_activity_gate_passed":
+            True,
+
+        "branded_intro":
+            branding[
+                "intro_confirmed"
+            ],
+
+        "branded_outro":
+            branding[
+                "outro_confirmed"
+            ],
+
+        "longform_history_updated":
+            True,
+
         "used_source_count":
             history_result[
                 "used_source_count"
             ],
+
         "history_entries_added":
             history_result[
                 "history_entries_added"
             ],
+
         "history_source_field":
             history_result[
                 "source_field"
