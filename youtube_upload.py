@@ -116,13 +116,20 @@ def save_successful_upload_to_history(metadata, youtube_video_id):
         metadata.get("source") or ""
     ).strip()
 
+    # "creator" in production metadata is the original
+    # Kick creator/channel whose clip was used.
     creator = str(
         metadata.get("creator") or ""
     ).strip()
 
-    channel = str(
-        metadata.get("channel") or creator
-    ).strip()
+    # IMPORTANT:
+    # history.json uses "channel" for the SOURCE creator.
+    # Discovery reads this field when enforcing the
+    # per-creator 24-hour limit.
+    #
+    # Do NOT use metadata["channel"] here because that
+    # field may contain the destination brand ViralSpawnTV.
+    channel = creator
 
     game = str(
         metadata.get("game") or ""
@@ -193,6 +200,7 @@ def save_successful_upload_to_history(metadata, youtube_video_id):
     print(
         "Successful public upload recorded in history:"
     )
+
     print(
         json.dumps(
             history_entry,
@@ -278,7 +286,6 @@ def main():
         response["id"]
     ).strip()
 
-    # IMPORTANT:
     # History is updated ONLY after YouTube confirms
     # a successful public upload and returns a video ID.
     save_successful_upload_to_history(
@@ -293,6 +300,7 @@ def main():
         "title": title,
         "clip_id": metadata.get("clip_id"),
         "source": metadata.get("source"),
+        "creator": metadata.get("creator"),
         "history_updated": True,
         "music_gate_passed": True,
         "final_content_gate_passed": True,
@@ -317,6 +325,7 @@ def main():
 if __name__ == "__main__":
     try:
         main()
+
     except Exception as exc:
         print(
             f"PUBLIC YOUTUBE UPLOAD FAILED: {exc}"
