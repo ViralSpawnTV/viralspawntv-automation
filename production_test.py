@@ -2268,11 +2268,32 @@ def add_short_brand_bookends():
         encoding="utf-8",
     )
 
+    # V5.1.1 BRAND-CONCAT AUDIO SAFETY FIX
+    #
+    # Keep the frozen V5.1 video/branding behavior unchanged, but
+    # normalize the concatenated audio into a fresh finite stream
+    # before AAC encoding. This prevents rare concat-boundary
+    # invalid audio samples from crashing the AAC encoder.
     run([
         "ffmpeg", "-y",
         "-f", "concat",
         "-safe", "0",
         "-i", str(concat),
+        "-filter_complex",
+        (
+            "[0:a]"
+            "aresample=48000:"
+            "async=1:"
+            "first_pts=0,"
+            "aformat="
+            "sample_fmts=fltp:"
+            "sample_rates=48000:"
+            "channel_layouts=stereo,"
+            "volume=1.0"
+            "[safeaudio]"
+        ),
+        "-map", "0:v:0",
+        "-map", "[safeaudio]",
         "-c:v", "libx264",
         "-preset", "medium",
         "-crf", "19",
