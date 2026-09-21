@@ -46,27 +46,130 @@ jobs:
         run: python youtube_upload.py
 
       - name: Persist successful Short history
+        shell: bash
         run: |
+          set -euo pipefail
+
           if [ ! -f history.json ]; then
             echo "history.json was not created."
             exit 1
           fi
 
-          if git diff --quiet -- history.json; then
-            echo "No history.json changes to commit."
-            exit 0
-          fi
+          cp history.json /tmp/history_after_upload.json
+
+          git fetch origin main
+          git reset --hard origin/main
+
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          latest_path = Path("history.json")
+          uploaded_path = Path("/tmp/history_after_upload.json")
+
+          def load_history(path):
+              if not path.exists():
+                  return {"version": 1, "used_clips": []}
+
+              try:
+                  data = json.loads(path.read_text(encoding="utf-8"))
+              except Exception:
+                  return {"version": 1, "used_clips": []}
+
+              if isinstance(data, list):
+                  return {
+                      "version": 1,
+                      "used_clips": data
+                  }
+
+              if not isinstance(data, dict):
+                  return {
+                      "version": 1,
+                      "used_clips": []
+                  }
+
+              clips = data.get("used_clips")
+
+              if not isinstance(clips, list):
+                  clips = []
+
+              data["version"] = data.get("version", 1)
+              data["used_clips"] = clips
+
+              return data
+
+          latest = load_history(latest_path)
+          uploaded = load_history(uploaded_path)
+
+          latest_clips = latest["used_clips"]
+          uploaded_clips = uploaded["used_clips"]
+
+          existing_clip_ids = {
+              str(item.get("clip_id"))
+              for item in latest_clips
+              if isinstance(item, dict) and item.get("clip_id")
+          }
+
+          existing_urls = {
+              str(item.get("clip_url") or item.get("source"))
+              for item in latest_clips
+              if isinstance(item, dict)
+              and (item.get("clip_url") or item.get("source"))
+          }
+
+          added = 0
+
+          for item in uploaded_clips:
+              if not isinstance(item, dict):
+                  continue
+
+              clip_id = item.get("clip_id")
+              clip_url = item.get("clip_url") or item.get("source")
+
+              if clip_id and str(clip_id) in existing_clip_ids:
+                  continue
+
+              if clip_url and str(clip_url) in existing_urls:
+                  continue
+
+              latest_clips.append(item)
+              added += 1
+
+              if clip_id:
+                  existing_clip_ids.add(str(clip_id))
+
+              if clip_url:
+                  existing_urls.add(str(clip_url))
+
+          latest["used_clips"] = latest_clips
+
+          latest_path.write_text(
+              json.dumps(
+                  latest,
+                  indent=2,
+                  ensure_ascii=False
+              ) + "\n",
+              encoding="utf-8"
+          )
+
+          print(f"Merged {added} new history entr{'y' if added == 1 else 'ies'}.")
+          print(f"Total history entries: {len(latest_clips)}")
+          PY
 
           git config user.name "ViralSpawnTV Automation"
           git config user.email "actions@users.noreply.github.com"
 
           git add history.json
-          git commit -m "Record published ViralSpawnTV Short"
 
-          git pull --rebase origin main
+          if git diff --cached --quiet -- history.json; then
+            echo "History entry already exists on main. Nothing to commit."
+            exit 0
+          fi
+
+          git commit -m "Record published ViralSpawnTV Short"
           git push origin HEAD:main
 
-          echo "history.json successfully persisted."
+          echo "history.json successfully merged and persisted."
 
       - name: Upload V12.1 diagnostics
         if: always()
