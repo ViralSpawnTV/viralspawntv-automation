@@ -10,6 +10,10 @@ from playwright.sync_api import sync_playwright
 MANIFEST = Path("work/v11_candidate_manifest.json")
 OUT = Path("work/longform/ranked_sources.json")
 
+# Permanent history of clips already published in
+# ViralSpawnTV long-form videos.
+LONGFORM_HISTORY = Path("longform_history.json")
+
 # V1.5 long-form expansion:
 # Inspect most of the discovery manifest and give downstream gates
 # enough candidates to reject weak clips while still building
@@ -41,6 +45,137 @@ BLOCKED = {
     "crypto",
     "prediction market",
 }
+
+
+def load_longform_history():
+    """
+    Load permanent long-form clip history.
+
+    A missing or malformed history file is treated as an empty
+    history so the pipeline can still run on first use.
+    """
+
+    if not LONGFORM_HISTORY.exists():
+        return {
+            "version": 1,
+            "used_clips": [],
+        }
+
+    try:
+        data = json.loads(
+            LONGFORM_HISTORY.read_text(
+                encoding="utf-8"
+            )
+        )
+
+    except Exception:
+        return {
+            "version": 1,
+            "used_clips": [],
+        }
+
+    if isinstance(data, list):
+        return {
+            "version": 1,
+            "used_clips": data,
+        }
+
+    if not isinstance(data, dict):
+        return {
+            "version": 1,
+            "used_clips": [],
+        }
+
+    data.setdefault("version", 1)
+    data.setdefault("used_clips", [])
+
+    if not isinstance(
+        data.get("used_clips"),
+        list,
+    ):
+        data["used_clips"] = []
+
+    return data
+
+
+def build_used_clip_sets(history):
+    """
+    Build permanent exclusion sets from previously published
+    long-form episodes.
+
+    clip_id is the primary identifier.
+
+    Source/clip URL is also checked as a second layer so the same
+    source cannot return merely because metadata formatting changed.
+    """
+
+    used_clip_ids = set()
+    used_clip_urls = set()
+
+    for item in history.get(
+        "used_clips",
+        [],
+    ):
+        if not isinstance(item, dict):
+            continue
+
+        clip_id = str(
+            item.get("clip_id")
+            or ""
+        ).strip()
+
+        clip_url = str(
+            item.get("clip_url")
+            or item.get("source")
+            or ""
+        ).strip()
+
+        if clip_id:
+            used_clip_ids.add(clip_id)
+
+        if clip_url:
+            used_clip_urls.add(clip_url)
+
+    return (
+        used_clip_ids,
+        used_clip_urls,
+    )
+
+
+def candidate_was_used(
+    candidate,
+    used_clip_ids,
+    used_clip_urls,
+):
+    """
+    Return True when this exact source has already appeared in a
+    successfully published ViralSpawnTV long-form video.
+    """
+
+    clip_id = str(
+        candidate.get("clip_id")
+        or ""
+    ).strip()
+
+    clip_url = str(
+        candidate.get("clip_url")
+        or candidate.get("source")
+        or ""
+    ).strip()
+
+    if (
+        clip_id
+        and clip_id in used_clip_ids
+    ):
+        return True
+
+    if (
+        clip_url
+        and clip_url in used_clip_urls
+    ):
+        return True
+
+    return False
 
 
 def inspect(page, candidate):
@@ -115,16 +250,87 @@ def main():
         )
     )
 
-    candidates = data.get(
+    all_candidates = data.get(
         "candidates",
         [],
-    )[:MAX_INSPECT]
+    )
 
-    if not candidates:
+    if not all_candidates:
 
         raise RuntimeError(
             "Discovery manifest contained "
             "no long-form candidates."
+        )
+
+    # ---------------------------------------------------------
+    # PERMANENT LONG-FORM DUPLICATE EXCLUSION
+    # ---------------------------------------------------------
+
+    history = load_longform_history()
+
+    (
+        used_clip_ids,
+        used_clip_urls,
+    ) = build_used_clip_sets(history)
+
+    eligible_candidates = []
+    skipped_history = []
+
+    for candidate in all_candidates:
+
+        if candidate_was_used(
+            candidate,
+            used_clip_ids,
+            used_clip_urls,
+        ):
+            skipped_history.append(
+                candidate
+            )
+            continue
+
+        eligible_candidates.append(
+            candidate
+        )
+
+    print(
+        "\nLong-form permanent history:"
+    )
+
+    print(
+        f"  Previously used clip IDs: "
+        f"{len(used_clip_ids)}"
+    )
+
+    print(
+        f"  Previously used source URLs: "
+        f"{len(used_clip_urls)}"
+    )
+
+    print(
+        f"  Discovery candidates excluded "
+        f"by long-form history: "
+        f"{len(skipped_history)}"
+    )
+
+    for candidate in skipped_history:
+
+        print(
+            "  SKIPPED USED CLIP: "
+            f"{candidate.get('clip_id', '')} | "
+            f"{candidate.get('game', '')} | "
+            f"{candidate.get('channel', '')}"
+        )
+
+    candidates = eligible_candidates[
+        :MAX_INSPECT
+    ]
+
+    if not candidates:
+
+        raise RuntimeError(
+            "All discovery candidates were "
+            "already used in previous "
+            "long-form videos."
         )
 
     inspected = []
@@ -190,6 +396,9 @@ IMPORTANT:
 Downstream systems will perform additional source-quality,
 motion/activity and audio checks. Because some clips will be
 rejected later, provide a DEEP ranked bench of good candidates.
+
+Clips previously published in ViralSpawnTV long-form videos have
+already been removed from this candidate list.
 
 Prefer clips likely to contain a clear visual event:
 
@@ -305,6 +514,18 @@ CANDIDATES:
         if score < MIN_SCORE:
             continue
 
+        # Second defensive history check.
+        #
+        # The candidates were already filtered before inspection,
+        # but this makes sure a used clip cannot accidentally
+        # enter the final ranked output.
+        if candidate_was_used(
+            candidate,
+            used_clip_ids,
+            used_clip_urls,
+        ):
+            continue
+
         creator = (
             candidate.get(
                 "channel",
@@ -388,6 +609,16 @@ CANDIDATES:
                 "version": "1.5",
                 "target_episode_minutes":
                     "8-10",
+                "history_file":
+                    str(LONGFORM_HISTORY),
+                "historical_clip_ids":
+                    len(used_clip_ids),
+                "historical_urls":
+                    len(used_clip_urls),
+                "history_excluded_count":
+                    len(skipped_history),
+                "eligible_before_inspection":
+                    len(eligible_candidates),
                 "inspected_count":
                     len(inspected),
                 "selected_count":
@@ -406,6 +637,11 @@ CANDIDATES:
         f"Long-form V1.5 ranker inspected "
         f"{len(inspected)} sources and selected "
         f"{len(chosen)} candidates."
+    )
+
+    print(
+        f"Permanent history excluded "
+        f"{len(skipped_history)} candidates."
     )
 
     for i, candidate in enumerate(
