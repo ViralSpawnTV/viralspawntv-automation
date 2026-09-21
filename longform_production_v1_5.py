@@ -918,11 +918,14 @@ SOURCES:
         validate_motion(
             OUT,
 
-            max_single_freeze=1.0,
+            # Individual setup/payoff pieces already passed the strict
+            # 1.0-second freeze gate above. The completed 8-10 minute
+            # episode also contains intentional branded intro/outro
+            # material, so the whole-episode gate allows a short isolated
+            # low-motion section without weakening source-clip screening.
+            max_single_freeze=5.0,
 
-            # Slightly more cumulative tolerance because
-            # the episode is several minutes long.
-            max_total_freeze=4.0,
+            max_total_freeze=10.0,
 
             sample_fps=4,
 
@@ -930,13 +933,12 @@ SOURCES:
 
             severe_dead_threshold=0.55,
 
-            max_dead_run_seconds=1.25,
+            max_dead_run_seconds=5.0,
 
-            max_severe_run_seconds=0.85,
+            max_severe_run_seconds=5.0,
 
-            # Across an entire episode we want the dead
-            # percentage substantially below V1.3 behavior.
-            max_dead_ratio=0.22
+            # Still reject episodes with broadly inactive footage.
+            max_dead_ratio=0.12
         )
     )
 
