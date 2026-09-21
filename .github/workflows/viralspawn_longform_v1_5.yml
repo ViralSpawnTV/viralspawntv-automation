@@ -7,6 +7,9 @@ concurrency:
   group: viralspawntv-longform
   cancel-in-progress: false
 
+permissions:
+  contents: write
+
 jobs:
   build-and-upload:
     runs-on: ubuntu-latest
@@ -15,6 +18,8 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -50,6 +55,547 @@ jobs:
         run: |
           python longform_pipeline_v1_5.py
 
+      - name: Verify successful long-form history creation
+        run: |
+          test -s longform_history.json
+          test -s work/longform/youtube_longform_upload_result_v1_5.json
+
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          result_path = Path(
+              "work/longform/youtube_longform_upload_result_v1_5.json"
+          )
+
+          history_path = Path(
+              "longform_history.json"
+          )
+
+          result = json.loads(
+              result_path.read_text(
+                  encoding="utf-8"
+              )
+          )
+
+          history = json.loads(
+              history_path.read_text(
+                  encoding="utf-8"
+              )
+          )
+
+          if result.get("status") != "UPLOADED":
+              raise RuntimeError(
+                  "Long-form upload result was not UPLOADED."
+              )
+
+          if not result.get(
+              "longform_history_updated",
+              False,
+          ):
+              raise RuntimeError(
+                  "Uploader did not confirm long-form history update."
+              )
+
+          video_id = str(
+              result.get("video_id")
+              or ""
+          ).strip()
+
+          if not video_id:
+              raise RuntimeError(
+                  "Successful upload result has no YouTube video ID."
+              )
+
+          used = history.get(
+              "used_clips",
+              []
+          )
+
+          if not isinstance(
+              used,
+              list,
+          ) or not used:
+              raise RuntimeError(
+                  "longform_history.json contains no used clips."
+              )
+
+          matching = [
+              item
+              for item in used
+              if isinstance(item, dict)
+              and str(
+                  item.get("youtube_video_id")
+                  or ""
+              ).strip() == video_id
+          ]
+
+          if not matching:
+              raise RuntimeError(
+                  "History contains no source clips for "
+                  "the newly uploaded YouTube video."
+              )
+
+          print(
+              "Verified successful long-form upload:",
+              video_id,
+          )
+
+          print(
+              "Source clips recorded for this episode:",
+              len(matching),
+          )
+          PY
+
+      - name: Persist long-form history safely
+        run: |
+          set -e
+
+          cp longform_history.json /tmp/new_longform_history.json
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git fetch origin main
+
+          git reset --hard origin/main
+
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+
+          repo_path = Path(
+              "longform_history.json"
+          )
+
+          new_path = Path(
+              "/tmp/new_longform_history.json"
+          )
+
+
+          def load_history(path):
+              if not path.exists():
+                  return {
+                      "version": 1,
+                      "used_clips": [],
+                  }
+
+              try:
+                  data = json.loads(
+                      path.read_text(
+                          encoding="utf-8"
+                      )
+                  )
+              except Exception:
+                  return {
+                      "version": 1,
+                      "used_clips": [],
+                  }
+
+              if isinstance(data, list):
+                  return {
+                      "version": 1,
+                      "used_clips": data,
+                  }
+
+              if not isinstance(
+                  data,
+                  dict,
+              ):
+                  return {
+                      "version": 1,
+                      "used_clips": [],
+                  }
+
+              data.setdefault(
+                  "version",
+                  1,
+              )
+
+              data.setdefault(
+                  "used_clips",
+                  [],
+              )
+
+              if not isinstance(
+                  data["used_clips"],
+                  list,
+              ):
+                  data[
+                      "used_clips"
+                  ] = []
+
+              return data
+
+
+          current = load_history(
+              repo_path
+          )
+
+          new = load_history(
+              new_path
+          )
+
+          merged = []
+
+          seen_ids = set()
+          seen_urls = set()
+
+
+          def add_item(item):
+              if not isinstance(
+                  item,
+                  dict,
+              ):
+                  return
+
+              clip_id = str(
+                  item.get("clip_id")
+                  or ""
+              ).strip()
+
+              clip_url = str(
+                  item.get("clip_url")
+                  or item.get("source")
+                  or ""
+              ).strip()
+
+              if (
+                  clip_id
+                  and clip_id in seen_ids
+              ):
+                  return
+
+              if (
+                  clip_url
+                  and clip_url in seen_urls
+              ):
+                  return
+
+              if (
+                  not clip_id
+                  and not clip_url
+              ):
+                  return
+
+              merged.append(
+                  item
+              )
+
+              if clip_id:
+                  seen_ids.add(
+                      clip_id
+                  )
+
+              if clip_url:
+                  seen_urls.add(
+                      clip_url
+                  )
+
+
+          # Keep everything already present on latest main.
+          for item in current.get(
+              "used_clips",
+              [],
+          ):
+              add_item(
+                  item
+              )
+
+          # Add newly uploaded episode sources.
+          for item in new.get(
+              "used_clips",
+              [],
+          ):
+              add_item(
+                  item
+              )
+
+
+          output = {
+              "version": 1,
+              "used_clips": merged,
+          }
+
+
+          # Preserve the newest successful-upload diagnostic
+          # from this workflow run.
+          if new.get(
+              "last_successful_upload"
+          ):
+              output[
+                  "last_successful_upload"
+              ] = new[
+                  "last_successful_upload"
+              ]
+
+          elif current.get(
+              "last_successful_upload"
+          ):
+              output[
+                  "last_successful_upload"
+              ] = current[
+                  "last_successful_upload"
+              ]
+
+
+          repo_path.write_text(
+              json.dumps(
+                  output,
+                  indent=2,
+                  ensure_ascii=False,
+              ),
+              encoding="utf-8",
+          )
+
+          print(
+              "Current repository history entries:",
+              len(
+                  current.get(
+                      "used_clips",
+                      [],
+                  )
+              ),
+          )
+
+          print(
+              "Runner history entries:",
+              len(
+                  new.get(
+                      "used_clips",
+                      [],
+                  )
+              ),
+          )
+
+          print(
+              "Merged permanent history entries:",
+              len(merged),
+          )
+          PY
+
+          git add longform_history.json
+
+          if git diff --cached --quiet; then
+            echo "No new long-form history entries to commit."
+            exit 0
+          fi
+
+          git commit -m "Update longform clip history"
+
+          for attempt in 1 2 3; do
+            if git push origin HEAD:main; then
+              echo "Long-form history successfully persisted."
+              exit 0
+            fi
+
+            echo "Push attempt ${attempt} failed. Refreshing latest main..."
+
+            cp longform_history.json /tmp/retry_longform_history.json
+
+            git fetch origin main
+            git reset --hard origin/main
+
+            python - <<'PY'
+          import json
+          from pathlib import Path
+
+
+          repo_path = Path(
+              "longform_history.json"
+          )
+
+          new_path = Path(
+              "/tmp/retry_longform_history.json"
+          )
+
+
+          def load_history(path):
+              if not path.exists():
+                  return {
+                      "version": 1,
+                      "used_clips": [],
+                  }
+
+              try:
+                  data = json.loads(
+                      path.read_text(
+                          encoding="utf-8"
+                      )
+                  )
+              except Exception:
+                  return {
+                      "version": 1,
+                      "used_clips": [],
+                  }
+
+              if isinstance(data, list):
+                  return {
+                      "version": 1,
+                      "used_clips": data,
+                  }
+
+              if not isinstance(
+                  data,
+                  dict,
+              ):
+                  return {
+                      "version": 1,
+                      "used_clips": [],
+                  }
+
+              data.setdefault(
+                  "version",
+                  1,
+              )
+
+              data.setdefault(
+                  "used_clips",
+                  [],
+              )
+
+              if not isinstance(
+                  data["used_clips"],
+                  list,
+              ):
+                  data[
+                      "used_clips"
+                  ] = []
+
+              return data
+
+
+          current = load_history(
+              repo_path
+          )
+
+          new = load_history(
+              new_path
+          )
+
+          merged = []
+
+          seen_ids = set()
+          seen_urls = set()
+
+
+          def add_item(item):
+              if not isinstance(
+                  item,
+                  dict,
+              ):
+                  return
+
+              clip_id = str(
+                  item.get("clip_id")
+                  or ""
+              ).strip()
+
+              clip_url = str(
+                  item.get("clip_url")
+                  or item.get("source")
+                  or ""
+              ).strip()
+
+              if (
+                  clip_id
+                  and clip_id in seen_ids
+              ):
+                  return
+
+              if (
+                  clip_url
+                  and clip_url in seen_urls
+              ):
+                  return
+
+              if (
+                  not clip_id
+                  and not clip_url
+              ):
+                  return
+
+              merged.append(
+                  item
+              )
+
+              if clip_id:
+                  seen_ids.add(
+                      clip_id
+                  )
+
+              if clip_url:
+                  seen_urls.add(
+                      clip_url
+                  )
+
+
+          for item in current.get(
+              "used_clips",
+              [],
+          ):
+              add_item(
+                  item
+              )
+
+          for item in new.get(
+              "used_clips",
+              [],
+          ):
+              add_item(
+                  item
+              )
+
+
+          output = {
+              "version": 1,
+              "used_clips": merged,
+          }
+
+
+          if new.get(
+              "last_successful_upload"
+          ):
+              output[
+                  "last_successful_upload"
+              ] = new[
+                  "last_successful_upload"
+              ]
+
+          elif current.get(
+              "last_successful_upload"
+          ):
+              output[
+                  "last_successful_upload"
+              ] = current[
+                  "last_successful_upload"
+              ]
+
+
+          repo_path.write_text(
+              json.dumps(
+                  output,
+                  indent=2,
+                  ensure_ascii=False,
+              ),
+              encoding="utf-8",
+          )
+          PY
+
+            git add longform_history.json
+
+            if git diff --cached --quiet; then
+              echo "History already exists on latest main."
+              exit 0
+            fi
+
+            git commit -m "Update longform clip history"
+          done
+
+          echo "Unable to persist long-form history after 3 attempts."
+          exit 1
+
       - name: Upload V1.5 diagnostics
         if: always()
         uses: actions/upload-artifact@v4
@@ -66,3 +612,4 @@ jobs:
             work/longform/ViralSpawnTV_Longform_V1_5.mp4
             work/longform/ViralSpawnTV_Longform_V1_5_metadata.json
             work/longform/youtube_longform_upload_result_v1_5.json
+            longform_history.json
