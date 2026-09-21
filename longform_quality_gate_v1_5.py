@@ -23,6 +23,12 @@ MIN_VIDEO_BITRATE = 700_000
 SILENCE_DB = -50
 MAX_SILENCE_SECONDS = 2.5
 
+# The finished ViralSpawnTV episode contains an intentional branded outro.
+# Silence that begins inside this final window is allowed.
+#
+# This does NOT weaken silence detection during the gameplay portion.
+FINAL_OUTRO_ALLOWANCE_SECONDS = 8.5
+
 
 def run_command(cmd):
     result = subprocess.run(
@@ -89,10 +95,16 @@ def get_video_info(video_path):
     audio_stream = None
 
     for stream in streams:
-        if stream.get("codec_type") == "video" and video_stream is None:
+        if (
+            stream.get("codec_type") == "video"
+            and video_stream is None
+        ):
             video_stream = stream
 
-        if stream.get("codec_type") == "audio" and audio_stream is None:
+        if (
+            stream.get("codec_type") == "audio"
+            and audio_stream is None
+        ):
             audio_stream = stream
 
     if video_stream is None:
@@ -170,7 +182,10 @@ def fps_passes(info):
     fps = info["fps"]
 
     if fps < MIN_FPS:
-        return False, f"{fps:.2f} FPS is below {MIN_FPS:.2f}"
+        return (
+            False,
+            f"{fps:.2f} FPS is below {MIN_FPS:.2f}",
+        )
 
     return True, "FPS passed"
 
@@ -181,7 +196,10 @@ def bitrate_passes(info):
     # Some containers do not report a reliable bitrate.
     # In that case we do not reject solely for missing metadata.
     if bitrate <= 0:
-        return True, "bitrate unavailable; not used as sole rejection"
+        return (
+            True,
+            "bitrate unavailable; not used as sole rejection",
+        )
 
     if bitrate < MIN_VIDEO_BITRATE:
         return (
@@ -194,12 +212,23 @@ def bitrate_passes(info):
 
 def detect_long_silence(video_path):
     """
-    Detects prolonged silence.
+    Detect prolonged silence in the completed episode.
 
-    This is mainly intended for FINAL produced video validation so that
-    the technical bug where gameplay audio disappears after narration
-    cannot silently reach YouTube.
+    Silence during gameplay is still rejected.
+
+    The only exception is silence that begins inside the intentional
+    ViralSpawnTV branded outro window at the very end of the video.
     """
+
+    video_path = Path(video_path)
+
+    info = get_video_info(video_path)
+    video_duration = float(info.get("duration") or 0.0)
+
+    outro_start = max(
+        0.0,
+        video_duration - FINAL_OUTRO_ALLOWANCE_SECONDS,
+    )
 
     cmd = [
         "ffmpeg",
@@ -208,7 +237,10 @@ def detect_long_silence(video_path):
         "-i",
         str(video_path),
         "-af",
-        f"silencedetect=noise={SILENCE_DB}dB:d={MAX_SILENCE_SECONDS}",
+        (
+            f"silencedetect=noise={SILENCE_DB}dB:"
+            f"d={MAX_SILENCE_SECONDS}"
+        ),
         "-f",
         "null",
         "-",
@@ -227,17 +259,36 @@ def detect_long_silence(video_path):
 
         if "silence_start:" in line:
             try:
-                value = line.split("silence_start:", 1)[1].strip()
+                value = line.split(
+                    "silence_start:",
+                    1,
+                )[1].strip()
+
                 silence_starts.append(float(value))
+
             except Exception:
                 pass
 
-        if "silence_end:" in line and "silence_duration:" in line:
+        if (
+            "silence_end:" in line
+            and "silence_duration:" in line
+        ):
             try:
-                end_part = line.split("silence_end:", 1)[1]
-                end_value = end_part.split("|", 1)[0].strip()
+                end_part = line.split(
+                    "silence_end:",
+                    1,
+                )[1]
 
-                duration_part = line.split("silence_duration:", 1)[1]
+                end_value = end_part.split(
+                    "|",
+                    1,
+                )[0].strip()
+
+                duration_part = line.split(
+                    "silence_duration:",
+                    1,
+                )[1]
+
                 duration_value = duration_part.strip()
 
                 silence_ends.append(
@@ -246,20 +297,98 @@ def detect_long_silence(video_path):
                         "duration": float(duration_value),
                     }
                 )
+
             except Exception:
                 pass
 
+    all_events = []
+    rejected_events = []
+    allowed_outro_events = []
+
+    paired_count = min(
+        len(silence_starts),
+        len(silence_ends),
+    )
+
+    for index in range(paired_count):
+        start = float(silence_starts[index])
+        end = float(silence_ends[index]["end"])
+        duration = float(
+            silence_ends[index]["duration"]
+        )
+
+        event = {
+            "start": start,
+            "end": end,
+            "duration": duration,
+        }
+
+        all_events.append(event)
+
+        if start >= outro_start:
+            allowed_outro_events.append(event)
+        else:
+            rejected_events.append(event)
+
+    # Handle a silence event that remains open through EOF.
+    if len(silence_starts) > paired_count:
+        for index in range(
+            paired_count,
+            len(silence_starts),
+        ):
+            start = float(silence_starts[index])
+
+            duration = max(
+                0.0,
+                video_duration - start,
+            )
+
+            event = {
+                "start": start,
+                "end": video_duration,
+                "duration": duration,
+                "open_at_eof": True,
+            }
+
+            all_events.append(event)
+
+            if start >= outro_start:
+                allowed_outro_events.append(event)
+            else:
+                rejected_events.append(event)
+
     longest = 0.0
 
-    for item in silence_ends:
-        longest = max(longest, item["duration"])
+    for event in all_events:
+        longest = max(
+            longest,
+            float(event.get("duration") or 0.0),
+        )
+
+    longest_rejected = 0.0
+
+    for event in rejected_events:
+        longest_rejected = max(
+            longest_rejected,
+            float(event.get("duration") or 0.0),
+        )
 
     return {
-        "silence_events": silence_ends,
-        "open_silence_starts": silence_starts,
+        "video_duration": video_duration,
+        "outro_allowance_seconds":
+            FINAL_OUTRO_ALLOWANCE_SECONDS,
+        "outro_window_starts_at": outro_start,
+        "silence_events": all_events,
+        "allowed_outro_silence_events":
+            allowed_outro_events,
+        "rejected_silence_events":
+            rejected_events,
         "longest_silence": longest,
-        "has_long_silence": bool(
-            silence_ends or silence_starts
+        "longest_rejected_silence":
+            longest_rejected,
+        "has_long_silence": bool(rejected_events),
+        "outro_silence_ignored": bool(
+            allowed_outro_events
         ),
     }
 
@@ -276,20 +405,30 @@ def validate_source(video_path):
     }
 
     if not video_path.exists():
-        result["reasons"].append("file does not exist")
+        result["reasons"].append(
+            "file does not exist"
+        )
         return result
 
     if video_path.stat().st_size <= 0:
-        result["reasons"].append("file is empty")
+        result["reasons"].append(
+            "file is empty"
+        )
         return result
 
     try:
         info = get_video_info(video_path)
         result["video_info"] = info
 
-        resolution_ok, resolution_reason = resolution_passes(info)
+        resolution_ok, resolution_reason = (
+            resolution_passes(info)
+        )
+
         fps_ok, fps_reason = fps_passes(info)
-        bitrate_ok, bitrate_reason = bitrate_passes(info)
+
+        bitrate_ok, bitrate_reason = (
+            bitrate_passes(info)
+        )
 
         result["checks"] = {
             "resolution": {
@@ -307,13 +446,19 @@ def validate_source(video_path):
         }
 
         if not resolution_ok:
-            result["reasons"].append(resolution_reason)
+            result["reasons"].append(
+                resolution_reason
+            )
 
         if not fps_ok:
-            result["reasons"].append(fps_reason)
+            result["reasons"].append(
+                fps_reason
+            )
 
         if not bitrate_ok:
-            result["reasons"].append(bitrate_reason)
+            result["reasons"].append(
+                bitrate_reason
+            )
 
         result["passed"] = (
             resolution_ok
@@ -332,7 +477,14 @@ def validate_final(video_path):
     Final-output validation.
 
     Source clips are allowed to contain naturally quiet gameplay.
-    The final episode receives the additional audio continuity check.
+
+    The final episode receives the additional audio continuity
+    check.
+
+    Long silence during gameplay remains a hard failure.
+
+    Silence beginning inside the intentional branded outro window
+    is allowed.
     """
 
     video_path = Path(video_path)
@@ -348,23 +500,31 @@ def validate_final(video_path):
 
     if not info.get("has_audio"):
         result["passed"] = False
+
         result["reasons"].append(
             "final video has no audio stream"
         )
+
         return result
 
     try:
-        silence = detect_long_silence(video_path)
+        silence = detect_long_silence(
+            video_path
+        )
+
         result["audio_continuity"] = silence
 
         if silence["has_long_silence"]:
             result["passed"] = False
+
             result["reasons"].append(
-                "final video contains a prolonged silent section"
+                "final video contains a prolonged "
+                "silent section outside the branded outro"
             )
 
     except Exception as exc:
         result["passed"] = False
+
         result["reasons"].append(
             f"audio continuity analysis failed: {exc}"
         )
@@ -374,10 +534,17 @@ def validate_final(video_path):
 
 def save_result(result, output_path):
     output_path = Path(output_path)
-    output_path.parent.mkdir(parents=True, exist_ok=True)
+
+    output_path.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
 
     output_path.write_text(
-        json.dumps(result, indent=2),
+        json.dumps(
+            result,
+            indent=2,
+        ),
         encoding="utf-8",
     )
 
@@ -400,25 +567,44 @@ def main():
 
     if len(sys.argv) >= 4:
         output_path = Path(sys.argv[3])
+
     else:
         output_path = Path(
             "work/longform/quality_gate_v1_5.json"
         )
 
     if mode == "final":
-        result = validate_final(video_path)
+        result = validate_final(
+            video_path
+        )
+
     else:
-        result = validate_source(video_path)
+        result = validate_source(
+            video_path
+        )
 
-    save_result(result, output_path)
+    save_result(
+        result,
+        output_path,
+    )
 
-    print(json.dumps(result, indent=2))
+    print(
+        json.dumps(
+            result,
+            indent=2,
+        )
+    )
 
     if result["passed"]:
-        print("\nV1.5 QUALITY GATE: PASS")
+        print(
+            "\nV1.5 QUALITY GATE: PASS"
+        )
         sys.exit(0)
 
-    print("\nV1.5 QUALITY GATE: REJECT")
+    print(
+        "\nV1.5 QUALITY GATE: REJECT"
+    )
+
     sys.exit(24)
 
 
