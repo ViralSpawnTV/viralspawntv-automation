@@ -10,31 +10,64 @@ concurrency:
   cancel-in-progress: false
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   short:
     runs-on: ubuntu-latest
     timeout-minutes: 90
+
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+
       - name: Install FFmpeg
         run: sudo apt-get update && sudo apt-get install -y ffmpeg
+
       - name: Install Python dependencies
         run: pip install -r requirements.txt
+
       - name: Install Playwright Chromium
         run: python -m playwright install --with-deps chromium
+
       - name: Produce V12.1 Short
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
         run: python v12_1_pipeline.py
+
       - name: Upload public Short
         env:
           YOUTUBE_TOKEN_JSON: ${{ secrets.YOUTUBE_TOKEN_JSON }}
         run: python youtube_upload.py
+
+      - name: Persist successful Short history
+        run: |
+          if [ ! -f history.json ]; then
+            echo "history.json was not created."
+            exit 1
+          fi
+
+          if git diff --quiet -- history.json; then
+            echo "No history.json changes to commit."
+            exit 0
+          fi
+
+          git config user.name "ViralSpawnTV Automation"
+          git config user.email "actions@users.noreply.github.com"
+
+          git add history.json
+          git commit -m "Record published ViralSpawnTV Short"
+
+          git pull --rebase origin main
+          git push origin HEAD:main
+
+          echo "history.json successfully persisted."
+
       - name: Upload V12.1 diagnostics
         if: always()
         uses: actions/upload-artifact@v4
@@ -42,6 +75,7 @@ jobs:
           name: viralspawntv-v12-1-production
           retention-days: 7
           path: |
+            history.json
             work/v11_candidate_manifest.json
             work/v12_ranked_candidates.json
             work/v12_attempt_log.json
