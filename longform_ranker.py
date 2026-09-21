@@ -14,15 +14,23 @@ OUT = Path("work/longform/ranked_sources.json")
 # ViralSpawnTV long-form videos.
 LONGFORM_HISTORY = Path("longform_history.json")
 
-# V1.5 long-form expansion:
-# Inspect most of the discovery manifest and give downstream gates
-# enough candidates to reject weak clips while still building
-# an 8-10 minute episode.
+# V1.5 expanded source pool.
+#
+# Inspect the full discovery manifest and give downstream gates
+# a deep enough bench to survive:
+# - acquisition failures
+# - English-language rejection
+# - music/content rejection
+# - source quality rejection
+# - motion/activity rejection
+#
+# The final production system still stops once enough approved
+# footage exists for the 8-10 minute episode.
 MAX_INSPECT = 80
-MAX_SELECT = 32
+MAX_SELECT = 48
 
-MAX_PER_CREATOR = 3
-MAX_PER_GAME = 6
+MAX_PER_CREATOR = 4
+MAX_PER_GAME = 8
 MIN_SCORE = 30
 
 
@@ -394,8 +402,9 @@ TARGET EPISODE:
 
 IMPORTANT:
 Downstream systems will perform additional source-quality,
-motion/activity and audio checks. Because some clips will be
-rejected later, provide a DEEP ranked bench of good candidates.
+English-language, music/content, motion/activity and audio checks.
+Because some clips will be rejected later, provide a DEEP ranked
+bench of good candidates.
 
 Clips previously published in ViralSpawnTV long-form videos have
 already been removed from this candidate list.
