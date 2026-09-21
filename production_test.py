@@ -35,6 +35,15 @@ FINAL_VIDEO = WORK / "ViralSpawnTV_Short_V4.mp4"
 
 FONT = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
 
+# V5.1 SHORTS BRAND BOOKENDS
+INTRO_IMAGE = ROOT / "viralspawntv_intro.png"
+OUTRO_IMAGE = ROOT / "viralspawntv_outro.png"
+INTRO_SECONDS = 0.7
+OUTRO_SECONDS = 1.3
+CORE_VIDEO = WORK / "ViralSpawnTV_Short_V4_core.mp4"
+INTRO_VIDEO = WORK / "ViralSpawnTV_Short_V5_1_intro.mp4"
+OUTRO_VIDEO = WORK / "ViralSpawnTV_Short_V5_1_outro.mp4"
+
 
 # ============================================================
 # BASIC HELPERS
@@ -2125,7 +2134,7 @@ def render(
         ),
 
         str(
-            FINAL_VIDEO
+            CORE_VIDEO
         ),
     ])
 
@@ -2133,7 +2142,7 @@ def render(
         command
     )
 
-    if not FINAL_VIDEO.exists():
+    if not CORE_VIDEO.exists():
 
         raise RuntimeError(
             "V4 final video "
@@ -2141,11 +2150,11 @@ def render(
         )
 
     final_duration = duration(
-        FINAL_VIDEO
+        CORE_VIDEO
     )
 
     final_size = (
-        FINAL_VIDEO
+        CORE_VIDEO
         .stat()
         .st_size
         /
@@ -2169,6 +2178,137 @@ def render(
     print(
         f"Size: "
         f"{final_size:.2f} MB"
+    )
+
+
+# ============================================================
+# V5.1 SHORTS BRAND BOOKENDS
+# ============================================================
+
+def render_short_brand_card(image_path, dest, seconds, label):
+
+    if not image_path.exists():
+        raise RuntimeError(
+            f"Missing Shorts branding asset: {image_path}"
+        )
+
+    filter_complex = (
+        "[0:v]split=2[bgsrc][fgsrc];"
+        "[bgsrc]"
+        "scale=1080:1920:"
+        "force_original_aspect_ratio=increase,"
+        "crop=1080:1920,"
+        "boxblur=28:14,"
+        "eq=brightness=-0.12"
+        "[bg];"
+        "[fgsrc]"
+        "scale=1000:1780:"
+        "force_original_aspect_ratio=decrease,"
+        "zoompan="
+        "z='min(zoom+0.0018,1.06)':"
+        "d=1:"
+        "s=1000x1780:"
+        "fps=30"
+        "[fg];"
+        "[bg][fg]"
+        "overlay=(W-w)/2:(H-h)/2,"
+        "format=yuv420p"
+        "[v]"
+    )
+
+    run([
+        "ffmpeg", "-y",
+        "-loop", "1",
+        "-t", str(seconds),
+        "-i", str(image_path),
+        "-f", "lavfi",
+        "-t", str(seconds),
+        "-i", "anullsrc=r=48000:cl=stereo",
+        "-filter_complex", filter_complex,
+        "-map", "[v]",
+        "-map", "1:a:0",
+        "-t", str(seconds),
+        "-r", "30",
+        "-c:v", "libx264",
+        "-preset", "medium",
+        "-crf", "19",
+        "-pix_fmt", "yuv420p",
+        "-c:a", "aac",
+        "-b:a", "192k",
+        "-ar", "48000",
+        "-ac", "2",
+        "-movflags", "+faststart",
+        str(dest),
+    ])
+
+    print(f"V5.1 {label} created: {seconds:.1f}s")
+
+
+def add_short_brand_bookends():
+
+    if not CORE_VIDEO.exists():
+        raise RuntimeError(
+            "Frozen V5 core Short was not created."
+        )
+
+    render_short_brand_card(
+        INTRO_IMAGE, INTRO_VIDEO, INTRO_SECONDS, "intro"
+    )
+    render_short_brand_card(
+        OUTRO_IMAGE, OUTRO_VIDEO, OUTRO_SECONDS, "outro"
+    )
+
+    concat = WORK / "v5_1_brand_concat.txt"
+    concat.write_text(
+        "\n".join([
+            f"file '{INTRO_VIDEO.resolve().as_posix()}'",
+            f"file '{CORE_VIDEO.resolve().as_posix()}'",
+            f"file '{OUTRO_VIDEO.resolve().as_posix()}'",
+        ]),
+        encoding="utf-8",
+    )
+
+    run([
+        "ffmpeg", "-y",
+        "-f", "concat",
+        "-safe", "0",
+        "-i", str(concat),
+        "-c:v", "libx264",
+        "-preset", "medium",
+        "-crf", "19",
+        "-pix_fmt", "yuv420p",
+        "-r", "30",
+        "-c:a", "aac",
+        "-b:a", "192k",
+        "-ar", "48000",
+        "-ac", "2",
+        "-movflags", "+faststart",
+        str(FINAL_VIDEO),
+    ])
+
+    if not FINAL_VIDEO.exists():
+        raise RuntimeError(
+            "V5.1 branded final Short was not created."
+        )
+
+    final_duration = duration(FINAL_VIDEO)
+    core_duration = duration(CORE_VIDEO)
+
+    if final_duration < core_duration + 1.5:
+        raise RuntimeError(
+            "V5.1 branding validation failed: "
+            f"core={core_duration:.2f}s, "
+            f"final={final_duration:.2f}s"
+        )
+
+    print("\\n" + "=" * 65)
+    print("V5.1 SHORTS BRANDING COMPLETE")
+    print("=" * 65)
+    print(
+        f"Core: {core_duration:.2f}s | "
+        f"Intro: {INTRO_SECONDS:.1f}s | "
+        f"Outro: {OUTRO_SECONDS:.1f}s | "
+        f"Final: {final_duration:.2f}s"
     )
 
 
@@ -2234,6 +2374,11 @@ def save_metadata(
         "impacts": plan[
             "impacts"
         ],
+        "shorts_branding_version": "5.1",
+        "branding_intro": str(INTRO_IMAGE),
+        "branding_outro": str(OUTRO_IMAGE),
+        "branding_intro_seconds": INTRO_SECONDS,
+        "branding_outro_seconds": OUTRO_SECONDS,
         "publish_status": "NOT_UPLOADED",
     }
 
@@ -2437,6 +2582,12 @@ def main():
         beats,
         captions
     )
+
+    # --------------------------------------------------------
+    # 8B. V5.1 branded intro/outro
+    # --------------------------------------------------------
+
+    add_short_brand_bookends()
 
     # --------------------------------------------------------
     # 9. Save metadata for future YouTube uploader
