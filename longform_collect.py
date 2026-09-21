@@ -13,15 +13,18 @@ META = Path("work/longform/acquired_sources.json")
 
 # V1.5 expanded source pool.
 #
-# Production needs enough material to survive:
+# Ranker can now provide up to 48 candidates.
+# We acquire a deeper reserve so the pipeline can survive:
+# - acquisition failures
+# - English-language rejection
+# - music/content rejection
 # - source quality rejection
 # - motion/activity rejection
-# - content screening
-# - excerpt selection
 #
-# We therefore acquire a deep pool instead of stopping at 10.
-TARGET = 28
-MIN_ACQUIRED = 10
+# Production still determines which clips actually appear in
+# the final 8-10 minute episode.
+TARGET = 42
+MIN_ACQUIRED = 15
 
 
 USER_AGENT = (
@@ -234,6 +237,10 @@ def main():
                 "version": "1.5",
                 "target_acquired":
                     TARGET,
+                "minimum_acquired":
+                    MIN_ACQUIRED,
+                "ranked_candidates_available":
+                    len(candidates),
                 "attempted":
                     attempted,
                 "acquired_count":
@@ -256,6 +263,11 @@ def main():
     print(
         f"Acquired {len(acquired)} "
         f"long-form sources."
+    )
+
+    print(
+        f"Ranked candidates available: "
+        f"{len(candidates)}"
     )
 
 
