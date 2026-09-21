@@ -23,7 +23,7 @@ OUTMETA = (
 VOICE = "onyx"
 
 MIN_GOOD_CLIPS = 5
-MAX_GOOD_CLIPS = 28
+MAX_GOOD_CLIPS = 42
 TARGET_MIN_SECONDS = 480.0
 TARGET_MAX_SECONDS = 600.0
 
@@ -559,10 +559,91 @@ SOURCES:
 
     seen = set()
 
+    # -----------------------------------------------------
+    # V1.5.1 deterministic candidate coverage
+    #
+    # Keep GPT's preferred ordering and edit choices first.
+    # If GPT omits any approved source, append that source as
+    # a fallback candidate so production can keep trying until
+    # the 8-minute gameplay target is reached or the approved
+    # pool is genuinely exhausted.
+    # -----------------------------------------------------
+
+    planned_candidates = []
+    planned_source_numbers = set()
+
     for cand in plan.get(
         "candidates",
         []
     ):
+        try:
+            n = int(
+                cand["source_number"]
+            )
+        except Exception:
+            continue
+
+        if (
+            n < 1
+            or n > len(sources)
+            or n in planned_source_numbers
+        ):
+            continue
+
+        planned_source_numbers.add(n)
+        planned_candidates.append(cand)
+
+    for n, source in enumerate(
+        sources,
+        1,
+    ):
+        if n in planned_source_numbers:
+            continue
+
+        total = probe_duration(
+            source["local_path"]
+        )
+
+        # Deterministic fallback excerpt:
+        # use up to the first 40 seconds of the already-approved
+        # source and leave a source-only payoff at the end.
+        fallback_end = min(
+            total,
+            40.0,
+        )
+
+        if fallback_end < 8.0:
+            continue
+
+        fallback_payoff = min(
+            18.0,
+            max(
+                5.0,
+                fallback_end - 10.0,
+            ),
+        )
+
+        planned_candidates.append(
+            {
+                "source_number": n,
+                "start": 0.0,
+                "end": fallback_end,
+                "setup": (
+                    "Watch how this gaming moment develops."
+                ),
+                "payoff_start": fallback_payoff,
+                "fallback_candidate": True,
+            }
+        )
+
+    print(
+        "\nV1.5 candidate coverage: "
+        f"{len(plan.get('candidates', []))} GPT-planned | "
+        f"{len(planned_candidates)} total attempts available | "
+        f"{len(sources)} approved sources."
+    )
+
+    for cand in planned_candidates:
 
         if len(used) >= MAX_GOOD_CLIPS:
             break
