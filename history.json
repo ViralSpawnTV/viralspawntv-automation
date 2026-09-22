@@ -254,6 +254,17 @@
       "youtube_video_id": "1QJB0snGuW8",
       "privacy_status": "public",
       "processed_at_utc": "2026-09-22T20:14:14.501865+00:00"
+    },
+    {
+      "clip_id": "clip_01M2RWYGFRKJG32GS05GWTBAMM",
+      "clip_url": "https://kick.com/gavin_croghan/clips/clip_01M2RWYGFRKJG32GS05GWTBAMM",
+      "source": "https://kick.com/gavin_croghan/clips/clip_01M2RWYGFRKJG32GS05GWTBAMM",
+      "creator": "gavin_croghan",
+      "channel": "gavin_croghan",
+      "game": "",
+      "youtube_video_id": "hrjAv21FpjQ",
+      "privacy_status": "public",
+      "processed_at_utc": "2026-09-22T22:17:46.133255+00:00"
     }
   ]
 }
