@@ -331,6 +331,17 @@
       "youtube_video_id": "d-8LHO7x8dI",
       "privacy_status": "public",
       "processed_at_utc": "2026-09-23T14:14:46.760366+00:00"
+    },
+    {
+      "clip_id": "clip_01M2P897ZX8MMWS2B00SH6GAT4",
+      "clip_url": "https://kick.com/cyborganics/clips/clip_01M2P897ZX8MMWS2B00SH6GAT4",
+      "source": "https://kick.com/cyborganics/clips/clip_01M2P897ZX8MMWS2B00SH6GAT4",
+      "creator": "cyborganics",
+      "channel": "cyborganics",
+      "game": "",
+      "youtube_video_id": "7f0WtF1klk8",
+      "privacy_status": "public",
+      "processed_at_utc": "2026-09-23T16:21:02.712102+00:00"
     }
   ]
 }
