@@ -298,6 +298,17 @@
       "youtube_video_id": "2Rn5j_rAx8A",
       "privacy_status": "public",
       "processed_at_utc": "2026-09-23T04:18:02.755975+00:00"
+    },
+    {
+      "clip_id": "clip_01M2PW167KM21SAK8WP5CNWB7Z",
+      "clip_url": "https://kick.com/scythemane/clips/clip_01M2PW167KM21SAK8WP5CNWB7Z",
+      "source": "https://kick.com/scythemane/clips/clip_01M2PW167KM21SAK8WP5CNWB7Z",
+      "creator": "scythemane",
+      "channel": "scythemane",
+      "game": "",
+      "youtube_video_id": "uV85rMFzR6g",
+      "privacy_status": "public",
+      "processed_at_utc": "2026-09-23T06:18:55.964693+00:00"
     }
   ]
 }
