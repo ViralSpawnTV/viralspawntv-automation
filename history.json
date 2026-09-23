@@ -342,6 +342,17 @@
       "youtube_video_id": "7f0WtF1klk8",
       "privacy_status": "public",
       "processed_at_utc": "2026-09-23T16:21:02.712102+00:00"
+    },
+    {
+      "clip_id": "clip_01M2M6XZTST45T7EZDYS44WG5M",
+      "clip_url": "https://kick.com/nyanus/clips/clip_01M2M6XZTST45T7EZDYS44WG5M",
+      "source": "https://kick.com/nyanus/clips/clip_01M2M6XZTST45T7EZDYS44WG5M",
+      "creator": "nyanus",
+      "channel": "nyanus",
+      "game": "",
+      "youtube_video_id": "glb6_FRU4qU",
+      "privacy_status": "public",
+      "processed_at_utc": "2026-09-23T18:18:19.909243+00:00"
     }
   ]
 }
