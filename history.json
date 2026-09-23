@@ -309,6 +309,17 @@
       "youtube_video_id": "uV85rMFzR6g",
       "privacy_status": "public",
       "processed_at_utc": "2026-09-23T06:18:55.964693+00:00"
+    },
+    {
+      "clip_id": "clip_01M2R783K9CSYABR7B842ZYPMN",
+      "clip_url": "https://kick.com/w1llyv/clips/clip_01M2R783K9CSYABR7B842ZYPMN",
+      "source": "https://kick.com/w1llyv/clips/clip_01M2R783K9CSYABR7B842ZYPMN",
+      "creator": "w1llyv",
+      "channel": "w1llyv",
+      "game": "",
+      "youtube_video_id": "e6OU8FTvmqg",
+      "privacy_status": "public",
+      "processed_at_utc": "2026-09-23T08:19:28.552085+00:00"
     }
   ]
 }
