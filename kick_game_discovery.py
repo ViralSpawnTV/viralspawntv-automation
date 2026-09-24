@@ -1,4 +1,5 @@
 import json
+import os
 import re
 import sys
 from datetime import datetime, timezone, timedelta
@@ -13,8 +14,11 @@ MANIFEST_PATH = Path("work/v11_candidate_manifest.json")
 MAX_PUBLIC_UPLOADS_PER_CREATOR_24H = 2
 MAX_PUBLIC_UPLOADS_PER_GAME_24H = 4
 DIVERSITY_WINDOW_HOURS = 24
-MAX_CLIPS_PER_GAME = 18
-MAX_TOTAL_CANDIDATES = 80
+
+# Default behavior remains exactly the same for Shorts.
+# Long-form can override these values from its GitHub Actions workflow.
+MAX_CLIPS_PER_GAME = int(os.getenv("DISCOVERY_MAX_CLIPS_PER_GAME", "18"))
+MAX_TOTAL_CANDIDATES = int(os.getenv("DISCOVERY_MAX_TOTAL_CANDIDATES", "80"))
 
 USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -133,7 +137,10 @@ def discover_category(page, game, slug):
     # unexpectedly expose gambling language prominently.
     lowered = body.lower()
     if any(term in lowered for term in GAMBLING_TERMS):
-        print("Category page contains gambling terms; individual clips still filtered downstream.")
+        print(
+            "Category page contains gambling terms; "
+            "individual clips still filtered downstream."
+        )
 
     patterns = [
         r'href=["\'](/[^"\']+/clips/clip_[A-Za-z0-9_-]+)["\']',
@@ -174,6 +181,8 @@ def main():
     print("ViralSpawnTV V11 Game-First Batch Discovery")
     print("================================================")
     print(f"Used clips in history: {len(used)}")
+    print(f"Max clips per game: {MAX_CLIPS_PER_GAME}")
+    print(f"Max total candidates: {MAX_TOTAL_CANDIDATES}")
 
     per_game = {}
 
@@ -229,6 +238,8 @@ def main():
         "created_at_utc": datetime.now(timezone.utc).isoformat(),
         "creator_cap_24h": MAX_PUBLIC_UPLOADS_PER_CREATOR_24H,
         "game_cap_24h": MAX_PUBLIC_UPLOADS_PER_GAME_24H,
+        "max_clips_per_game": MAX_CLIPS_PER_GAME,
+        "max_total_candidates": MAX_TOTAL_CANDIDATES,
         "games_with_candidates": list(per_game.keys()),
         "candidate_count": len(candidates),
         "candidates": candidates,
@@ -245,7 +256,9 @@ def main():
     print(f"Batch candidate count: {len(candidates)}")
 
     if not candidates:
-        raise RuntimeError("V11 discovery found no eligible game-category clips.")
+        raise RuntimeError(
+            "V11 discovery found no eligible game-category clips."
+        )
 
     print("V11 batch discovery complete.")
 
