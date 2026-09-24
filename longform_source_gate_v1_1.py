@@ -11,6 +11,9 @@ ROOT = Path("work/longform")
 META = ROOT / "acquired_sources.json"
 OUT = ROOT / "screened_sources.json"
 
+# Permanent long-form source rejection history.
+REJECTED_HISTORY = Path("longform_rejected_history.json")
+
 VERSION = "1.2-english-only"
 
 BLOCKED = [
@@ -94,6 +97,178 @@ def meaningful_speech(text):
         len(words) >= MIN_LANGUAGE_WORDS
         and len(alphanumeric)
         >= MIN_LANGUAGE_CHARACTERS
+    )
+
+
+def load_rejected_history():
+    """
+    Load permanent long-form rejection history.
+
+    Preferred format:
+    {
+      "version": 1,
+      "rejected_clips": [...]
+    }
+
+    A legacy list is accepted for compatibility.
+    """
+
+    if not REJECTED_HISTORY.exists():
+        return {
+            "version": 1,
+            "rejected_clips": [],
+        }
+
+    try:
+        data = json.loads(
+            REJECTED_HISTORY.read_text(
+                encoding="utf-8"
+            )
+        )
+    except Exception:
+        return {
+            "version": 1,
+            "rejected_clips": [],
+        }
+
+    if isinstance(data, list):
+        return {
+            "version": 1,
+            "rejected_clips": data,
+        }
+
+    if not isinstance(data, dict):
+        return {
+            "version": 1,
+            "rejected_clips": [],
+        }
+
+    data.setdefault("version", 1)
+    data.setdefault("rejected_clips", [])
+
+    if not isinstance(
+        data.get("rejected_clips"),
+        list,
+    ):
+        data["rejected_clips"] = []
+
+    return data
+
+
+def save_permanent_rejections(rows):
+    """
+    Merge source-gate content rejections into permanent history.
+
+    This function is called before the minimum-pass-count check so
+    valid rejections are retained even when the overall source gate
+    later fails for having too few passing sources.
+    """
+
+    history = load_rejected_history()
+
+    existing = history.get(
+        "rejected_clips",
+        [],
+    )
+
+    merged = []
+    seen_ids = set()
+    seen_urls = set()
+
+    def add_item(item):
+        if not isinstance(item, dict):
+            return
+
+        clip_id = str(
+            item.get("clip_id")
+            or ""
+        ).strip()
+
+        clip_url = str(
+            item.get("clip_url")
+            or item.get("source")
+            or ""
+        ).strip()
+
+        if clip_id and clip_id in seen_ids:
+            return
+
+        if (
+            not clip_id
+            and clip_url
+            and clip_url in seen_urls
+        ):
+            return
+
+        if clip_id:
+            seen_ids.add(clip_id)
+
+        if clip_url:
+            seen_urls.add(clip_url)
+
+        merged.append(item)
+
+    for item in existing:
+        if isinstance(item, str):
+            item = {
+                "clip_id": item,
+                "reason": "legacy_rejection",
+            }
+
+        add_item(item)
+
+    for row in rows:
+        verdict = row.get(
+            "source_gate",
+            {},
+        )
+
+        reason = str(
+            verdict.get(
+                "reason",
+                "longform_source_gate_reject",
+            )
+        ).strip()
+
+        add_item({
+            "clip_id": row.get("clip_id"),
+            "clip_url": (
+                row.get("clip_url")
+                or row.get("source")
+            ),
+            "game": row.get("game"),
+            "channel": row.get("channel"),
+            "reason": reason,
+            "rejection_stage": "source_gate",
+            "music_risk": bool(
+                verdict.get("music_risk")
+            ),
+            "gambling_risk": bool(
+                verdict.get("gambling_risk")
+            ),
+            "language_risk": bool(
+                verdict.get("language_risk")
+            ),
+            "detected_language": row.get(
+                "detected_language"
+            ),
+        })
+
+    REJECTED_HISTORY.write_text(
+        json.dumps(
+            {
+                "version": 1,
+                "rejected_clips": merged,
+            },
+            indent=2,
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+
+    print(
+        "\nPermanent long-form rejection history: "
+        f"{len(merged)} clips."
     )
 
 
@@ -447,6 +622,13 @@ TRANSCRIPT:
                 + "; ".join(reasons)
             )
 
+    # Persist deterministic source/content/language rejections before
+    # checking whether enough clips survived. This means a failed overall
+    # run still remembers clips that were conclusively rejected.
+    save_permanent_rejections(
+        rejected
+    )
+
     if len(passed) < 5:
         raise RuntimeError(
             f"Only {len(passed)} sources "
@@ -466,6 +648,8 @@ TRANSCRIPT:
                     len(passed),
                 "rejected_count":
                     len(rejected),
+                "rejected_history_file":
+                    str(REJECTED_HISTORY),
                 "passed_sources":
                     passed,
                 "rejected_sources":
