@@ -353,6 +353,17 @@
       "youtube_video_id": "glb6_FRU4qU",
       "privacy_status": "public",
       "processed_at_utc": "2026-09-23T18:18:19.909243+00:00"
+    },
+    {
+      "clip_id": "clip_01M2XT83ZG4YXY34X7JKYN49X9",
+      "clip_url": "https://kick.com/kaflx/clips/clip_01M2XT83ZG4YXY34X7JKYN49X9",
+      "source": "https://kick.com/kaflx/clips/clip_01M2XT83ZG4YXY34X7JKYN49X9",
+      "creator": "kaflx",
+      "channel": "kaflx",
+      "game": "",
+      "youtube_video_id": "UOzFsa5ikoc",
+      "privacy_status": "public",
+      "processed_at_utc": "2026-09-24T00:17:58.594381+00:00"
     }
   ]
 }
