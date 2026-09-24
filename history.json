@@ -386,6 +386,17 @@
       "youtube_video_id": "x7aY5Krxkc0",
       "privacy_status": "public",
       "processed_at_utc": "2026-09-24T18:18:18.400811+00:00"
+    },
+    {
+      "clip_id": "clip_01M2XGWPSTVB67Z3N61756A065",
+      "clip_url": "https://kick.com/imchakram/clips/clip_01M2XGWPSTVB67Z3N61756A065",
+      "source": "https://kick.com/imchakram/clips/clip_01M2XGWPSTVB67Z3N61756A065",
+      "creator": "imchakram",
+      "channel": "imchakram",
+      "game": "",
+      "youtube_video_id": "RoPQdtlo70Y",
+      "privacy_status": "public",
+      "processed_at_utc": "2026-09-24T21:46:32.109746+00:00"
     }
   ]
 }
