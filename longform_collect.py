@@ -11,20 +11,13 @@ RANKED = Path("work/longform/ranked_sources.json")
 OUT = Path("work/longform/sources")
 META = Path("work/longform/acquired_sources.json")
 
-# V1.5 expanded source pool.
+# V1.5.1 expanded source reserve.
 #
-# Ranker can now provide up to 48 candidates.
-# We acquire a deeper reserve so the pipeline can survive:
-# - acquisition failures
-# - English-language rejection
-# - music/content rejection
-# - source quality rejection
-# - motion/activity rejection
-#
-# Production still determines which clips actually appear in
-# the final 8-10 minute episode.
-TARGET = 42
-MIN_ACQUIRED = 15
+# The English/content gate can reject a large percentage of acquired clips.
+# Attempt a much deeper ranked bench before production. This does NOT weaken
+# language, music, content, quality, motion, or production requirements.
+TARGET = 72
+MIN_ACQUIRED = 25
 
 
 USER_AGENT = (
@@ -227,14 +220,14 @@ def main():
         raise RuntimeError(
             f"Only acquired "
             f"{len(acquired)} clips. "
-            f"V1.5 requires at least "
+            f"V1.5.1 requires at least "
             f"{MIN_ACQUIRED}."
         )
 
     META.write_text(
         json.dumps(
             {
-                "version": "1.5",
+                "version": "1.5.1-deeper-reserve",
                 "target_acquired":
                     TARGET,
                 "minimum_acquired":
@@ -245,6 +238,8 @@ def main():
                     attempted,
                 "acquired_count":
                     len(acquired),
+                "exhausted_ranked_pool":
+                    attempted >= len(candidates),
                 "sources":
                     acquired,
             },
@@ -256,7 +251,7 @@ def main():
 
     print(
         "\n"
-        f"V1.5 collector attempted "
+        f"V1.5.1 collector attempted "
         f"{attempted} ranked candidates."
     )
 
@@ -269,6 +264,12 @@ def main():
         f"Ranked candidates available: "
         f"{len(candidates)}"
     )
+
+    if len(acquired) < TARGET:
+        print(
+            f"Collector exhausted the ranked bench "
+            f"before reaching the {TARGET}-source target."
+        )
 
 
 if __name__ == "__main__":
