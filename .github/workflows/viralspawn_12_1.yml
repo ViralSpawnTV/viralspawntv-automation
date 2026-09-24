@@ -69,12 +69,22 @@ jobs:
 
           def load_history(path):
               if not path.exists():
-                  return {"version": 1, "used_clips": []}
+                  return {
+                      "version": 1,
+                      "used_clips": []
+                  }
 
               try:
-                  data = json.loads(path.read_text(encoding="utf-8"))
+                  data = json.loads(
+                      path.read_text(
+                          encoding="utf-8"
+                      )
+                  )
               except Exception:
-                  return {"version": 1, "used_clips": []}
+                  return {
+                      "version": 1,
+                      "used_clips": []
+                  }
 
               if isinstance(data, list):
                   return {
@@ -88,60 +98,149 @@ jobs:
                       "used_clips": []
                   }
 
-              clips = data.get("used_clips")
+              clips = data.get(
+                  "used_clips"
+              )
 
-              if not isinstance(clips, list):
+              if not isinstance(
+                  clips,
+                  list
+              ):
                   clips = []
 
-              data["version"] = data.get("version", 1)
+              data["version"] = data.get(
+                  "version",
+                  1
+              )
+
               data["used_clips"] = clips
 
               return data
 
-          latest = load_history(latest_path)
-          uploaded = load_history(uploaded_path)
+          latest = load_history(
+              latest_path
+          )
 
-          latest_clips = latest["used_clips"]
-          uploaded_clips = uploaded["used_clips"]
+          uploaded = load_history(
+              uploaded_path
+          )
+
+          latest_clips = latest[
+              "used_clips"
+          ]
+
+          uploaded_clips = uploaded[
+              "used_clips"
+          ]
 
           existing_clip_ids = {
-              str(item.get("clip_id"))
+              str(
+                  item.get(
+                      "clip_id"
+                  )
+              )
               for item in latest_clips
-              if isinstance(item, dict) and item.get("clip_id")
+              if (
+                  isinstance(
+                      item,
+                      dict
+                  )
+                  and item.get(
+                      "clip_id"
+                  )
+              )
           }
 
           existing_urls = {
-              str(item.get("clip_url") or item.get("source"))
+              str(
+                  item.get(
+                      "clip_url"
+                  )
+                  or item.get(
+                      "source"
+                  )
+              )
               for item in latest_clips
-              if isinstance(item, dict)
-              and (item.get("clip_url") or item.get("source"))
+              if (
+                  isinstance(
+                      item,
+                      dict
+                  )
+                  and (
+                      item.get(
+                          "clip_url"
+                      )
+                      or item.get(
+                          "source"
+                      )
+                  )
+              )
           }
 
           added = 0
 
           for item in uploaded_clips:
-              if not isinstance(item, dict):
+
+              if not isinstance(
+                  item,
+                  dict
+              ):
                   continue
 
-              clip_id = item.get("clip_id")
-              clip_url = item.get("clip_url") or item.get("source")
+              clip_id = item.get(
+                  "clip_id"
+              )
 
-              if clip_id and str(clip_id) in existing_clip_ids:
+              clip_url = (
+                  item.get(
+                      "clip_url"
+                  )
+                  or item.get(
+                      "source"
+                  )
+              )
+
+              if (
+                  clip_id
+                  and str(
+                      clip_id
+                  )
+                  in existing_clip_ids
+              ):
                   continue
 
-              if clip_url and str(clip_url) in existing_urls:
+              if (
+                  clip_url
+                  and str(
+                      clip_url
+                  )
+                  in existing_urls
+              ):
                   continue
 
-              latest_clips.append(item)
+              latest_clips.append(
+                  item
+              )
+
               added += 1
 
               if clip_id:
-                  existing_clip_ids.add(str(clip_id))
+                  existing_clip_ids.add(
+                      str(
+                          clip_id
+                      )
+                  )
 
               if clip_url:
-                  existing_urls.add(str(clip_url))
+                  existing_urls.add(
+                      str(
+                          clip_url
+                      )
+                  )
 
-          latest["used_clips"] = latest_clips
+          latest[
+              "used_clips"
+          ] = latest_clips
 
           latest_path.write_text(
               json.dumps(
@@ -152,8 +251,15 @@ jobs:
               encoding="utf-8"
           )
 
-          print(f"Merged {added} new history entr{'y' if added == 1 else 'ies'}.")
-          print(f"Total history entries: {len(latest_clips)}")
+          print(
+              f"Merged {added} new history "
+              f"entr{'y' if added == 1 else 'ies'}."
+          )
+
+          print(
+              f"Total history entries: "
+              f"{len(latest_clips)}"
+          )
           PY
 
           git config user.name "ViralSpawnTV Automation"
@@ -171,6 +277,183 @@ jobs:
 
           echo "history.json successfully merged and persisted."
 
+      # -------------------------------------------------------
+      # PERMANENT REJECTION HISTORY
+      #
+      # This MUST run even when:
+      # - all 15 expensive attempts fail
+      # - production exits non-zero
+      # - upload is skipped
+      #
+      # Otherwise rejected clips disappear with the temporary
+      # GitHub Actions runner and can be selected again later.
+      # -------------------------------------------------------
+
+      - name: Persist Shorts rejection history
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          GENERATED="/tmp/shorts_rejected_after_run.json"
+
+          if [ -f shorts_rejected_history.json ]; then
+            cp shorts_rejected_history.json "$GENERATED"
+            echo "Captured rejection history generated by this run."
+          else
+            echo '{"version":1,"clip_ids":[]}' > "$GENERATED"
+            echo "No rejection history file existed; using an empty rejection set."
+          fi
+
+          git config user.name "ViralSpawnTV Automation"
+          git config user.email "actions@users.noreply.github.com"
+
+          ATTEMPT=1
+          MAX_ATTEMPTS=3
+
+          while [ "$ATTEMPT" -le "$MAX_ATTEMPTS" ]; do
+
+            echo "Rejection-history persistence attempt $ATTEMPT/$MAX_ATTEMPTS"
+
+            git fetch origin main
+            git reset --hard origin/main
+
+            python - <<'PY'
+          import json
+          from pathlib import Path
+
+          latest_path = Path(
+              "shorts_rejected_history.json"
+          )
+
+          generated_path = Path(
+              "/tmp/shorts_rejected_after_run.json"
+          )
+
+
+          def load_rejections(path):
+
+              if not path.exists():
+                  return set()
+
+              try:
+                  data = json.loads(
+                      path.read_text(
+                          encoding="utf-8"
+                      )
+                  )
+              except Exception:
+                  return set()
+
+              if isinstance(
+                  data,
+                  list
+              ):
+                  rows = data
+
+              elif isinstance(
+                  data,
+                  dict
+              ):
+                  rows = data.get(
+                      "clip_ids",
+                      []
+                  )
+
+              else:
+                  rows = []
+
+              result = set()
+
+              for item in rows:
+
+                  clip_id = str(
+                      item
+                  ).strip()
+
+                  if clip_id:
+                      result.add(
+                          clip_id
+                      )
+
+              return result
+
+
+          latest = load_rejections(
+              latest_path
+          )
+
+          generated = load_rejections(
+              generated_path
+          )
+
+          before = len(
+              latest
+          )
+
+          merged = (
+              latest
+              | generated
+          )
+
+          latest_path.write_text(
+              json.dumps(
+                  {
+                      "version": 1,
+                      "clip_ids": sorted(
+                          merged
+                      ),
+                  },
+                  indent=2,
+                  ensure_ascii=False,
+              ) + "\n",
+              encoding="utf-8",
+          )
+
+          print(
+              f"Existing permanent rejected IDs: "
+              f"{before}"
+          )
+
+          print(
+              f"Rejected IDs generated/known "
+              f"during this run: "
+              f"{len(generated)}"
+          )
+
+          print(
+              f"Permanent rejected IDs after merge: "
+              f"{len(merged)}"
+          )
+
+          print(
+              f"New rejected IDs added: "
+              f"{len(merged) - before}"
+          )
+          PY
+
+            git add shorts_rejected_history.json
+
+            if git diff --cached --quiet -- shorts_rejected_history.json; then
+              echo "No new rejected clip IDs to persist."
+              exit 0
+            fi
+
+            git commit -m "Update Shorts rejection history"
+
+            if git push origin HEAD:main; then
+              echo "shorts_rejected_history.json successfully merged and persisted."
+              exit 0
+            fi
+
+            echo "Push conflict detected. Refreshing main and retrying."
+
+            ATTEMPT=$((ATTEMPT + 1))
+          done
+
+          echo "Failed to persist Shorts rejection history after $MAX_ATTEMPTS attempts."
+          exit 1
+
       - name: Upload V12.1 diagnostics
         if: always()
         uses: actions/upload-artifact@v4
@@ -179,6 +462,7 @@ jobs:
           retention-days: 7
           path: |
             history.json
+            shorts_rejected_history.json
             work/v11_candidate_manifest.json
             work/v12_ranked_candidates.json
             work/v12_attempt_log.json
