@@ -14,6 +14,10 @@ OUT = Path("work/longform/ranked_sources.json")
 # ViralSpawnTV long-form videos.
 LONGFORM_HISTORY = Path("longform_history.json")
 
+# Permanent history of long-form clips that passed discovery but were
+# later proven unusable by a content/quality/language/activity gate.
+LONGFORM_REJECTED_HISTORY = Path("longform_rejected_history.json")
+
 # V1.5 expanded source pool.
 #
 # Inspect the full discovery manifest and give downstream gates
@@ -104,6 +108,136 @@ def load_longform_history():
         data["used_clips"] = []
 
     return data
+
+
+def load_longform_rejected_history():
+    """
+    Load permanent long-form rejection history.
+
+    Supports the preferred dict format:
+    {"version": 1, "rejected_clips": [...]}
+
+    A legacy list is also accepted.
+    """
+
+    if not LONGFORM_REJECTED_HISTORY.exists():
+        return {
+            "version": 1,
+            "rejected_clips": [],
+        }
+
+    try:
+        data = json.loads(
+            LONGFORM_REJECTED_HISTORY.read_text(
+                encoding="utf-8"
+            )
+        )
+    except Exception:
+        return {
+            "version": 1,
+            "rejected_clips": [],
+        }
+
+    if isinstance(data, list):
+        return {
+            "version": 1,
+            "rejected_clips": data,
+        }
+
+    if not isinstance(data, dict):
+        return {
+            "version": 1,
+            "rejected_clips": [],
+        }
+
+    data.setdefault("version", 1)
+    data.setdefault("rejected_clips", [])
+
+    if not isinstance(
+        data.get("rejected_clips"),
+        list,
+    ):
+        data["rejected_clips"] = []
+
+    return data
+
+
+def build_rejected_clip_sets(history):
+    """
+    Build permanent exclusion sets from clips previously rejected by
+    long-form content/quality/language/activity gates.
+    """
+
+    rejected_clip_ids = set()
+    rejected_clip_urls = set()
+
+    for item in history.get(
+        "rejected_clips",
+        [],
+    ):
+        if isinstance(item, str):
+            clip_id = item.strip()
+            clip_url = ""
+        elif isinstance(item, dict):
+            clip_id = str(
+                item.get("clip_id")
+                or ""
+            ).strip()
+
+            clip_url = str(
+                item.get("clip_url")
+                or item.get("source")
+                or ""
+            ).strip()
+        else:
+            continue
+
+        if clip_id:
+            rejected_clip_ids.add(clip_id)
+
+        if clip_url:
+            rejected_clip_urls.add(clip_url)
+
+    return (
+        rejected_clip_ids,
+        rejected_clip_urls,
+    )
+
+
+def candidate_was_rejected(
+    candidate,
+    rejected_clip_ids,
+    rejected_clip_urls,
+):
+    """
+    Return True when this exact source has already been permanently
+    rejected by a downstream long-form gate.
+    """
+
+    clip_id = str(
+        candidate.get("clip_id")
+        or ""
+    ).strip()
+
+    clip_url = str(
+        candidate.get("clip_url")
+        or candidate.get("source")
+        or ""
+    ).strip()
+
+    if (
+        clip_id
+        and clip_id in rejected_clip_ids
+    ):
+        return True
+
+    if (
+        clip_url
+        and clip_url in rejected_clip_urls
+    ):
+        return True
+
+    return False
 
 
 def build_used_clip_sets(history):
@@ -281,8 +415,18 @@ def main():
         used_clip_urls,
     ) = build_used_clip_sets(history)
 
+    rejected_history = load_longform_rejected_history()
+
+    (
+        rejected_clip_ids,
+        rejected_clip_urls,
+    ) = build_rejected_clip_sets(
+        rejected_history
+    )
+
     eligible_candidates = []
     skipped_history = []
+    skipped_rejected = []
 
     for candidate in all_candidates:
 
@@ -292,6 +436,16 @@ def main():
             used_clip_urls,
         ):
             skipped_history.append(
+                candidate
+            )
+            continue
+
+        if candidate_was_rejected(
+            candidate,
+            rejected_clip_ids,
+            rejected_clip_urls,
+        ):
+            skipped_rejected.append(
                 candidate
             )
             continue
@@ -329,6 +483,31 @@ def main():
             f"{candidate.get('channel', '')}"
         )
 
+    print(
+        f"  Permanently rejected clip IDs: "
+        f"{len(rejected_clip_ids)}"
+    )
+
+    print(
+        f"  Permanently rejected source URLs: "
+        f"{len(rejected_clip_urls)}"
+    )
+
+    print(
+        f"  Discovery candidates excluded "
+        f"by rejection history: "
+        f"{len(skipped_rejected)}"
+    )
+
+    for candidate in skipped_rejected:
+
+        print(
+            "  SKIPPED REJECTED CLIP: "
+            f"{candidate.get('clip_id', '')} | "
+            f"{candidate.get('game', '')} | "
+            f"{candidate.get('channel', '')}"
+        )
+
     candidates = eligible_candidates[
         :MAX_INSPECT
     ]
@@ -336,9 +515,9 @@ def main():
     if not candidates:
 
         raise RuntimeError(
-            "All discovery candidates were "
-            "already used in previous "
-            "long-form videos."
+            "All discovery candidates were already used "
+            "or permanently rejected by previous "
+            "long-form runs."
         )
 
     inspected = []
@@ -406,8 +585,9 @@ English-language, music/content, motion/activity and audio checks.
 Because some clips will be rejected later, provide a DEEP ranked
 bench of good candidates.
 
-Clips previously published in ViralSpawnTV long-form videos have
-already been removed from this candidate list.
+Clips previously published in ViralSpawnTV long-form videos and clips
+previously rejected by permanent downstream quality/content/language/activity
+gates have already been removed from this candidate list.
 
 Prefer clips likely to contain a clear visual event:
 
@@ -535,6 +715,13 @@ CANDIDATES:
         ):
             continue
 
+        if candidate_was_rejected(
+            candidate,
+            rejected_clip_ids,
+            rejected_clip_urls,
+        ):
+            continue
+
         creator = (
             candidate.get(
                 "channel",
@@ -626,6 +813,14 @@ CANDIDATES:
                     len(used_clip_urls),
                 "history_excluded_count":
                     len(skipped_history),
+                "rejected_history_file":
+                    str(LONGFORM_REJECTED_HISTORY),
+                "rejected_clip_ids":
+                    len(rejected_clip_ids),
+                "rejected_urls":
+                    len(rejected_clip_urls),
+                "rejected_history_excluded_count":
+                    len(skipped_rejected),
                 "eligible_before_inspection":
                     len(eligible_candidates),
                 "inspected_count":
@@ -649,8 +844,13 @@ CANDIDATES:
     )
 
     print(
-        f"Permanent history excluded "
+        f"Permanent used history excluded "
         f"{len(skipped_history)} candidates."
+    )
+
+    print(
+        f"Permanent rejection history excluded "
+        f"{len(skipped_rejected)} candidates."
     )
 
     for i, candidate in enumerate(
