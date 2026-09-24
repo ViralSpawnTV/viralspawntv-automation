@@ -22,6 +22,27 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Refresh latest Shorts histories before discovery
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin main
+          git checkout -B main origin/main
+          echo "Runner refreshed to latest origin/main before Shorts discovery."
+          echo "Current commit: $(git rev-parse HEAD)"
+          if [ -f history.json ]; then
+            echo "history.json loaded from latest main."
+          else
+            echo '{"version":1,"used_clips":[]}' > history.json
+            echo "Created empty history.json."
+          fi
+          if [ -f shorts_rejected_history.json ]; then
+            echo "shorts_rejected_history.json loaded from latest main."
+          else
+            echo '{"version":1,"clip_ids":[]}' > shorts_rejected_history.json
+            echo "Created empty shorts_rejected_history.json."
+          fi
+
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
@@ -273,9 +294,94 @@ jobs:
           fi
 
           git commit -m "Record published ViralSpawnTV Short"
-          git push origin HEAD:main
 
-          echo "history.json successfully merged and persisted."
+          if git push origin HEAD:main; then
+            echo "history.json successfully merged and persisted."
+            exit 0
+          fi
+
+          echo "History push conflicted with a newer main commit. Re-merging once."
+
+          cp history.json /tmp/retry_history_after_upload.json
+          git fetch origin main
+          git reset --hard origin/main
+
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          latest_path = Path("history.json")
+          uploaded_path = Path("/tmp/retry_history_after_upload.json")
+
+          def load_history(path):
+              if not path.exists():
+                  return {"version": 1, "used_clips": []}
+              try:
+                  data = json.loads(path.read_text(encoding="utf-8"))
+              except Exception:
+                  return {"version": 1, "used_clips": []}
+              if isinstance(data, list):
+                  return {"version": 1, "used_clips": data}
+              if not isinstance(data, dict):
+                  return {"version": 1, "used_clips": []}
+              clips = data.get("used_clips", [])
+              if not isinstance(clips, list):
+                  clips = []
+              data["version"] = data.get("version", 1)
+              data["used_clips"] = clips
+              return data
+
+          latest = load_history(latest_path)
+          uploaded = load_history(uploaded_path)
+
+          merged = []
+          seen_ids = set()
+          seen_urls = set()
+
+          def add(item):
+              if not isinstance(item, dict):
+                  return
+              clip_id = str(item.get("clip_id") or "").strip()
+              clip_url = str(
+                  item.get("clip_url")
+                  or item.get("source")
+                  or ""
+              ).strip()
+              if clip_id and clip_id in seen_ids:
+                  return
+              if clip_url and clip_url in seen_urls:
+                  return
+              if not clip_id and not clip_url:
+                  return
+              merged.append(item)
+              if clip_id:
+                  seen_ids.add(clip_id)
+              if clip_url:
+                  seen_urls.add(clip_url)
+
+          for item in latest.get("used_clips", []):
+              add(item)
+          for item in uploaded.get("used_clips", []):
+              add(item)
+
+          latest["used_clips"] = merged
+          latest_path.write_text(
+              json.dumps(latest, indent=2, ensure_ascii=False) + "\n",
+              encoding="utf-8",
+          )
+          print(f"Retry merge contains {len(merged)} permanent used clips.")
+          PY
+
+          git add history.json
+
+          if git diff --cached --quiet -- history.json; then
+            echo "Successful Short history already exists on latest main."
+            exit 0
+          fi
+
+          git commit -m "Record published ViralSpawnTV Short"
+          git push origin HEAD:main
+          echo "history.json successfully persisted after re-merge."
 
       # -------------------------------------------------------
       # PERMANENT REJECTION HISTORY
