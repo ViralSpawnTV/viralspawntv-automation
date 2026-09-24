@@ -14,7 +14,13 @@ OUT = ROOT / "screened_sources.json"
 # Permanent long-form source rejection history.
 REJECTED_HISTORY = Path("longform_rejected_history.json")
 
-VERSION = "1.2-english-only"
+VERSION = "1.5.1-english-only-expanded-pool"
+
+# V1.5.1 requires a healthy approved reserve before production.
+# The prior minimum of 5 allowed production to start with far too little
+# footage after language/music/content screening. With the expanded ranker
+# and collector, require 25 approved sources before production begins.
+MIN_PASSED_SOURCES = 25
 
 BLOCKED = [
     "casino",
@@ -629,11 +635,13 @@ TRANSCRIPT:
         rejected
     )
 
-    if len(passed) < 5:
+    if len(passed) < MIN_PASSED_SOURCES:
         raise RuntimeError(
             f"Only {len(passed)} sources "
-            "passed English-language "
-            "source screening."
+            "passed English-language source screening. "
+            f"V1.5.1 requires at least "
+            f"{MIN_PASSED_SOURCES} approved sources "
+            "before production."
         )
 
     OUT.write_text(
@@ -644,6 +652,8 @@ TRANSCRIPT:
                     "English speech or no meaningful speech",
                 "source_count":
                     len(sources),
+                "minimum_passed_sources":
+                    MIN_PASSED_SOURCES,
                 "passed_count":
                     len(passed),
                 "rejected_count":
