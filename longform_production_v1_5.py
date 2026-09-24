@@ -20,7 +20,7 @@ OUTMETA = (
     "ViralSpawnTV_Longform_V1_5_metadata.json"
 )
 
-VOICE = "onyx"
+VOICE = "cedar"  # V1.5.2 natural voice
 
 MIN_GOOD_CLIPS = 5
 MAX_GOOD_CLIPS = 42
@@ -75,7 +75,7 @@ def has_audio(path):
     )
 
 
-def tts(client, text, path):
+def tts(client, text, path, delivery="setup"):
 
     text = (
         (text or "").strip()
@@ -83,22 +83,61 @@ def tts(client, text, path):
         "Watch this."
     )
 
+    styles = {
+        "intro": (
+            "Sound welcoming and confident, but casual. "
+            "Use a little energy without sounding like an announcer."
+        ),
+        "setup": (
+            "Sound like a real gaming creator explaining a clip to a friend. "
+            "Begin relaxed and conversational. Let interest and energy rise "
+            "slightly when the wording points toward the upcoming moment. "
+            "Do not oversell the clip or use a repetitive narrator cadence."
+        ),
+        "excited": (
+            "Sound genuinely impressed. Let excitement build naturally through "
+            "the line with slightly quicker pace, more pitch movement, and "
+            "stronger emphasis near the important phrase. Do not yell."
+        ),
+        "amused": (
+            "Sound genuinely entertained. Use playful timing and let a subtle "
+            "smile come through. Keep it casual."
+        ),
+        "serious": (
+            "Sound focused and slightly restrained. Use deliberate timing and "
+            "natural emphasis for tension without becoming theatrical."
+        ),
+        "outro": (
+            "Sound relaxed, appreciative, and conversational. Keep the call to "
+            "action natural, not like an advertisement or canned sign-off."
+        ),
+    }
+
+    delivery = str(delivery or "setup").lower().strip()
+
+    if delivery not in styles:
+        delivery = "setup"
+
+    instructions = (
+        "Young adult American male gaming creator speaking naturally to viewers. "
+        "Neutral United States accent. "
+        "Sound conversational and spontaneous, not like a commercial, "
+        "documentary, radio host, sports announcer, or text-to-speech system. "
+        "Use natural pitch movement and vary rhythm slightly. "
+        "Do not give every word equal emphasis. Use brief natural pauses when "
+        "the meaning calls for them. Keep pronunciation clear without "
+        "over-enunciating. Do not add words that are not in the script. "
+        + styles[delivery]
+    )
+
     with client.audio.speech.with_streaming_response.create(
         model="gpt-4o-mini-tts",
         voice=VOICE,
         input=text,
-        instructions=(
-            "Young adult American male, "
-            "neutral U.S. accent. "
-            "Natural gaming commentary, "
-            "medium-fast, crisp and conversational. "
-            "Selective excitement. "
-            "Never announcer-like."
-        )
+        instructions=instructions
     ) as r:
 
         r.stream_to_file(path)
-
 
 def vf():
 
@@ -136,7 +175,8 @@ def render_narrated(
     tts(
         CLIENT,
         text,
-        narr
+        narr,
+        delivery="setup"
     )
 
     ndur = probe_duration(narr)
@@ -355,7 +395,18 @@ def render_brand_card(image_path, dest, seconds, speech_text, audio_name):
         raise RuntimeError(f"Missing branding asset: {image_path}")
 
     narr = ROOT / audio_name
-    tts(CLIENT, speech_text, narr)
+    brand_delivery = (
+        "outro"
+        if "outro" in audio_name.lower()
+        else "intro"
+    )
+
+    tts(
+        CLIENT,
+        speech_text,
+        narr,
+        delivery=brand_delivery
+    )
 
     # Animate the permanent artwork with a subtle zoom. The blurred background
     # fills 16:9 even if the source artwork is portrait-oriented.
@@ -500,6 +551,23 @@ CRITICAL EDITING RULES:
 - Leave approximately 7-18 seconds for the source-only payoff.
 - The viewer should not have to wait through dead footage for the moment.
 
+NARRATION WRITING STYLE:
+
+- Write setup narration the way a real gaming creator would SAY it aloud.
+- Use natural American English and contractions where they fit.
+- Vary sentence length and structure across clips.
+- Short conversational fragments are okay when natural.
+- Avoid repetitive templates such as "This player...", "He then...",
+  "What happens next...", and "Watch how..." across the episode.
+- Avoid documentary narration, sports-announcer language, and generic AI
+  summary phrasing.
+- Do not force slang, catchphrases, fake stutters, or filler words.
+- Keep setup narration concise so the source audio and payoff remain the star.
+- Let the wording carry more energy for genuinely intense, funny, surprising,
+  or clutch moments, but do not make every clip sound hyped.
+- Never invent details that are not supported by the approved source metadata
+  or transcript.
+
 Return ONLY JSON:
 
 {{
@@ -629,7 +697,7 @@ SOURCES:
                 "start": 0.0,
                 "end": fallback_end,
                 "setup": (
-                    "Watch how this gaming moment develops."
+                    "Here is where this one starts to turn."
                 ),
                 "payoff_start": fallback_payoff,
                 "fallback_candidate": True,
