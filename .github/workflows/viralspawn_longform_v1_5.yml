@@ -147,6 +147,211 @@ jobs:
           )
           PY
 
+      - name: Persist long-form rejection history
+        if: always()
+        run: |
+          set -e
+
+          # If this run never reached a gate that created rejection history,
+          # there is nothing new to persist.
+          if [ ! -s longform_rejected_history.json ]; then
+            echo "No long-form rejection history generated in this run."
+            exit 0
+          fi
+
+          cp longform_rejected_history.json /tmp/new_longform_rejected_history.json
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          for attempt in 1 2 3; do
+            git fetch origin main
+            git reset --hard origin/main
+
+            python - <<'PY'
+          import json
+          from pathlib import Path
+
+          repo_path = Path("longform_rejected_history.json")
+          new_path = Path("/tmp/new_longform_rejected_history.json")
+
+
+          def load_history(path):
+              if not path.exists():
+                  return {
+                      "version": 1,
+                      "rejected_clips": [],
+                  }
+
+              try:
+                  data = json.loads(
+                      path.read_text(
+                          encoding="utf-8"
+                      )
+                  )
+              except Exception:
+                  return {
+                      "version": 1,
+                      "rejected_clips": [],
+                  }
+
+              if isinstance(data, list):
+                  normalized = []
+
+                  for item in data:
+                      if isinstance(item, str):
+                          normalized.append({
+                              "clip_id": item,
+                              "reason": "legacy_rejection",
+                          })
+                      elif isinstance(item, dict):
+                          normalized.append(item)
+
+                  return {
+                      "version": 1,
+                      "rejected_clips": normalized,
+                  }
+
+              if not isinstance(data, dict):
+                  return {
+                      "version": 1,
+                      "rejected_clips": [],
+                  }
+
+              data.setdefault("version", 1)
+              data.setdefault("rejected_clips", [])
+
+              if not isinstance(
+                  data["rejected_clips"],
+                  list,
+              ):
+                  data["rejected_clips"] = []
+
+              return data
+
+
+          current = load_history(repo_path)
+          new = load_history(new_path)
+
+          merged = []
+          seen_ids = set()
+          seen_urls = set()
+
+
+          def add_item(item):
+              if isinstance(item, str):
+                  item = {
+                      "clip_id": item,
+                      "reason": "legacy_rejection",
+                  }
+
+              if not isinstance(item, dict):
+                  return
+
+              clip_id = str(
+                  item.get("clip_id")
+                  or ""
+              ).strip()
+
+              clip_url = str(
+                  item.get("clip_url")
+                  or item.get("source")
+                  or ""
+              ).strip()
+
+              if clip_id and clip_id in seen_ids:
+                  return
+
+              if (
+                  not clip_id
+                  and clip_url
+                  and clip_url in seen_urls
+              ):
+                  return
+
+              if not clip_id and not clip_url:
+                  return
+
+              merged.append(item)
+
+              if clip_id:
+                  seen_ids.add(clip_id)
+
+              if clip_url:
+                  seen_urls.add(clip_url)
+
+
+          for item in current.get(
+              "rejected_clips",
+              [],
+          ):
+              add_item(item)
+
+          for item in new.get(
+              "rejected_clips",
+              [],
+          ):
+              add_item(item)
+
+
+          repo_path.write_text(
+              json.dumps(
+                  {
+                      "version": 1,
+                      "rejected_clips": merged,
+                  },
+                  indent=2,
+                  ensure_ascii=False,
+              ),
+              encoding="utf-8",
+          )
+
+          print(
+              "Current repository rejection entries:",
+              len(
+                  current.get(
+                      "rejected_clips",
+                      [],
+                  )
+              ),
+          )
+
+          print(
+              "Runner rejection entries:",
+              len(
+                  new.get(
+                      "rejected_clips",
+                      [],
+                  )
+              ),
+          )
+
+          print(
+              "Merged permanent rejection entries:",
+              len(merged),
+          )
+          PY
+
+            git add longform_rejected_history.json
+
+            if git diff --cached --quiet; then
+              echo "Long-form rejection history already current."
+              exit 0
+            fi
+
+            git commit -m "Update longform rejection history"
+
+            if git push origin HEAD:main; then
+              echo "Long-form rejection history successfully persisted."
+              exit 0
+            fi
+
+            echo "Rejection-history push attempt ${attempt} failed. Retrying against latest main..."
+          done
+
+          echo "Unable to persist long-form rejection history after 3 attempts."
+          exit 1
+
       - name: Persist long-form history safely
         run: |
           set -e
@@ -613,3 +818,4 @@ jobs:
             work/longform/ViralSpawnTV_Longform_V1_5_metadata.json
             work/longform/youtube_longform_upload_result_v1_5.json
             longform_history.json
+            longform_rejected_history.json
