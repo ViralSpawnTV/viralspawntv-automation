@@ -548,24 +548,42 @@ hype
 amused
 serious
 
+Write the commentary the way a real gaming creator would actually SAY it,
+not like a documentary narrator, sports announcer, ad read, or AI summary.
+
+Use contractions naturally.
+Vary sentence length.
+Short fragments are allowed when they sound natural.
+Avoid repetitive templates such as "This player...", "He then...", or
+"What happens next..." unless they genuinely fit the moment.
+Do not stuff every sentence with slang.
+Do not force catchphrases.
+Do not use fake stutters, deliberate misspellings, or filler words just
+to imitate a human.
+
 NORMAL:
-natural streamer/commentator.
+relaxed, conversational gaming commentary with natural pitch movement.
 
 EXCITED:
-genuine surprise or rising excitement.
+genuine surprise or rising excitement. Let the energy build through the
+line instead of starting at maximum intensity.
 
 HYPE:
-rare. Only exceptional peak moments.
+rare. Only exceptional peak moments. Fast, punchy, spontaneous reaction
+with a clear rise in energy, but never screaming.
 
 AMUSED:
-funny or ridiculous moments.
+funny or ridiculous moments. Let a smile come through in the delivery;
+slightly playful timing is appropriate.
 
 SERIOUS:
-context, tension, losses, consequences.
+context, tension, losses, consequences. Lower and more focused delivery
+with deliberate pacing.
 
 Most narration should remain normal.
 
 Do NOT make everything sound excited.
+The delivery should change only when the actual clip earns the change.
 
 ============================================================
 WOW / IMPACT SYSTEM
@@ -1264,53 +1282,122 @@ def suppress_captions_during_narration(
 
 
 # ============================================================
-# EMOTIONAL TTS
+# NATURAL, CONTEXT-AWARE TTS
 # ============================================================
+
+# V5.2 VOICE UPDATE
+#
+# Keep the same narration timing/render pipeline, but make the spoken
+# delivery less uniform. The TTS model receives a shared natural-speech
+# direction plus a context-specific direction for each commentary beat.
+#
+# "cedar" is the default because it is one of OpenAI's recommended
+# high-quality built-in voices. TTS_VOICE can still override it from
+# the environment without another code change.
+
+BASE_VOICE_INSTRUCTIONS = (
+    "Young adult American male gaming creator speaking to viewers. "
+    "Neutral United States accent. "
+    "Sound like natural live commentary recorded for a gaming channel, "
+    "not a commercial, documentary, radio host, sports announcer, or "
+    "text-to-speech system. "
+    "Use natural pitch movement, conversational rhythm, and subtle changes "
+    "in pace. Do not give every word equal emphasis. "
+    "Let important words receive emphasis naturally and let unimportant "
+    "words stay relaxed. "
+    "Use brief natural pauses where the sentence meaning calls for them. "
+    "Keep the delivery grounded and believable. "
+    "Do not over-enunciate. Do not sound polished like an advertisement. "
+    "Do not add words that are not in the script. "
+)
 
 DELIVERY_INSTRUCTIONS = {
 
     "normal": (
-        "Young adult American male gaming commentator. "
-        "Neutral United States accent. "
-        "Natural conversational streamer delivery. "
-        "Medium-fast pace. Crisp pronunciation. "
-        "Sound spontaneous and human, not robotic."
+        "Keep this beat relaxed and conversational. "
+        "Start casually, as if reacting while watching the gameplay. "
+        "Use small natural changes in pitch and tempo rather than a flat "
+        "narrator cadence. End the sentence naturally instead of giving it "
+        "an announcer-style finish."
     ),
 
     "excited": (
-        "Young adult American male gaming commentator. "
-        "Neutral United States accent. "
-        "You are genuinely excited by what just happened. "
-        "Increase energy and pace. "
-        "Use natural vocal emphasis and surprise. "
-        "Do not scream. Do not sound like a commercial announcer."
+        "Let genuine excitement build during this beat. "
+        "Begin conversationally, then raise the energy, pitch, and pace "
+        "slightly as the important moment lands. Put stronger emphasis on "
+        "the key phrase near the payoff. Sound surprised and engaged, "
+        "but do not yell or become theatrical."
     ),
 
     "hype": (
-        "Young adult American male streamer reacting live "
-        "to an exceptional moment. "
-        "Neutral United States accent. "
-        "High energy, spontaneous excitement and strong emphasis. "
-        "Speak quickly but remain completely understandable. "
-        "This should sound like a genuine reaction, not an AI narrator."
+        "This is a rare peak gaming moment. "
+        "React with noticeably higher energy and a quicker pace. "
+        "Use a spontaneous punch on the most important words and allow "
+        "the pitch to rise naturally with the moment. Keep it controlled "
+        "and intelligible. It should feel like a real creator reacting "
+        "to a clutch play, not an announcer reading promotional copy."
     ),
 
     "amused": (
-        "Young adult American male gaming commentator. "
-        "Neutral United States accent. "
-        "Sound genuinely amused. "
-        "Use a subtle smile and slight laugh in the voice. "
-        "Keep it conversational and spontaneous."
+        "Sound genuinely entertained by what happened. "
+        "Use playful timing and let a subtle smile be audible in the voice. "
+        "A tiny breathy chuckle quality is okay only if it happens naturally, "
+        "but do not insert extra spoken words or force laughter. "
+        "Keep the line casual and slightly mischievous."
     ),
 
     "serious": (
-        "Young adult American male gaming commentator. "
-        "Neutral United States accent. "
-        "Lower the energy slightly. "
-        "Sound focused and serious. "
-        "Speak clearly and deliberately without becoming theatrical."
+        "Lower the energy and sound focused. "
+        "Use a slightly slower, more deliberate pace with restrained pitch. "
+        "Create tension through timing and emphasis rather than sounding "
+        "dramatic or ominous. Keep it conversational."
     ),
 }
+
+
+def voice_instructions(delivery, beat_index, total_beats):
+    """
+    Build one natural-speech instruction set for each narration beat.
+
+    The small beat-position directions help prevent every line from using
+    the exact same cadence while keeping the requested emotional delivery.
+    """
+
+    delivery = str(delivery).lower().strip()
+
+    if delivery not in DELIVERY_INSTRUCTIONS:
+        delivery = "normal"
+
+    if total_beats <= 1:
+        position_instruction = (
+            "This is the only narration beat in the Short, so give it a "
+            "complete natural thought without sounding rehearsed."
+        )
+
+    elif beat_index == 0:
+        position_instruction = (
+            "This is the opening narration beat. Enter quickly and naturally "
+            "without a formal introduction or announcer-style setup."
+        )
+
+    elif beat_index == total_beats - 1:
+        position_instruction = (
+            "This is the final narration beat. Let the delivery respond to "
+            "the payoff and finish cleanly without a canned sign-off."
+        )
+
+    else:
+        position_instruction = (
+            "This is a middle narration beat. Make it feel like a continuation "
+            "of a real reaction rather than restarting a scripted narration."
+        )
+
+    return (
+        BASE_VOICE_INSTRUCTIONS
+        + DELIVERY_INSTRUCTIONS[delivery]
+        + " "
+        + position_instruction
+    )
 
 
 def generate_voices(
@@ -1319,18 +1406,33 @@ def generate_voices(
 ):
 
     print("\n" + "=" * 65)
-    print("GENERATING CONTEXT-AWARE VOICE")
+    print("GENERATING NATURAL CONTEXT-AWARE VOICE")
     print("=" * 65)
 
     beats = []
 
+    commentary = plan.get(
+        "commentary",
+        []
+    )
+
+    total_beats = len(
+        commentary
+    )
+
     for i, beat in enumerate(
-        plan["commentary"]
+        commentary
     ):
 
-        delivery = beat[
-            "delivery"
-        ]
+        delivery = str(
+            beat.get(
+                "delivery",
+                "normal"
+            )
+        ).lower().strip()
+
+        if delivery not in DELIVERY_INSTRUCTIONS:
+            delivery = "normal"
 
         output = (
             VOICES /
@@ -1346,6 +1448,12 @@ def generate_voices(
             beat["text"]
         )
 
+        instructions = voice_instructions(
+            delivery,
+            i,
+            total_beats
+        )
+
         with (
             client.audio.speech
             .with_streaming_response
@@ -1357,16 +1465,12 @@ def generate_voices(
 
                 voice=os.getenv(
                     "TTS_VOICE",
-                    "onyx"
+                    "cedar"
                 ),
 
                 input=beat["text"],
 
-                instructions=(
-                    DELIVERY_INSTRUCTIONS[
-                        delivery
-                    ]
-                ),
+                instructions=instructions,
             )
         ) as response:
 
@@ -1381,6 +1485,8 @@ def generate_voices(
         new_beat = dict(
             beat
         )
+
+        new_beat["delivery"] = delivery
 
         new_beat["file"] = output
 
