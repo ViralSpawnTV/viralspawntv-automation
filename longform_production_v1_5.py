@@ -15,6 +15,9 @@ SCREENED = ROOT / "screened_sources.json"
 
 OUT = ROOT / "ViralSpawnTV_Longform_V1_5.mp4"
 
+# Permanent history for clips conclusively rejected by long-form gates.
+REJECTED_HISTORY = Path("longform_rejected_history.json")
+
 OUTMETA = (
     ROOT /
     "ViralSpawnTV_Longform_V1_5_metadata.json"
@@ -470,6 +473,194 @@ def validate_piece(
     )
 
     return ok, info
+
+
+def load_rejected_history():
+    """
+    Load permanent long-form rejection history.
+
+    Preferred format:
+    {"version": 1, "rejected_clips": [...]}
+
+    A legacy list is accepted for compatibility.
+    """
+
+    if not REJECTED_HISTORY.exists():
+        return {
+            "version": 1,
+            "rejected_clips": [],
+        }
+
+    try:
+        data = json.loads(
+            REJECTED_HISTORY.read_text(
+                encoding="utf-8"
+            )
+        )
+    except Exception:
+        return {
+            "version": 1,
+            "rejected_clips": [],
+        }
+
+    if isinstance(data, list):
+        return {
+            "version": 1,
+            "rejected_clips": data,
+        }
+
+    if not isinstance(data, dict):
+        return {
+            "version": 1,
+            "rejected_clips": [],
+        }
+
+    data.setdefault("version", 1)
+    data.setdefault("rejected_clips", [])
+
+    if not isinstance(
+        data.get("rejected_clips"),
+        list,
+    ):
+        data["rejected_clips"] = []
+
+    return data
+
+
+def save_production_rejections(rows, sources):
+    """
+    Persist only deterministic quality/activity rejects.
+
+    Transient render/FFmpeg/tool errors are intentionally NOT
+    permanently blacklisted.
+    """
+
+    permanent_reasons = {
+        "v1_5_source_quality_reject",
+        "v1_5_visual_activity_reject",
+    }
+
+    history = load_rejected_history()
+
+    existing = history.get(
+        "rejected_clips",
+        [],
+    )
+
+    merged = []
+    seen_ids = set()
+    seen_urls = set()
+
+    def add_item(item):
+        if not isinstance(item, dict):
+            return
+
+        clip_id = str(
+            item.get("clip_id")
+            or ""
+        ).strip()
+
+        clip_url = str(
+            item.get("clip_url")
+            or item.get("source")
+            or ""
+        ).strip()
+
+        if clip_id and clip_id in seen_ids:
+            return
+
+        if (
+            not clip_id
+            and clip_url
+            and clip_url in seen_urls
+        ):
+            return
+
+        if clip_id:
+            seen_ids.add(clip_id)
+
+        if clip_url:
+            seen_urls.add(clip_url)
+
+        merged.append(item)
+
+    for item in existing:
+        if isinstance(item, str):
+            item = {
+                "clip_id": item,
+                "reason": "legacy_rejection",
+            }
+
+        add_item(item)
+
+    added = 0
+
+    for row in rows:
+        reason = str(
+            row.get("reason")
+            or ""
+        ).strip()
+
+        if reason not in permanent_reasons:
+            continue
+
+        try:
+            n = int(
+                row.get("source_number")
+            )
+        except Exception:
+            n = 0
+
+        source = (
+            sources[n - 1]
+            if 1 <= n <= len(sources)
+            else {}
+        )
+
+        item = {
+            "clip_id": (
+                row.get("clip_id")
+                or source.get("clip_id")
+            ),
+            "clip_url": (
+                row.get("clip_url")
+                or source.get("clip_url")
+                or source.get("source")
+            ),
+            "game": (
+                row.get("game")
+                or source.get("game")
+            ),
+            "channel": (
+                row.get("channel")
+                or source.get("channel")
+            ),
+            "reason": reason,
+            "rejection_stage": "production",
+        }
+
+        before = len(merged)
+        add_item(item)
+
+        if len(merged) > before:
+            added += 1
+
+    REJECTED_HISTORY.write_text(
+        json.dumps(
+            {
+                "version": 1,
+                "rejected_clips": merged,
+            },
+            indent=2,
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+
+    print(
+        "\nPermanent long-form production rejection history: "
+        f"{len(merged)} total | {added} newly added."
+    )
 
 
 def main():
@@ -984,6 +1175,14 @@ SOURCES:
                 e
             )
 
+    # Persist deterministic source-quality and visual-activity rejects.
+    # Do this before final episode validation so a later episode-level failure
+    # does not lose the useful per-source rejection decisions from this run.
+    save_production_rejections(
+        rejected,
+        sources,
+    )
+
     outro_piece = ROOT / "v15_brand_outro.mp4"
     outro_text = (
         plan.get("outro")
@@ -1226,6 +1425,9 @@ SOURCES:
 
         "motion_rejections":
             rejected,
+
+        "rejected_history_file":
+            str(REJECTED_HISTORY),
 
         "source_clips":
             [
