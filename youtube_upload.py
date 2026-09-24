@@ -1,5 +1,6 @@
 import json
 import os
+import subprocess
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -102,40 +103,27 @@ def load_history():
     data.setdefault("version", 1)
     data.setdefault("used_clips", [])
 
+    if not isinstance(data["used_clips"], list):
+        data["used_clips"] = []
+
     return data
 
 
-def save_successful_upload_to_history(metadata, youtube_video_id):
-    history = load_history()
-
+def source_identity(metadata):
     clip_id = str(
         metadata.get("clip_id") or ""
     ).strip()
 
     clip_url = str(
-        metadata.get("source") or ""
+        metadata.get("source")
+        or metadata.get("clip_url")
+        or ""
     ).strip()
 
-    # "creator" in production metadata is the original
-    # Kick creator/channel whose clip was used.
-    creator = str(
-        metadata.get("creator") or ""
-    ).strip()
+    return clip_id, clip_url
 
-    # IMPORTANT:
-    # history.json uses "channel" for the SOURCE creator.
-    # Discovery reads this field when enforcing the
-    # per-creator 24-hour limit.
-    #
-    # Do NOT use metadata["channel"] here because that
-    # field may contain the destination brand ViralSpawnTV.
-    channel = creator
 
-    game = str(
-        metadata.get("game") or ""
-    ).strip()
-
-    # Never intentionally add the same clip twice.
+def history_contains_source(history, clip_id, clip_url):
     for item in history.get("used_clips", []):
         if not isinstance(item, dict):
             continue
@@ -155,20 +143,145 @@ def save_successful_upload_to_history(metadata, youtube_video_id):
             and existing_clip_id
             and clip_id == existing_clip_id
         ):
-            print(
-                f"Clip {clip_id} already exists in history."
+            return True, (
+                f"clip ID {clip_id} already exists "
+                "in permanent history"
             )
-            return
 
         if (
             clip_url
             and existing_url
             and clip_url == existing_url
         ):
-            print(
-                "Clip URL already exists in history."
+            return True, (
+                "source URL already exists in permanent history"
             )
-            return
+
+    return False, ""
+
+
+def refresh_latest_history_before_upload():
+    """
+    Defense-in-depth duplicate check.
+
+    The workflow already refreshes main before discovery. Immediately before
+    the irreversible YouTube upload, refresh ONLY history.json from the latest
+    origin/main so a clip published by an earlier run cannot slip through
+    because this runner started with stale history.
+
+    We intentionally do not reset the working tree here because that would
+    delete the rendered video and production diagnostics.
+    """
+
+    try:
+        subprocess.run(
+            [
+                "git",
+                "fetch",
+                "origin",
+                "main",
+            ],
+            check=True,
+        )
+
+        result = subprocess.run(
+            [
+                "git",
+                "show",
+                "origin/main:history.json",
+            ],
+            check=False,
+            capture_output=True,
+            text=True,
+        )
+
+        if result.returncode == 0:
+            HISTORY_PATH.write_text(
+                result.stdout,
+                encoding="utf-8",
+            )
+
+            print(
+                "Refreshed history.json from latest origin/main "
+                "before YouTube upload."
+            )
+
+        else:
+            print(
+                "No history.json found on latest origin/main; "
+                "using the runner's current history."
+            )
+
+    except Exception as exc:
+        raise RuntimeError(
+            "Could not refresh permanent history before upload; "
+            "failing closed to prevent a possible duplicate. "
+            f"Details: {exc}"
+        )
+
+
+def require_source_not_already_published(metadata):
+    clip_id, clip_url = source_identity(metadata)
+
+    if not clip_id and not clip_url:
+        raise RuntimeError(
+            "Public upload blocked: production metadata contains "
+            "neither a clip ID nor a source URL."
+        )
+
+    refresh_latest_history_before_upload()
+
+    history = load_history()
+
+    duplicate, reason = history_contains_source(
+        history,
+        clip_id,
+        clip_url,
+    )
+
+    if duplicate:
+        raise RuntimeError(
+            "Public upload blocked: duplicate source detected; "
+            + reason
+            + "."
+        )
+
+    print(
+        "Final duplicate-source check passed: "
+        f"{clip_id or clip_url}"
+    )
+
+
+def save_successful_upload_to_history(metadata, youtube_video_id):
+    history = load_history()
+
+    clip_id, clip_url = source_identity(metadata)
+
+    creator = str(
+        metadata.get("creator") or ""
+    ).strip()
+
+    # history.json uses "channel" for the SOURCE creator.
+    # Discovery reads this field when enforcing the
+    # per-creator 24-hour limit.
+    channel = creator
+
+    game = str(
+        metadata.get("game") or ""
+    ).strip()
+
+    duplicate, reason = history_contains_source(
+        history,
+        clip_id,
+        clip_url,
+    )
+
+    if duplicate:
+        print(
+            "Successful source already exists in local history: "
+            + reason
+        )
+        return False
 
     history_entry = {
         "clip_id": clip_id,
@@ -208,6 +321,8 @@ def save_successful_upload_to_history(metadata, youtube_video_id):
         )
     )
 
+    return True
+
 
 def main():
     require_publication_gates()
@@ -229,6 +344,13 @@ def main():
 
     metadata = json.loads(
         METADATA_PATH.read_text(encoding="utf-8")
+    )
+
+    # FINAL PRE-UPLOAD DUPLICATE LOCK:
+    # refresh the latest permanent repository history and refuse to publish
+    # if this exact source has already been successfully uploaded.
+    require_source_not_already_published(
+        metadata
     )
 
     title = str(
@@ -286,9 +408,7 @@ def main():
         response["id"]
     ).strip()
 
-    # History is updated ONLY after YouTube confirms
-    # a successful public upload and returns a video ID.
-    save_successful_upload_to_history(
+    history_updated = save_successful_upload_to_history(
         metadata,
         youtube_video_id,
     )
@@ -301,9 +421,10 @@ def main():
         "clip_id": metadata.get("clip_id"),
         "source": metadata.get("source"),
         "creator": metadata.get("creator"),
-        "history_updated": True,
+        "history_updated": history_updated,
         "music_gate_passed": True,
         "final_content_gate_passed": True,
+        "duplicate_source_check_passed": True,
     }
 
     RESULT_PATH.write_text(
