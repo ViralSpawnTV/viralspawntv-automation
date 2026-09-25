@@ -680,7 +680,7 @@ def load_previous_titles():
     def walk(value):
         if isinstance(value, dict):
             for key, item in value.items():
-                if str(key).lower() == "title" and isinstance(item, str):
+                if str(key).lower() in {"title", "youtube_title"} and isinstance(item, str):
                     title = item.strip()
                     if title:
                         titles.append(title)
@@ -849,6 +849,173 @@ Generate a genuinely different title while remaining accurate.
         "hashtags": hashtags,
         "previous_title_count_checked": len(previous_titles),
     }
+
+
+def repair_final_audio_silence(client, video_path, quality_report):
+    """
+    Repair only prolonged silent sections already rejected by the strict V1.5
+    final audio gate. The gate is not weakened; the repaired video must pass it.
+    """
+    audio = quality_report.get("audio_continuity", {}) if isinstance(quality_report, dict) else {}
+    events = audio.get("rejected_silence_events", [])
+
+    if not isinstance(events, list) or not events:
+        return {"attempted": False, "repaired": False, "events": []}
+
+    video_duration = probe_duration(video_path)
+    repair_inputs = []
+    repair_rows = []
+
+    bridge_lines = [
+        "And this is where it starts getting wild.",
+        "Then the whole situation changes.",
+        "And somehow, it gets even more chaotic from here.",
+        "This is the moment everything starts to turn.",
+        "And right here, the clip takes another turn.",
+    ]
+
+    for index, event in enumerate(events, 1):
+        try:
+            start = max(0.0, float(event.get("start", 0.0)))
+            end = min(video_duration, float(event.get("end", start)))
+            silence_duration = max(0.0, end - start)
+        except Exception:
+            continue
+
+        if silence_duration < 2.5:
+            continue
+
+        line = bridge_lines[(index - 1) % len(bridge_lines)]
+        narr = ROOT / f"v15_silence_repair_{index:02d}.mp3"
+
+        tts(client, line, narr, delivery="setup")
+        narr_duration = probe_duration(narr)
+
+        placement = min(
+            max(0.0, start + 0.20),
+            max(0.0, video_duration - 0.25),
+        )
+
+        repair_inputs.append({
+            "path": narr,
+            "delay_ms": int(round(placement * 1000.0)),
+            "volume": 1.25,
+        })
+
+        repair_rows.append({
+            "start": start,
+            "end": end,
+            "silence_duration": silence_duration,
+            "bridge_text": line,
+            "bridge_audio": str(narr),
+            "bridge_duration": narr_duration,
+            "placement_seconds": placement,
+        })
+
+    if not repair_inputs:
+        return {"attempted": False, "repaired": False, "events": []}
+
+    repaired = ROOT / "ViralSpawnTV_Longform_V1_5_audio_repaired.mp4"
+
+    cmd = ["ffmpeg", "-y", "-i", str(video_path)]
+    for item in repair_inputs:
+        cmd.extend(["-i", str(item["path"])])
+
+    filter_parts = ["[0:a]aresample=48000[a0]"]
+    mix_labels = ["[a0]"]
+
+    for i, item in enumerate(repair_inputs, 1):
+        label = f"repair{i}"
+        filter_parts.append(
+            f"[{i}:a]"
+            "aresample=48000,"
+            f"volume={item['volume']},"
+            f"adelay={item['delay_ms']}|{item['delay_ms']}"
+            f"[{label}]"
+        )
+        mix_labels.append(f"[{label}]")
+
+    filter_parts.append(
+        "".join(mix_labels)
+        + f"amix=inputs={len(mix_labels)}:"
+          "duration=first:"
+          "dropout_transition=0,"
+          "aresample=48000[aout]"
+    )
+
+    cmd.extend([
+        "-filter_complex", ";".join(filter_parts),
+        "-map", "0:v:0",
+        "-map", "[aout]",
+        "-c:v", "copy",
+        "-c:a", "aac",
+        "-ar", "48000",
+        "-ac", "2",
+        "-movflags", "+faststart",
+        str(repaired),
+    ])
+
+    print("\nV1.5 AUDIO REPAIR: repairing rejected silent section(s).")
+    print(json.dumps(repair_rows, indent=2, ensure_ascii=False))
+
+    run(cmd)
+    repaired.replace(video_path)
+
+    return {
+        "attempted": True,
+        "repaired": True,
+        "events": repair_rows,
+    }
+
+
+def validate_final_with_audio_repair(client, video_path):
+    """
+    Validate normally. If and only if the sole failure is prolonged silence
+    outside the branded outro, repair those exact windows once and validate
+    again. Any other quality failure remains fatal.
+    """
+    first_report = validate_final(video_path)
+
+    print("\nFINAL V1.5 QUALITY/AUDIO REPORT:")
+    print(json.dumps(first_report, indent=2))
+
+    if first_report.get("passed"):
+        return first_report, {
+            "attempted": False,
+            "repaired": False,
+            "events": [],
+        }
+
+    reasons = [
+        str(x).strip().lower()
+        for x in first_report.get("reasons", [])
+        if str(x).strip()
+    ]
+
+    silence_reason = (
+        "final video contains a prolonged silent section outside the branded outro"
+    )
+
+    if not reasons or any(reason != silence_reason for reason in reasons):
+        return first_report, {
+            "attempted": False,
+            "repaired": False,
+            "events": [],
+        }
+
+    repair = repair_final_audio_silence(client, video_path, first_report)
+
+    if not repair.get("repaired"):
+        return first_report, repair
+
+    second_report = validate_final(video_path)
+
+    print("\nFINAL V1.5 QUALITY/AUDIO REPORT AFTER AUTOMATIC REPAIR:")
+    print(json.dumps(second_report, indent=2))
+
+    repair["post_repair_passed"] = bool(second_report.get("passed"))
+    return second_report, repair
+
 
 def main():
 
@@ -1496,9 +1663,11 @@ SOURCES:
             f"{final_motion}"
         )
 
-    final_quality = validate_final(OUT)
-    print("\nFINAL V1.5 QUALITY/AUDIO REPORT:")
-    print(json.dumps(final_quality, indent=2))
+    final_quality, audio_repair = validate_final_with_audio_repair(
+        CLIENT,
+        OUT,
+    )
+
     if not final_quality.get("passed"):
         raise RuntimeError(
             "Final episode failed V1.5 quality/audio gate: "
@@ -1631,6 +1800,9 @@ SOURCES:
 
         "audio_continuity_gate_passed":
             True,
+
+        "automatic_audio_repair":
+            audio_repair,
 
         "branding_intro":
             str(INTRO_IMAGE),
