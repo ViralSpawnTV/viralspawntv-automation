@@ -485,6 +485,17 @@
       "youtube_video_id": "k_gXdOneA78",
       "privacy_status": "public",
       "processed_at_utc": "2026-09-25T10:20:45.809419+00:00"
+    },
+    {
+      "clip_id": "clip_01M2XET7GK0XF3W7S69MCPG5F7",
+      "clip_url": "https://kick.com/sayeed/clips/clip_01M2XET7GK0XF3W7S69MCPG5F7",
+      "source": "https://kick.com/sayeed/clips/clip_01M2XET7GK0XF3W7S69MCPG5F7",
+      "creator": "sayeed",
+      "channel": "sayeed",
+      "game": "",
+      "youtube_video_id": "VQvWkIsFD9Q",
+      "privacy_status": "public",
+      "processed_at_utc": "2026-09-25T12:18:32.353291+00:00"
     }
   ]
 }
