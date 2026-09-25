@@ -1,10 +1,13 @@
 import json, re, sys
 from pathlib import Path
+from urllib.parse import urlsplit, urlunsplit
 from openai import OpenAI
 from playwright.sync_api import sync_playwright
 
 MANIFEST = Path("work/v11_candidate_manifest.json")
 OUT = Path("work/v12_ranked_candidates.json")
+SHORTS_HISTORY = Path("history.json")
+SHORTS_REJECTED_HISTORY = Path("shorts_rejected_history.json")
 
 MAX_INSPECT = 60
 MAX_RANKED = 15
@@ -28,6 +31,90 @@ ACTION = {
 
 def norm(s):
     return re.sub(r"\s+", " ", (s or "")).strip()
+
+
+def normalize_clip_id(value):
+    return str(value or "").strip().casefold()
+
+def normalize_clip_url(value):
+    raw = str(value or "").strip()
+    if not raw:
+        return ""
+    try:
+        parts = urlsplit(raw)
+        netloc = parts.netloc.lower()
+        if netloc.startswith("www."):
+            netloc = netloc[4:]
+        path = re.sub(r"/+", "/", parts.path).rstrip("/").casefold()
+        return urlunsplit(((parts.scheme or "https").lower(), netloc, path, "", ""))
+    except Exception:
+        return raw.rstrip("/").casefold()
+
+def load_json(path):
+    if not path.exists():
+        return {}
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        print(f"WARNING: could not parse {path}: {exc}")
+        return {}
+
+def extract_identity_sets(data, keys):
+    ids, urls = set(), set()
+    if isinstance(data, list):
+        rows = data
+    elif isinstance(data, dict):
+        rows = []
+        for key in keys:
+            value = data.get(key)
+            if isinstance(value, list):
+                rows.extend(value)
+    else:
+        rows = []
+
+    for item in rows:
+        if isinstance(item, str):
+            if item.strip().lower().startswith(("http://", "https://")):
+                curl = normalize_clip_url(item)
+                if curl:
+                    urls.add(curl)
+            else:
+                cid = normalize_clip_id(item)
+                if cid:
+                    ids.add(cid)
+            continue
+        if not isinstance(item, dict):
+            continue
+        cid = normalize_clip_id(item.get("clip_id") or item.get("id"))
+        curl = normalize_clip_url(
+            item.get("clip_url") or item.get("source_url")
+            or item.get("url") or item.get("source")
+        )
+        if cid:
+            ids.add(cid)
+        if curl:
+            urls.add(curl)
+    return ids, urls
+
+def load_blocked_short_identities():
+    used_ids, used_urls = extract_identity_sets(
+        load_json(SHORTS_HISTORY), ["used_clips", "clips", "history"]
+    )
+    rejected_ids, rejected_urls = extract_identity_sets(
+        load_json(SHORTS_REJECTED_HISTORY),
+        ["rejected_clips", "rejected", "clips", "used_clips"]
+    )
+    print(f"Previously published Shorts IDs loaded: {len(used_ids)}")
+    print(f"Permanently rejected Shorts IDs loaded: {len(rejected_ids)}")
+    return used_ids | rejected_ids, used_urls | rejected_urls
+
+def candidate_is_blocked(candidate, blocked_ids, blocked_urls):
+    cid = normalize_clip_id(candidate.get("clip_id"))
+    curl = normalize_clip_url(
+        candidate.get("clip_url") or candidate.get("source_url")
+        or candidate.get("url") or candidate.get("source")
+    )
+    return (cid and cid in blocked_ids) or (curl and curl in blocked_urls)
 
 def hits(text, words):
     t = text.lower()
@@ -66,7 +153,40 @@ def main():
     if not MANIFEST.exists():
         raise RuntimeError("Missing work/v11_candidate_manifest.json")
     data = json.loads(MANIFEST.read_text(encoding="utf-8"))
-    candidates = data.get("candidates", [])[:MAX_INSPECT]
+    all_candidates = data.get("candidates", [])
+    blocked_ids, blocked_urls = load_blocked_short_identities()
+
+    # Remove permanent used/rejected clips BEFORE MAX_INSPECT.
+    fresh_candidates = []
+    skipped_history = 0
+    seen_ids = set()
+    seen_urls = set()
+
+    for candidate in all_candidates:
+        if not isinstance(candidate, dict):
+            continue
+        cid = normalize_clip_id(candidate.get("clip_id"))
+        curl = normalize_clip_url(
+            candidate.get("clip_url") or candidate.get("source_url")
+            or candidate.get("url") or candidate.get("source")
+        )
+        if (cid and cid in seen_ids) or (curl and curl in seen_urls):
+            continue
+        if candidate_is_blocked(candidate, blocked_ids, blocked_urls):
+            skipped_history += 1
+            continue
+        fresh_candidates.append(candidate)
+        if cid:
+            seen_ids.add(cid)
+        if curl:
+            seen_urls.add(curl)
+
+    candidates = fresh_candidates[:MAX_INSPECT]
+    print(
+        f"V12.1 freshness filter: {len(all_candidates)} discovered -> "
+        f"{len(fresh_candidates)} fresh -> {len(candidates)} inspected."
+    )
+    print(f"Skipped {skipped_history} previously published/rejected Shorts before MAX_INSPECT.")
 
     inspected = []
     with sync_playwright() as p:
@@ -89,7 +209,7 @@ def main():
     if not inspected:
         OUT.parent.mkdir(parents=True, exist_ok=True)
         OUT.write_text(json.dumps({
-            "version":"12.1","source_candidate_count":len(data.get("candidates",[])),
+            "version":"12.2-fresh-history-filter","source_candidate_count":len(all_candidates),"fresh_candidate_count":len(fresh_candidates),"history_skipped_before_inspection":skipped_history,
             "metadata_inspected_count":len(candidates),"ranked_count":0,"candidates":[]
         }, indent=2), encoding="utf-8")
         raise RuntimeError("No candidates survived deterministic metadata screening.")
@@ -143,8 +263,11 @@ CANDIDATES:
             continue
         if idx < 0 or idx >= len(inspected) or idx in used_ids or score < MIN_SCORE:
             continue
-        used_ids.add(idx)
         row = dict(inspected[idx])
+        if candidate_is_blocked(row, blocked_ids, blocked_urls):
+            print(f"FINAL SKIP previously published/rejected Short: {row.get('clip_id')}")
+            continue
+        used_ids.add(idx)
         row["v12_metadata_score"] = round(score, 1)
         row["v12_metadata_reason"] = norm(item.get("reason",""))
         ranked.append(row)
@@ -153,8 +276,10 @@ CANDIDATES:
 
     OUT.parent.mkdir(parents=True, exist_ok=True)
     payload = {
-        "version":"12.1",
-        "source_candidate_count":len(data.get("candidates",[])),
+        "version":"12.2-fresh-history-filter",
+        "source_candidate_count":len(all_candidates),
+        "fresh_candidate_count":len(fresh_candidates),
+        "history_skipped_before_inspection":skipped_history,
         "metadata_inspected_count":len(candidates),
         "survived_deterministic_screen":len(inspected),
         "ranked_count":len(ranked),
@@ -162,8 +287,11 @@ CANDIDATES:
         "candidates":ranked
     }
     OUT.write_text(json.dumps(payload, indent=2, ensure_ascii=False), encoding="utf-8")
-    print(f"V12.1: {len(data.get('candidates',[]))} discovered -> {len(candidates)} inspected -> "
-          f"{len(inspected)} deterministic survivors -> {len(ranked)} ranked.")
+    print(
+        f"V12.2: {len(all_candidates)} discovered -> {len(fresh_candidates)} fresh -> "
+        f"{len(candidates)} inspected -> {len(inspected)} deterministic survivors -> "
+        f"{len(ranked)} ranked."
+    )
     if not ranked:
         raise RuntimeError("No candidates promoted by V12.1 metadata ranker.")
 
