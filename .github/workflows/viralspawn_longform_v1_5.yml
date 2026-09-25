@@ -52,6 +52,8 @@ jobs:
           TWITCH_CLIENT_ID: ${{ secrets.TWITCH_CLIENT_ID }}
           TWITCH_CLIENT_SECRET: ${{ secrets.TWITCH_CLIENT_SECRET }}
           YOUTUBE_TOKEN_JSON: ${{ secrets.YOUTUBE_TOKEN_JSON }}
+          DISCOVERY_MAX_CLIPS_PER_GAME: "30"
+          DISCOVERY_MAX_TOTAL_CANDIDATES: "200"
         run: |
           python longform_pipeline_v1_5.py
 
