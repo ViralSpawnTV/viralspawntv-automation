@@ -4,11 +4,14 @@ import re
 import sys
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
+from urllib.parse import urlsplit, urlunsplit
 
 from playwright.sync_api import sync_playwright
 
 
 HISTORY_PATH = Path("history.json")
+LONGFORM_HISTORY_PATH = Path("longform_history.json")
+LONGFORM_REJECTED_HISTORY_PATH = Path("longform_rejected_history.json")
 MANIFEST_PATH = Path("work/v11_candidate_manifest.json")
 
 MAX_PUBLIC_UPLOADS_PER_CREATOR_24H = 2
@@ -19,6 +22,11 @@ DIVERSITY_WINDOW_HOURS = 24
 # Long-form can override these values from its GitHub Actions workflow.
 MAX_CLIPS_PER_GAME = int(os.getenv("DISCOVERY_MAX_CLIPS_PER_GAME", "18"))
 MAX_TOTAL_CANDIDATES = int(os.getenv("DISCOVERY_MAX_TOTAL_CANDIDATES", "80"))
+
+# Long-form workflow overrides the default 80-candidate Shorts pool.
+LONGFORM_MODE = MAX_TOTAL_CANDIDATES > 80
+DISCOVERY_SCROLL_ROUNDS = int(os.getenv("DISCOVERY_SCROLL_ROUNDS", "14" if LONGFORM_MODE else "0"))
+DISCOVERY_SCROLL_WAIT_MS = int(os.getenv("DISCOVERY_SCROLL_WAIT_MS", "900"))
 
 USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
@@ -67,6 +75,67 @@ def load_history():
     return data
 
 
+
+def load_aux_history(path, key):
+    if not path.exists():
+        return {"version": 1, key: []}
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return {"version": 1, key: []}
+    if isinstance(data, list):
+        return {"version": 1, key: data}
+    if not isinstance(data, dict):
+        return {"version": 1, key: []}
+    data.setdefault(key, [])
+    if not isinstance(data.get(key), list):
+        data[key] = []
+    return data
+
+
+def normalize_clip_id(value):
+    return str(value or "").strip().casefold()
+
+
+def normalize_clip_url(value):
+    raw = str(value or "").strip()
+    if not raw:
+        return ""
+    try:
+        parts = urlsplit(raw)
+        netloc = parts.netloc.lower()
+        if netloc.startswith("www."):
+            netloc = netloc[4:]
+        path = re.sub(r"/+", "/", parts.path).rstrip("/").casefold()
+        return urlunsplit(((parts.scheme or "https").lower(), netloc, path, "", ""))
+    except Exception:
+        return raw.rstrip("/").casefold()
+
+
+def identity_sets(history, key):
+    ids = set()
+    urls = set()
+    for item in history.get(key, []):
+        if isinstance(item, str):
+            cid = normalize_clip_id(item)
+            curl = ""
+        elif isinstance(item, dict):
+            cid = normalize_clip_id(item.get("clip_id") or item.get("id"))
+            curl = normalize_clip_url(
+                item.get("clip_url")
+                or item.get("source_url")
+                or item.get("url")
+                or item.get("source")
+            )
+        else:
+            continue
+        if cid:
+            ids.add(cid)
+        if curl:
+            urls.add(curl)
+    return ids, urls
+
+
 def parse_utc(value):
     try:
         return datetime.fromisoformat(
@@ -88,7 +157,7 @@ def history_state(history):
 
         clip_id = item.get("clip_id")
         if clip_id:
-            used.add(str(clip_id))
+            used.add(normalize_clip_id(clip_id))
 
         if str(item.get("privacy_status", "")).lower() != "public":
             continue
@@ -142,6 +211,23 @@ def discover_category(page, game, slug):
             "individual clips still filtered downstream."
         )
 
+    # Long-form scans deeper so used/rejected clips do not consume fresh slots.
+    if LONGFORM_MODE:
+        stagnant_rounds = 0
+        previous_size = len(html)
+        for _ in range(DISCOVERY_SCROLL_ROUNDS):
+            page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+            page.wait_for_timeout(DISCOVERY_SCROLL_WAIT_MS)
+            new_html = page.content()
+            if len(new_html) <= previous_size:
+                stagnant_rounds += 1
+            else:
+                stagnant_rounds = 0
+                previous_size = len(new_html)
+            html = new_html
+            if stagnant_rounds >= 3:
+                break
+
     patterns = [
         r'href=["\'](/[^"\']+/clips/clip_[A-Za-z0-9_-]+)["\']',
         r'https://kick\.com/[^"\'\\\s]+/clips/clip_[A-Za-z0-9_-]+',
@@ -155,7 +241,7 @@ def discover_category(page, game, slug):
                 links.append(full)
 
     print(f"Found {len(links)} clip links for {game}.")
-    return links[:MAX_CLIPS_PER_GAME]
+    return links if LONGFORM_MODE else links[:MAX_CLIPS_PER_GAME]
 
 
 def interleave(per_game):
@@ -177,14 +263,35 @@ def main():
     history = load_history()
     used, creator_counts, game_counts = history_state(history)
 
+    longform_history = load_aux_history(LONGFORM_HISTORY_PATH, "used_clips")
+    rejected_history = load_aux_history(
+        LONGFORM_REJECTED_HISTORY_PATH,
+        "rejected_clips",
+    )
+    longform_used_ids, longform_used_urls = identity_sets(
+        longform_history,
+        "used_clips",
+    )
+    rejected_ids, rejected_urls = identity_sets(
+        rejected_history,
+        "rejected_clips",
+    )
+
     print("================================================")
     print("ViralSpawnTV V11 Game-First Batch Discovery")
     print("================================================")
     print(f"Used clips in history: {len(used)}")
     print(f"Max clips per game: {MAX_CLIPS_PER_GAME}")
     print(f"Max total candidates: {MAX_TOTAL_CANDIDATES}")
+    if LONGFORM_MODE:
+        print(f"Long-form used clips loaded: {len(longform_used_ids)}")
+        print(f"Long-form rejected clips loaded: {len(rejected_ids)}")
 
     per_game = {}
+    skipped_longform_used = 0
+    skipped_longform_rejected = 0
+    seen_ids = set()
+    seen_urls = set()
 
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
@@ -211,9 +318,29 @@ def main():
 
                 if not clip_id or not channel:
                     continue
-                if clip_id in used:
+
+                normalized_id = normalize_clip_id(clip_id)
+                normalized_url = normalize_clip_url(url)
+
+                if normalized_id in seen_ids or normalized_url in seen_urls:
+                    continue
+                if normalized_id in used:
                     continue
                 if creator_counts.get(channel, 0) >= MAX_PUBLIC_UPLOADS_PER_CREATOR_24H:
+                    continue
+
+                if LONGFORM_MODE and (
+                    normalized_id in longform_used_ids
+                    or normalized_url in longform_used_urls
+                ):
+                    skipped_longform_used += 1
+                    continue
+
+                if LONGFORM_MODE and (
+                    normalized_id in rejected_ids
+                    or normalized_url in rejected_urls
+                ):
+                    skipped_longform_rejected += 1
                     continue
 
                 rows.append({
@@ -225,6 +352,14 @@ def main():
                     "clip_url": url,
                     "category_position": position,
                 })
+
+                seen_ids.add(normalized_id)
+                seen_urls.add(normalized_url)
+
+                # Apply the per-game limit AFTER filtering. Old/rejected clips
+                # therefore never consume one of the fresh slots.
+                if len(rows) >= MAX_CLIPS_PER_GAME:
+                    break
 
             if rows:
                 per_game[game] = rows
@@ -242,6 +377,10 @@ def main():
         "max_total_candidates": MAX_TOTAL_CANDIDATES,
         "games_with_candidates": list(per_game.keys()),
         "candidate_count": len(candidates),
+        "fresh_candidate_target": MAX_TOTAL_CANDIDATES,
+        "fresh_target_reached": len(candidates) >= MAX_TOTAL_CANDIDATES,
+        "skipped_longform_history": skipped_longform_used,
+        "skipped_longform_rejected": skipped_longform_rejected,
         "candidates": candidates,
     }
 
@@ -254,6 +393,14 @@ def main():
     print()
     print(f"Games with candidates: {len(per_game)}")
     print(f"Batch candidate count: {len(candidates)}")
+    if LONGFORM_MODE:
+        print(f"Skipped previously used long-form clips: {skipped_longform_used}")
+        print(f"Skipped permanently rejected long-form clips: {skipped_longform_rejected}")
+        if len(candidates) < MAX_TOTAL_CANDIDATES:
+            print(
+                "NOTICE: Kick exposed fewer fresh eligible clips than the "
+                "requested target. Continuing with every fresh clip found."
+            )
 
     if not candidates:
         raise RuntimeError(
