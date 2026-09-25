@@ -16,7 +16,7 @@ WORK.mkdir(parents=True, exist_ok=True)
 AUDIO = WORK / "audio.wav"
 RESULT = WORK / "viral_gate_result.json"
 
-MIN_SCORE = 62
+MIN_SCORE = 70
 
 
 def run(command):
