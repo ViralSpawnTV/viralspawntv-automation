@@ -578,11 +578,18 @@ def main():
     # HARD V1.5 SAFETY CHECKS
     # ---------------------------------------------------------
 
-    if str(
+    metadata_version = str(
         meta.get("version")
-    ) != "1.5":
+        or ""
+    ).strip()
+
+    if metadata_version not in {
+        "1.5",
+        "1.6-seo",
+    }:
         fail(
-            "Uploader expected V1.5 metadata."
+            "Uploader expected compatible V1.5/V1.6 SEO metadata. "
+            f"Received: {metadata_version!r}"
         )
 
     if (
@@ -759,38 +766,60 @@ def main():
     # YouTube metadata
     # ---------------------------------------------------------
 
-    title = (
+    title = str(
         meta.get("title")
         or
         "ViralSpawnTV Gaming Compilation"
-    )[:100]
+    ).strip()[:100]
 
-    description = (
+    description = str(
         meta.get("description")
         or
         "Gaming moments from ViralSpawnTV."
+    ).strip()
+
+    raw_tags = meta.get(
+        "tags",
+        [],
     )
 
-    description += (
-        "\n\n"
-        "Subscribe to ViralSpawnTV for more "
-        "gaming moments, crazy plays, "
-        "reactions and stories."
-        "\n\n"
-        "#Gaming #ViralSpawnTV"
-    )
+    tags = []
+    seen_tags = set()
+
+    if isinstance(raw_tags, list):
+        for item in raw_tags:
+            tag = str(item).strip()
+
+            if not tag:
+                continue
+
+            key = tag.casefold()
+
+            if key in seen_tags:
+                continue
+
+            seen_tags.add(key)
+            tags.append(tag[:100])
+
+            if len(tags) >= 15:
+                break
+
+    snippet = {
+        "title":
+            title,
+
+        "description":
+            description,
+
+        "categoryId":
+            "20",
+    }
+
+    if tags:
+        snippet["tags"] = tags
 
     body = {
-        "snippet": {
-            "title":
-                title,
-
-            "description":
-                description,
-
-            "categoryId":
-                "20",
-        },
+        "snippet": snippet,
 
         "status": {
             "privacyStatus":
@@ -870,10 +899,31 @@ def main():
 
     result = {
         "version":
-            "1.5",
+            "1.6-seo",
 
         "status":
             "UPLOADED",
+
+        "production_metadata_version":
+            metadata_version,
+
+        "seo_version":
+            meta.get("seo_version"),
+
+        "primary_search_phrase":
+            meta.get("primary_search_phrase", ""),
+
+        "secondary_search_phrases":
+            meta.get("secondary_search_phrases", []),
+
+        "tags":
+            tags,
+
+        "tag_count":
+            len(tags),
+
+        "thumbnail_text":
+            meta.get("thumbnail_text", ""),
 
         "video_id":
             video_id,
