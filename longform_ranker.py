@@ -20,8 +20,8 @@ LONGFORM_REJECTED_HISTORY = Path("longform_rejected_history.json")
 
 # V1.5.1 deeper source bench.
 #
-# Inspect the expanded long-form discovery manifest and give downstream
-# gates a deep enough bench to survive:
+# Inspect the full discovery manifest and give downstream gates
+# a deep enough bench to survive:
 # - acquisition failures
 # - English-language rejection
 # - music/content rejection
@@ -35,7 +35,7 @@ MAX_SELECT = 120
 
 MAX_PER_CREATOR = 4
 MAX_PER_GAME = 8
-MIN_SCORE = 55
+MIN_SCORE = 70
 
 
 USER_AGENT = (
@@ -802,7 +802,7 @@ CANDIDATES:
     OUT.write_text(
         json.dumps(
             {
-                "version": "1.5.2-expanded-200-pool",
+                "version": "1.6-min-score-70",
                 "target_episode_minutes":
                     "8-10",
                 "history_file":
