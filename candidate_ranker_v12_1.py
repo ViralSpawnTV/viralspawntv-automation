@@ -102,7 +102,7 @@ def load_blocked_short_identities():
     )
     rejected_ids, rejected_urls = extract_identity_sets(
         load_json(SHORTS_REJECTED_HISTORY),
-        ["rejected_clips", "rejected", "clips", "used_clips"]
+        ["clip_ids", "rejected_clips", "rejected", "clips", "used_clips"]
     )
     print(f"Previously published Shorts IDs loaded: {len(used_ids)}")
     print(f"Permanently rejected Shorts IDs loaded: {len(rejected_ids)}")
