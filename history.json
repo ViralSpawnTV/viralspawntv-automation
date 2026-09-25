@@ -452,6 +452,17 @@
       "youtube_video_id": "KUjKvQiHdI4",
       "privacy_status": "public",
       "processed_at_utc": "2026-09-25T04:18:22.234092+00:00"
+    },
+    {
+      "clip_id": "clip_01M2ZXXPX8TND4R7NF7GSZ0C0M",
+      "clip_url": "https://kick.com/starladder/clips/clip_01M2ZXXPX8TND4R7NF7GSZ0C0M",
+      "source": "https://kick.com/starladder/clips/clip_01M2ZXXPX8TND4R7NF7GSZ0C0M",
+      "creator": "starladder",
+      "channel": "starladder",
+      "game": "",
+      "youtube_video_id": "J8aJDHgn2S8",
+      "privacy_status": "public",
+      "processed_at_utc": "2026-09-25T06:16:14.003045+00:00"
     }
   ]
 }
