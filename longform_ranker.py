@@ -20,8 +20,8 @@ LONGFORM_REJECTED_HISTORY = Path("longform_rejected_history.json")
 
 # V1.5.1 deeper source bench.
 #
-# Inspect the full discovery manifest and give downstream gates
-# a deep enough bench to survive:
+# Inspect the expanded long-form discovery manifest and give downstream
+# gates a deep enough bench to survive:
 # - acquisition failures
 # - English-language rejection
 # - music/content rejection
@@ -30,8 +30,8 @@ LONGFORM_REJECTED_HISTORY = Path("longform_rejected_history.json")
 #
 # The final production system still stops once enough approved
 # footage exists for the 8-10 minute episode.
-MAX_INSPECT = 80
-MAX_SELECT = 80
+MAX_INSPECT = 200
+MAX_SELECT = 120
 
 MAX_PER_CREATOR = 4
 MAX_PER_GAME = 8
@@ -802,7 +802,7 @@ CANDIDATES:
     OUT.write_text(
         json.dumps(
             {
-                "version": "1.5.1-deeper-bench",
+                "version": "1.5.2-expanded-200-pool",
                 "target_episode_minutes":
                     "8-10",
                 "history_file":
