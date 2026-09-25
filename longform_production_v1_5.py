@@ -17,6 +17,7 @@ OUT = ROOT / "ViralSpawnTV_Longform_V1_5.mp4"
 
 # Permanent history for clips conclusively rejected by long-form gates.
 REJECTED_HISTORY = Path("longform_rejected_history.json")
+LONGFORM_HISTORY = Path("longform_history.json")
 
 OUTMETA = (
     ROOT /
@@ -663,6 +664,192 @@ def save_production_rejections(rows, sources):
     )
 
 
+
+def load_previous_titles():
+    """Collect previously published long-form titles from history when present."""
+    if not LONGFORM_HISTORY.exists():
+        return []
+
+    try:
+        data = json.loads(LONGFORM_HISTORY.read_text(encoding="utf-8"))
+    except Exception:
+        return []
+
+    titles = []
+
+    def walk(value):
+        if isinstance(value, dict):
+            for key, item in value.items():
+                if str(key).lower() == "title" and isinstance(item, str):
+                    title = item.strip()
+                    if title:
+                        titles.append(title)
+                else:
+                    walk(item)
+        elif isinstance(value, list):
+            for item in value:
+                walk(item)
+
+    walk(data)
+
+    seen = set()
+    unique = []
+    for title in titles:
+        key = title.casefold()
+        if key not in seen:
+            seen.add(key)
+            unique.append(title)
+
+    return unique
+
+
+def build_seo_metadata(client, used_sources, duration_seconds):
+    """
+    Generate final YouTube metadata only AFTER production knows which sources
+    actually survived all gates and appear in the finished episode.
+    """
+    previous_titles = load_previous_titles()
+
+    actual_sources = []
+    for s in used_sources:
+        actual_sources.append(
+            {
+                "game": s.get("game"),
+                "creator": s.get("channel"),
+                "source_title": s.get("page_title"),
+                "transcript_excerpt": (s.get("gate_transcript") or "")[:1200],
+            }
+        )
+
+    seo_prompt = f"""
+Create final YouTube metadata for a ViralSpawnTV long-form gaming compilation.
+
+The finished video is {duration_seconds / 60:.2f} minutes long.
+Only use games, events, creators, and details supported by ACTUAL SOURCES below.
+
+GOALS:
+- Maximize accurate YouTube Search relevance and strong human click appeal.
+- Never keyword-stuff, mislead, invent a game/event, or promise something absent.
+- The title must be UNIQUE compared with PREVIOUS TITLES.
+- Do not reuse generic recurring titles such as
+  "Gaming Moments That Escalated Way Too Fast".
+- Prefer the strongest recognizable game/search phrase near the beginning when
+  the actual episode supports it.
+- Write for humans first. Keep the title concise and readable.
+- Aim for roughly 45-70 title characters when natural; absolute maximum 100.
+- Description opening: 1-2 natural sentences clearly describing the actual
+  games/moments in this episode. Put the most useful search phrases naturally
+  in those opening sentences.
+- Then add a short ViralSpawnTV value proposition and natural subscribe CTA.
+- Do not dump repetitive keywords into the description.
+- Generate 8-15 accurate YouTube tags. Tags are supplemental only.
+- Generate 3-5 accurate hashtags, without spam.
+- Thumbnail text must be 2-4 punchy words and should COMPLEMENT the title,
+  not simply repeat it.
+- primary_search_phrase should be one natural phrase that accurately represents
+  the episode.
+- secondary_search_phrases should contain 2-4 additional accurate phrases.
+
+PREVIOUS TITLES:
+{json.dumps(previous_titles[-100:], ensure_ascii=False)}
+
+ACTUAL SOURCES IN THE FINISHED VIDEO:
+{json.dumps(actual_sources, ensure_ascii=False)}
+
+Return ONLY JSON:
+{{
+  "title": "unique final title",
+  "description": "final description",
+  "thumbnail_text": "2-4 words",
+  "primary_search_phrase": "one phrase",
+  "secondary_search_phrases": ["phrase 1", "phrase 2"],
+  "tags": ["tag 1", "tag 2"],
+  "hashtags": ["#Gaming", "#Example"]
+}}
+"""
+
+    response = client.responses.create(
+        model="gpt-5.6",
+        input=seo_prompt,
+    )
+
+    raw = re.sub(
+        r"^```json\s*|\s*```$",
+        "",
+        response.output_text.strip(),
+    )
+
+    seo = json.loads(raw)
+
+    title = str(seo.get("title") or "").strip()[:100]
+    if not title:
+        raise RuntimeError("SEO metadata generator returned an empty title.")
+
+    previous_keys = {t.casefold() for t in previous_titles}
+    if title.casefold() in previous_keys:
+        retry_prompt = seo_prompt + f"""
+
+IMPORTANT RETRY:
+Your proposed title "{title}" exactly matches a previous published title.
+Generate a genuinely different title while remaining accurate.
+"""
+        response = client.responses.create(
+            model="gpt-5.6",
+            input=retry_prompt,
+        )
+        raw = re.sub(
+            r"^```json\s*|\s*```$",
+            "",
+            response.output_text.strip(),
+        )
+        seo = json.loads(raw)
+        title = str(seo.get("title") or "").strip()[:100]
+
+        if not title or title.casefold() in previous_keys:
+            raise RuntimeError(
+                "Could not generate a unique long-form YouTube title."
+            )
+
+    description = str(seo.get("description") or "").strip()
+    hashtags = [
+        str(x).strip()
+        for x in seo.get("hashtags", [])
+        if str(x).strip()
+    ][:5]
+
+    if hashtags:
+        description = description.rstrip() + "\n\n" + " ".join(hashtags)
+
+    tags = []
+    seen_tags = set()
+    for item in seo.get("tags", []):
+        tag = str(item).strip()
+        key = tag.casefold()
+        if tag and key not in seen_tags:
+            seen_tags.add(key)
+            tags.append(tag)
+        if len(tags) >= 15:
+            break
+
+    return {
+        "title": title,
+        "description": description,
+        "thumbnail_text": str(
+            seo.get("thumbnail_text") or ""
+        ).strip()[:40],
+        "primary_search_phrase": str(
+            seo.get("primary_search_phrase") or ""
+        ).strip(),
+        "secondary_search_phrases": [
+            str(x).strip()
+            for x in seo.get("secondary_search_phrases", [])
+            if str(x).strip()
+        ][:4],
+        "tags": tags,
+        "hashtags": hashtags,
+        "previous_title_count_checked": len(previous_titles),
+    }
+
 def main():
 
     global CLIENT
@@ -762,9 +949,9 @@ NARRATION WRITING STYLE:
 Return ONLY JSON:
 
 {{
-  "title":"accurate clickable title",
-  "description":"2-4 sentences",
-  "thumbnail_text":"2-5 words",
+  "title":"provisional accurate title for planning only",
+  "description":"provisional 2-4 sentence description",
+  "thumbnail_text":"provisional 2-5 word thumbnail text",
   "intro":"1-2 sentence cold open",
 
   "candidates":[
@@ -1343,22 +1530,56 @@ SOURCES:
         )
 
     # -----------------------------------------------------
+    # Final YouTube SEO metadata
+    #
+    # Generate this only after all gates pass so the title/description
+    # describe the clips that ACTUALLY survived into the finished video.
+    # -----------------------------------------------------
+
+    seo = build_seo_metadata(
+        CLIENT,
+        used,
+        duration,
+    )
+
+    print("\nFINAL YOUTUBE SEO METADATA:")
+    print(json.dumps(seo, indent=2, ensure_ascii=False))
+
+    # -----------------------------------------------------
     # Metadata
     # -----------------------------------------------------
 
     meta = {
 
         "version":
-            "1.5",
+            "1.6-seo",
 
         "title":
-            plan["title"][:100],
+            seo["title"],
 
         "description":
-            plan["description"],
+            seo["description"],
 
         "thumbnail_text":
-            plan["thumbnail_text"],
+            seo["thumbnail_text"],
+
+        "primary_search_phrase":
+            seo["primary_search_phrase"],
+
+        "secondary_search_phrases":
+            seo["secondary_search_phrases"],
+
+        "tags":
+            seo["tags"],
+
+        "hashtags":
+            seo["hashtags"],
+
+        "seo_version":
+            "1.6-final-used-sources",
+
+        "previous_title_count_checked":
+            seo["previous_title_count_checked"],
 
         "outro_text":
             plan.get(
