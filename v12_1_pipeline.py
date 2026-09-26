@@ -5,27 +5,20 @@ from pathlib import Path
 
 
 LOG = Path("work/v12_attempt_log.json")
-
-# Permanent cross-run rejection history.
-#
-# This lives at repository root rather than inside work/ so the
-# GitHub Actions workflow can persist it between scheduled runs.
 REJECTED = Path("shorts_rejected_history.json")
 
-# Give V12.1 a deeper search budget while keeping the existing
-# viral-quality threshold unchanged.
 MAX_EXPENSIVE_ATTEMPTS = 30
 
 
-def run(script, ok=(0,)):
-    p = subprocess.run(
+def run(script):
+    process = subprocess.run(
         [
             sys.executable,
             script,
         ]
     )
 
-    return p.returncode
+    return process.returncode
 
 
 def load_json(path, default):
@@ -63,14 +56,6 @@ def current_acquisition():
 
 
 def load_rejected():
-    """
-    Load permanent rejected Shorts clip IDs.
-
-    Supports both:
-    - legacy plain-list format
-    - dictionary format with clip_ids
-    """
-
     data = load_json(
         REJECTED,
         {
@@ -94,7 +79,6 @@ def load_rejected():
     clean = []
 
     for clip_id in clip_ids:
-
         clip_id = str(
             clip_id
         ).strip()
@@ -111,18 +95,9 @@ def load_rejected():
 
 
 def save_rejected(rejected):
-    """
-    Save permanent rejected clip IDs.
-
-    The GitHub Actions workflow will persist this root-level
-    file back to the repository after the pipeline finishes,
-    including when no Short is ultimately produced.
-    """
-
     clean = []
 
     for clip_id in rejected:
-
         clip_id = str(
             clip_id
         ).strip()
@@ -152,11 +127,6 @@ def reject_clip(
     clip_id,
     rejected,
 ):
-    """
-    Permanently reject a source clip after a content/quality gate
-    determines that it should not be used for a ViralSpawnTV Short.
-    """
-
     if not clip_id:
         return
 
@@ -178,16 +148,10 @@ def reject_clip(
 
 
 def main():
-
     attempts = []
-
-    # ---------------------------------------------------------
-    # LOAD PERMANENT REJECTION HISTORY
-    # ---------------------------------------------------------
 
     rejected = load_rejected()
 
-    # Always ensure the file exists so the workflow can persist it.
     save_rejected(
         rejected
     )
@@ -198,13 +162,7 @@ def main():
     )
 
     # ---------------------------------------------------------
-    # DISCOVERY + RANKING
-    # ---------------------------------------------------------
-    #
-    # Discovery and ranking happen once per scheduled run.
-    #
-    # The acquisition script reads the rejection history and
-    # advances through the already-ranked candidate batch.
+    # 1. DISCOVER 100 FRESH CANDIDATES
     # ---------------------------------------------------------
 
     if run(
@@ -214,14 +172,18 @@ def main():
             "game discovery failed"
         )
 
+    # ---------------------------------------------------------
+    # 2. CHEAP METADATA ORDERING
+    # ---------------------------------------------------------
+
     if run(
         "candidate_ranker_v12_1.py"
     ) != 0:
         raise RuntimeError(
-            "V12.1 candidate ranking failed"
+            "V12.4 metadata ranking failed"
         )
 
-    ranked = load_json(
+    metadata_ranked = load_json(
         "work/v12_ranked_candidates.json",
         {},
     ).get(
@@ -229,42 +191,67 @@ def main():
         [],
     )
 
-    if not ranked:
-        raise RuntimeError(
-            "ranked batch empty"
-        )
-
     print(
-        f"V12.1 ranked batch contains "
-        f"{len(ranked)} candidates."
-    )
-
-    print(
-        f"V12.1 may inspect up to "
-        f"{MAX_EXPENSIVE_ATTEMPTS} expensive candidates."
+        f"V12.4 metadata stage supplied "
+        f"{len(metadata_ranked)} candidates "
+        f"to visual prescreen."
     )
 
     # ---------------------------------------------------------
-    # EXPENSIVE ATTEMPT LOOP
+    # 3. LIGHTWEIGHT VISUAL PRESCREEN
+    # ---------------------------------------------------------
+
+    if run(
+        "viral_prescreener.py"
+    ) != 0:
+        raise RuntimeError(
+            "V12.4 visual prescreen failed"
+        )
+
+    prescreened = load_json(
+        "work/v12_prescreened_candidates.json",
+        {},
+    ).get(
+        "candidates",
+        [],
+    )
+
+    if not prescreened:
+        raise RuntimeError(
+            "visual prescreen shortlist empty"
+        )
+
+    print(
+        f"V12.4 prescreen shortlist contains "
+        f"{len(prescreened)} candidates."
+    )
+
+    print(
+        f"V12.4 may inspect up to "
+        f"{MAX_EXPENSIVE_ATTEMPTS} full-gate candidates."
+    )
+
+    # ---------------------------------------------------------
+    # 4. FULL EXPENSIVE GATE LOOP
     # ---------------------------------------------------------
 
     for attempt_no in range(
         1,
         MAX_EXPENSIVE_ATTEMPTS + 1,
     ):
-
         code = run(
             "kick_gaming_acquisition_v12.py"
         )
 
         if code != 0:
-
             attempts.append(
                 {
-                    "attempt": attempt_no,
-                    "result": "failed",
+                    "attempt":
+                        attempt_no,
+                    "result":
+                        "failed",
                     "reason":
-                        "ranked_batch_exhausted_or_acquisition_failed",
+                        "prescreened_batch_exhausted_or_acquisition_failed",
                 }
             )
 
@@ -297,24 +284,35 @@ def main():
                 acq.get(
                     "v12_metadata_score"
                 ),
+            "prescreen_predicted_score":
+                acq.get(
+                    "prescreen_predicted_score"
+                ),
+            "prescreen_probability_72_plus":
+                acq.get(
+                    "prescreen_probability_72_plus"
+                ),
         }
 
         print(
             "\n"
-            f"V12.1 expensive attempt "
+            f"V12.4 full-gate attempt "
             f"{attempt_no}/"
             f"{MAX_EXPENSIVE_ATTEMPTS}: "
-            f"{clip_id}"
+            f"{clip_id} | "
+            f"pred="
+            f"{row.get('prescreen_predicted_score')} | "
+            f"P72="
+            f"{row.get('prescreen_probability_72_plus')}"
         )
 
         # -----------------------------------------------------
-        # VIRAL QUALITY GATE
+        # FULL VIRAL QUALITY GATE
         # -----------------------------------------------------
 
         if run(
             "viral_gate.py"
         ) != 0:
-
             row.update(
                 {
                     "result":
@@ -346,7 +344,6 @@ def main():
         if run(
             "music_gate.py"
         ) != 0:
-
             row.update(
                 {
                     "result":
@@ -372,18 +369,12 @@ def main():
             continue
 
         # -----------------------------------------------------
-        # FROZEN V5 SHORTS PRODUCTION
-        # -----------------------------------------------------
-        #
-        # IMPORTANT:
-        # A technical production failure does NOT permanently
-        # reject the source clip. The source may still be good.
+        # PRODUCTION
         # -----------------------------------------------------
 
         if run(
             "production_test.py"
         ) != 0:
-
             row.update(
                 {
                     "result":
@@ -406,13 +397,12 @@ def main():
             )
 
         # -----------------------------------------------------
-        # FINAL SELECTED-SEGMENT CONTENT / GAMBLING GATE
+        # FINAL CONTENT / GAMBLING GATE
         # -----------------------------------------------------
 
         if run(
             "final_content_gate.py"
         ) != 0:
-
             row.update(
                 {
                     "result":
@@ -458,53 +448,39 @@ def main():
             attempts
         )
 
-        # Persist the current rejection file even though this
-        # particular source passed.
         save_rejected(
             rejected
         )
 
         print(
-            f"V12.1 SUCCESS on expensive "
+            f"V12.4 SUCCESS on full-gate "
             f"attempt {attempt_no}: "
             f"{clip_id}"
         )
 
         return
 
-    # ---------------------------------------------------------
-    # NO PUBLISHABLE SHORT FOUND
-    # ---------------------------------------------------------
-
     save_log(
         attempts
     )
 
-    # Critical:
-    # Save all rejected IDs even though the overall workflow
-    # will exit non-zero. The workflow persistence step must use
-    # `if: always()` so these rejections survive failed runs.
     save_rejected(
         rejected
     )
 
     raise RuntimeError(
-        f"V12.1 found no publishable Short "
+        f"V12.4 found no publishable Short "
         f"after {MAX_EXPENSIVE_ATTEMPTS} "
-        f"expensive attempts."
+        f"full-gate attempts."
     )
 
 
 if __name__ == "__main__":
-
     try:
         main()
-
-    except Exception as e:
-
+    except Exception as exc:
         print(
-            "V12.1 PIPELINE FAILED:",
-            e,
+            "V12.4 PIPELINE FAILED:",
+            exc,
         )
-
         sys.exit(1)
