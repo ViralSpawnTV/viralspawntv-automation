@@ -1,96 +1,119 @@
-import json
-import os
-import re
-import sys
-from datetime import datetime, timezone, timedelta
-from pathlib import Path
-from urllib.parse import urlsplit, urlunsplit
 
-from playwright.sync_api import sync_playwright
+                normalized_id = normalize_clip_id(clip_id)
+                normalized_url = normalize_clip_url(url)
+
+                if normalized_id in seen_ids or normalized_url in seen_urls:
+                    continue
+
+                # Filter published Shorts BEFORE they enter the candidate pool.
+                if (
+                    normalized_id in used
+                    or normalized_id in published_ids
+                    or normalized_url in published_urls
+                ):
+                    skipped_published += 1
+                    continue
+
+                # Filter permanently rejected Shorts BEFORE candidate creation.
+                if (
+                    normalized_id in shorts_rejected_ids
+                    or normalized_url in shorts_rejected_urls
+                ):
+                    skipped_shorts_rejected += 1
+                    continue
+
+                if creator_counts.get(channel, 0) >= MAX_PUBLIC_UPLOADS_PER_CREATOR_24H:
+                    continue
+
+                if LONGFORM_MODE and (
+                    normalized_id in longform_used_ids
+                    or normalized_url in longform_used_urls
+                ):
+                    skipped_longform_used += 1
+                    continue
+
+                if LONGFORM_MODE and (
+                    normalized_id in rejected_ids
+                    or normalized_url in rejected_urls
+                ):
+                    skipped_longform_rejected += 1
+                    continue
+
+                rows.append({
+                    "platform": "kick",
+                    "game": game,
+                    "category_slug": slug,
+                    "channel": channel,
+                    "clip_id": clip_id,
+                    "clip_url": url,
+                    "category_position": position,
+                })
+
+                seen_ids.add(normalized_id)
+                seen_urls.add(normalized_url)
+
+                # Limit only AFTER filtering old/rejected clips.
+                if len(rows) >= MAX_CLIPS_PER_GAME:
+                    break
+
+            if rows:
+                per_game[game] = rows
+
+        browser.close()
+
+    candidates = interleave(per_game)
+
+    manifest = {
+        "version": 11,
+        "created_at_utc": datetime.now(timezone.utc).isoformat(),
+        "creator_cap_24h": MAX_PUBLIC_UPLOADS_PER_CREATOR_24H,
+        "game_cap_24h": MAX_PUBLIC_UPLOADS_PER_GAME_24H,
+        "max_clips_per_game": MAX_CLIPS_PER_GAME,
+        "max_total_candidates": MAX_TOTAL_CANDIDATES,
+        "games_with_candidates": list(per_game.keys()),
+        "candidate_count": len(candidates),
+        "fresh_candidate_target": MAX_TOTAL_CANDIDATES,
+        "fresh_target_reached": len(candidates) >= MAX_TOTAL_CANDIDATES,
+        "skipped_published_shorts": skipped_published,
+        "skipped_rejected_shorts": skipped_shorts_rejected,
+        "skipped_longform_history": skipped_longform_used,
+        "skipped_longform_rejected": skipped_longform_rejected,
+        "candidates": candidates,
+    }
+
+    MANIFEST_PATH.parent.mkdir(parents=True, exist_ok=True)
+    MANIFEST_PATH.write_text(
+        json.dumps(manifest, indent=2, ensure_ascii=False),
+        encoding="utf-8",
+    )
+
+    print()
+    print(f"Games with candidates: {len(per_game)}")
+    print(f"Fresh batch candidate count: {len(candidates)}")
+    print(f"Skipped already-published Shorts during discovery: {skipped_published}")
+    print(f"Skipped permanently rejected Shorts during discovery: {skipped_shorts_rejected}")
+
+    if LONGFORM_MODE:
+        print(f"Skipped previously used long-form clips: {skipped_longform_used}")
+        print(f"Skipped permanently rejected long-form clips: {skipped_longform_rejected}")
+
+    if len(candidates) < MAX_TOTAL_CANDIDATES:
+        print(
+            "NOTICE: Kick exposed fewer fresh eligible clips than the "
+            "requested target. Continuing with every fresh clip found."
+        )
+
+    if not candidates:
+        raise RuntimeError(
+            "V11 discovery found no eligible fresh game-category clips."
+        )
+
+    print("V11 batch discovery complete.")
 
 
-HISTORY_PATH = Path("history.json")
-SHORTS_REJECTED_HISTORY_PATH = Path("shorts_rejected_history.json")
-LONGFORM_HISTORY_PATH = Path("longform_history.json")
-LONGFORM_REJECTED_HISTORY_PATH = Path("longform_rejected_history.json")
-MANIFEST_PATH = Path("work/v11_candidate_manifest.json")
-
-MAX_PUBLIC_UPLOADS_PER_CREATOR_24H = 2
-MAX_PUBLIC_UPLOADS_PER_GAME_24H = 4
-DIVERSITY_WINDOW_HOURS = 24
-
-MAX_CLIPS_PER_GAME = int(os.getenv("DISCOVERY_MAX_CLIPS_PER_GAME", "18"))
-MAX_TOTAL_CANDIDATES = int(os.getenv("DISCOVERY_MAX_TOTAL_CANDIDATES", "80"))
-
-LONGFORM_MODE = MAX_TOTAL_CANDIDATES > 80
-DISCOVERY_SCROLL_ROUNDS = int(os.getenv("DISCOVERY_SCROLL_ROUNDS", "14" if LONGFORM_MODE else "0"))
-DISCOVERY_SCROLL_WAIT_MS = int(os.getenv("DISCOVERY_SCROLL_WAIT_MS", "900"))
-
-USER_AGENT = (
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-    "AppleWebKit/537.36 (KHTML, like Gecko) "
-    "Chrome/130.0.0.0 Safari/537.36"
-)
-
-GAME_CATEGORIES = [
-    ("Grand Theft Auto V (GTA)", "grand-theft-auto-v"),
-    ("Call of Duty: Warzone", "call-of-duty-warzone"),
-    ("Minecraft", "minecraft"),
-    ("Fortnite", "fortnite"),
-    ("Valorant", "valorant"),
-    ("Counter-Strike 2", "counter-strike-2"),
-    ("Rocket League", "rocket-league"),
-    ("League of Legends", "league-of-legends"),
-    ("Apex Legends", "apex-legends"),
-    ("Overwatch 2", "overwatch-2"),
-    ("Marvel Rivals", "marvel-rivals"),
-    ("Roblox", "roblox"),
-    ("Rust", "rust"),
-    ("Dead by Daylight", "dead-by-daylight"),
-    ("Escape from Tarkov", "escape-from-tarkov"),
-    ("Call of Duty: Black Ops 7", "call-of-duty-black-ops-7"),
-]
-
-GAMBLING_TERMS = {
-    "casino", "slots", "slot machine", "gambling", "roulette",
-    "blackjack", "sportsbook", "sports betting", "betting",
-}
-
-
-def load_history():
-    if not HISTORY_PATH.exists():
-        return {"version": 1, "used_clips": []}
+if __name__ == "__main__":
     try:
-        data = json.loads(HISTORY_PATH.read_text(encoding="utf-8"))
-    except Exception:
-        return {"version": 1, "used_clips": []}
-    if isinstance(data, list):
-        return {"version": 1, "used_clips": data}
-    if not isinstance(data, dict):
-        return {"version": 1, "used_clips": []}
-    data.setdefault("used_clips", [])
-    return data
-
-
-def load_aux_history(path, key):
-    if not path.exists():
-        return {"version": 1, key: []}
-    try:
-        data = json.loads(path.read_text(encoding="utf-8"))
-    except Exception:
-        return {"version": 1, key: []}
-    if isinstance(data, list):
-        return {"version": 1, key: data}
-    if not isinstance(data, dict):
-        return {"version": 1, key: []}
-    data.setdefault(key, [])
-    if not isinstance(data.get(key), list):
-        data[key] = []
-    return data
-
-
-def normalize_clip_id(value):
-    return str(value or "").strip().casefold()
-
-
-def normalize_clip_url(value):
+        main()
+    except Exception as exc:
+        print(f"V11 DISCOVERY FAILED: {exc}")
+        sys.exit(1)
