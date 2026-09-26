@@ -38,6 +38,7 @@ FONT = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
 # V5.1 SHORTS BRAND BOOKENDS
 INTRO_IMAGE = ROOT / "viralspawntv_intro.png"
 OUTRO_IMAGE = ROOT / "viralspawntv_outro.png"
+NEON_FRAME = ROOT / "viralspawntv_neon_frame_overlay.png"
 INTRO_SECONDS = 0.7
 OUTRO_SECONDS = 1.3
 CORE_VIDEO = WORK / "ViralSpawnTV_Short_V4_core.mp4"
@@ -1986,88 +1987,32 @@ def build_video_filter(
         current = label
 
     # ========================================================
-    # V5.3 ANIMATED VIRALSPAWNTV NEON CHASE BORDER
+    # V5.4 VIRALSPAWNTV ELECTRIC FRAME OVERLAY
     # ========================================================
-    # Thin electric-blue / neon-green segments continuously chase
-    # around all four edges of the 1080x1920 core Short.
+    # Uses the custom neon cyber frame asset instead of geometric
+    # drawbox bars. The frame loops for the full Short and receives
+    # a subtle continuous electrical brightness pulse.
     # ========================================================
 
-    for side_name, x, y, w, h in [
-        ("top", 10, 10, 1060, 5),
-        ("bottom", 10, 1905, 1060, 5),
-        ("left", 10, 10, 5, 1900),
-        ("right", 1065, 10, 5, 1900),
-    ]:
-        label = f"border_base_{side_name}"
-        filters.append(
-            f"[{current}]"
-            "drawbox="
-            f"x={x}:y={y}:w={w}:h={h}:"
-            "color=0x00d9ff@0.42:t=fill"
-            f"[{label}]"
-        )
-        current = label
+    frame_path = NEON_FRAME.as_posix().replace(":", "\\:")
 
-    chase_specs = [
-        ("green", "0x39ff14@0.98", 0.00),
-        ("blue", "0x00bfff@0.98", 0.50),
-    ]
+    filters.append(
+        f"movie={frame_path},"
+        "loop=loop=-1:size=1:start=0,"
+        "fps=30,"
+        "scale=1080:1920,"
+        "format=rgba,"
+        "eq=brightness='0.045*sin(2*PI*t/1.55)':eval=frame"
+        "[viralframe]"
+    )
 
-    hseg = 230
-    vseg = 300
-    htravel = 1080 + hseg
-    vtravel = 1920 + vseg
-    hspeed = 360
-    vspeed = 520
+    filters.append(
+        f"[{current}][viralframe]"
+        "overlay=0:0:repeatlast=1"
+        "[framedvideo]"
+    )
 
-    for cname, color, phase in chase_specs:
-        label = f"border_{cname}_top"
-        filters.append(
-            f"[{current}]"
-            "drawbox="
-            f"x='mod(t*{hspeed}+{phase}*{htravel},{htravel})-{hseg}':"
-            "y=6:"
-            f"w={hseg}:h=11:"
-            f"color={color}:t=fill"
-            f"[{label}]"
-        )
-        current = label
-
-        label = f"border_{cname}_right"
-        filters.append(
-            f"[{current}]"
-            "drawbox="
-            "x=1063:"
-            f"y='mod(t*{vspeed}+{phase}*{vtravel},{vtravel})-{vseg}':"
-            f"w=11:h={vseg}:"
-            f"color={color}:t=fill"
-            f"[{label}]"
-        )
-        current = label
-
-        label = f"border_{cname}_bottom"
-        filters.append(
-            f"[{current}]"
-            "drawbox="
-            f"x='1080-mod(t*{hspeed}+{phase}*{htravel},{htravel})':"
-            "y=1903:"
-            f"w={hseg}:h=11:"
-            f"color={color}:t=fill"
-            f"[{label}]"
-        )
-        current = label
-
-        label = f"border_{cname}_left"
-        filters.append(
-            f"[{current}]"
-            "drawbox="
-            "x=6:"
-            f"y='1920-mod(t*{vspeed}+{phase}*{vtravel},{vtravel})':"
-            f"w=11:h={vseg}:"
-            f"color={color}:t=fill"
-            f"[{label}]"
-        )
-        current = label
+    current = "framedvideo"
 
     # ========================================================
     # PERMANENT BRANDING
@@ -2591,7 +2536,7 @@ def save_metadata(
         "impacts": plan[
             "impacts"
         ],
-        "shorts_branding_version": "5.3-animated-border",
+        "shorts_branding_version": "5.4-electric-frame",
         "branding_intro": str(INTRO_IMAGE),
         "branding_outro": str(OUTRO_IMAGE),
         "branding_intro_seconds": INTRO_SECONDS,
@@ -2627,6 +2572,11 @@ def main():
 
         raise RuntimeError(
             "OPENAI_API_KEY is missing."
+        )
+
+    if not NEON_FRAME.exists():
+        raise RuntimeError(
+            f"Missing ViralSpawnTV neon frame asset: {NEON_FRAME}"
         )
 
     client = OpenAI()
