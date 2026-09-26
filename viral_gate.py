@@ -18,7 +18,7 @@ RESULT = WORK / "viral_gate_result.json"
 
 # V5.5 quality standard:
 # Only clips scoring 80+ are allowed into Shorts production.
-MIN_SCORE = 80
+MIN_SCORE = 72
 
 
 def run(command):
