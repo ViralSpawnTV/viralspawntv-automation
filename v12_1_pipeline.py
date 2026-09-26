@@ -7,7 +7,7 @@ from pathlib import Path
 LOG = Path("work/v12_attempt_log.json")
 REJECTED = Path("shorts_rejected_history.json")
 
-MAX_EXPENSIVE_ATTEMPTS = 30
+MAX_EXPENSIVE_ATTEMPTS = 15
 
 
 def run(script):
@@ -180,7 +180,7 @@ def main():
         "candidate_ranker_v12_1.py"
     ) != 0:
         raise RuntimeError(
-            "V12.4 metadata ranking failed"
+            "V12.5 metadata ranking failed"
         )
 
     metadata_ranked = load_json(
@@ -192,20 +192,20 @@ def main():
     )
 
     print(
-        f"V12.4 metadata stage supplied "
+        f"V12.5 metadata stage supplied "
         f"{len(metadata_ranked)} candidates "
         f"to visual prescreen."
     )
 
     # ---------------------------------------------------------
-    # 3. LIGHTWEIGHT VISUAL PRESCREEN
+    # 3. FAST VISUAL PRESCREEN (TOP 40 ONLY)
     # ---------------------------------------------------------
 
     if run(
         "viral_prescreener.py"
     ) != 0:
         raise RuntimeError(
-            "V12.4 visual prescreen failed"
+            "V12.5 visual prescreen failed"
         )
 
     prescreened = load_json(
@@ -222,12 +222,12 @@ def main():
         )
 
     print(
-        f"V12.4 prescreen shortlist contains "
+        f"V12.5 prescreen shortlist contains "
         f"{len(prescreened)} candidates."
     )
 
     print(
-        f"V12.4 may inspect up to "
+        f"V12.5 may inspect up to "
         f"{MAX_EXPENSIVE_ATTEMPTS} full-gate candidates."
     )
 
@@ -296,7 +296,7 @@ def main():
 
         print(
             "\n"
-            f"V12.4 full-gate attempt "
+            f"V12.5 full-gate attempt "
             f"{attempt_no}/"
             f"{MAX_EXPENSIVE_ATTEMPTS}: "
             f"{clip_id} | "
@@ -453,7 +453,7 @@ def main():
         )
 
         print(
-            f"V12.4 SUCCESS on full-gate "
+            f"V12.5 SUCCESS on full-gate "
             f"attempt {attempt_no}: "
             f"{clip_id}"
         )
@@ -469,7 +469,7 @@ def main():
     )
 
     raise RuntimeError(
-        f"V12.4 found no publishable Short "
+        f"V12.5 found no publishable Short "
         f"after {MAX_EXPENSIVE_ATTEMPTS} "
         f"full-gate attempts."
     )
@@ -480,7 +480,7 @@ if __name__ == "__main__":
         main()
     except Exception as exc:
         print(
-            "V12.4 PIPELINE FAILED:",
+            "V12.5 PIPELINE FAILED:",
             exc,
         )
         sys.exit(1)
