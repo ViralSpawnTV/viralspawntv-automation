@@ -530,7 +530,13 @@ payoff or reaction
 VIRALSPAWNTV COMMENTARY
 ============================================================
 
-Create 2-3 short original commentary beats.
+Create 3-5 short original commentary beats.
+
+Each beat must add ORIGINAL ViralSpawnTV value: explain strategy, build the
+story, point out a meaningful gameplay decision, react to a specific moment,
+or connect setup to payoff. Do not merely restate what the viewer can already
+see. Make every line specific to THIS clip so the narration would not make
+sense pasted onto a different gaming clip.
 
 The first should normally occur 0.2-1.5 seconds
 after the selected segment begins.
@@ -823,7 +829,7 @@ Return ONLY valid JSON:
     for beat in plan.get(
         "commentary",
         []
-    )[:3]:
+    )[:5]:
 
         try:
             beat_time = float(
@@ -1980,6 +1986,90 @@ def build_video_filter(
         current = label
 
     # ========================================================
+    # V5.3 ANIMATED VIRALSPAWNTV NEON CHASE BORDER
+    # ========================================================
+    # Thin electric-blue / neon-green segments continuously chase
+    # around all four edges of the 1080x1920 core Short.
+    # ========================================================
+
+    for side_name, x, y, w, h in [
+        ("top", 10, 10, 1060, 5),
+        ("bottom", 10, 1905, 1060, 5),
+        ("left", 10, 10, 5, 1900),
+        ("right", 1065, 10, 5, 1900),
+    ]:
+        label = f"border_base_{side_name}"
+        filters.append(
+            f"[{current}]"
+            "drawbox="
+            f"x={x}:y={y}:w={w}:h={h}:"
+            "color=0x00d9ff@0.42:t=fill"
+            f"[{label}]"
+        )
+        current = label
+
+    chase_specs = [
+        ("green", "0x39ff14@0.98", 0.00),
+        ("blue", "0x00bfff@0.98", 0.50),
+    ]
+
+    hseg = 230
+    vseg = 300
+    htravel = 1080 + hseg
+    vtravel = 1920 + vseg
+    hspeed = 360
+    vspeed = 520
+
+    for cname, color, phase in chase_specs:
+        label = f"border_{cname}_top"
+        filters.append(
+            f"[{current}]"
+            "drawbox="
+            f"x='mod(t*{hspeed}+{phase}*{htravel},{htravel})-{hseg}':"
+            "y=6:"
+            f"w={hseg}:h=11:"
+            f"color={color}:t=fill"
+            f"[{label}]"
+        )
+        current = label
+
+        label = f"border_{cname}_right"
+        filters.append(
+            f"[{current}]"
+            "drawbox="
+            "x=1063:"
+            f"y='mod(t*{vspeed}+{phase}*{vtravel},{vtravel})-{vseg}':"
+            f"w=11:h={vseg}:"
+            f"color={color}:t=fill"
+            f"[{label}]"
+        )
+        current = label
+
+        label = f"border_{cname}_bottom"
+        filters.append(
+            f"[{current}]"
+            "drawbox="
+            f"x='1080-mod(t*{hspeed}+{phase}*{htravel},{htravel})':"
+            "y=1903:"
+            f"w={hseg}:h=11:"
+            f"color={color}:t=fill"
+            f"[{label}]"
+        )
+        current = label
+
+        label = f"border_{cname}_left"
+        filters.append(
+            f"[{current}]"
+            "drawbox="
+            "x=6:"
+            f"y='1920-mod(t*{vspeed}+{phase}*{vtravel},{vtravel})':"
+            f"w=11:h={vseg}:"
+            f"color={color}:t=fill"
+            f"[{label}]"
+        )
+        current = label
+
+    # ========================================================
     # PERMANENT BRANDING
     # ========================================================
 
@@ -2501,7 +2591,7 @@ def save_metadata(
         "impacts": plan[
             "impacts"
         ],
-        "shorts_branding_version": "5.1",
+        "shorts_branding_version": "5.3-animated-border",
         "branding_intro": str(INTRO_IMAGE),
         "branding_outro": str(OUTRO_IMAGE),
         "branding_intro_seconds": INTRO_SECONDS,
