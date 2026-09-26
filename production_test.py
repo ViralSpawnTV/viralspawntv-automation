@@ -38,7 +38,7 @@ FONT = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
 # V5.1 SHORTS BRAND BOOKENDS
 INTRO_IMAGE = ROOT / "viralspawntv_intro.png"
 OUTRO_IMAGE = ROOT / "viralspawntv_outro.png"
-OUTRO_CTA = "FOLLOW VIRALSPAWNTV FOR DAILY GAMING CLIPS"
+OUTRO_CTA = "FOLLOW FOR DAILY GAMING CLIPS"
 NEON_FRAME = ROOT / "viralspawntv_neon_frame_overlay.png"
 INTRO_SECONDS = 0.0
 OUTRO_SECONDS = 1.0
@@ -701,6 +701,11 @@ These are SELECTIVE VIRAL CAPTIONS, not full subtitles.
 Only caption dialogue that materially helps the viewer understand the
 setup, tension, payoff, joke, clutch, fail, or reaction.
 
+When choosing which lines to caption, prioritize information that explains
+WHAT the player is trying to do, WHY the moment is difficult, WHAT is at
+risk, or WHAT changed. Do not fill the Short with generic reaction captions
+like "NICE!" or "NO WAY!" when a clearer story/stakes caption is available.
+
 Translate important non-English dialogue into concise, natural
 American English. If the source is already English, preserve its
 meaning while cleaning it up for readable Shorts captions.
@@ -726,9 +731,26 @@ title
 description
 
 HEADLINE:
-maximum 6 words.
+2-6 words.
 This is the on-screen opening hook, not a generic label or summary.
-Make it specific, curiosity-driven, and truthful to this exact clip.
+It MUST communicate a specific stake, danger, challenge, decision, or
+unresolved question that a viewer can understand immediately.
+
+Do NOT use vague one-word hooks such as:
+"SAVE?"
+"CLUTCH?"
+"WHAT?"
+"WHY?"
+"INSANE"
+
+Prefer specific, truthful hooks such as:
+"CAN HE SAVE THIS?"
+"ONE SHOT TO SURVIVE"
+"THIS SHOULD BE OVER"
+"HE HAS NO WAY OUT"
+"THEY THINK HE'S DONE"
+
+Never invent stakes that the footage does not support.
 Avoid generic phrases such as "NO WAY", "INSANE CLIP", or "WATCH THIS".
 
 TITLE:
@@ -1611,9 +1633,13 @@ def build_video_filter(
     # MAIN SOURCE
     # ========================================================
 
+    # V5.7: Make gameplay materially larger on mobile.
+    # 16:9 footage is scaled to 820px tall, then horizontally cropped
+    # to 1080px so the action occupies ~35% more vertical space.
     filters.append(
         "[0:v]"
-        "scale=1080:-2"
+        "scale=-2:820,"
+        "crop=1080:820"
         "[foreground]"
     )
 
@@ -1658,20 +1684,10 @@ def build_video_filter(
             3: 1.11,
         }[intensity]
 
-        zoom_width = int(
-            1080 *
-            zoom_factor
-        )
-
-        #
-        # Make width even for H.264.
-        #
-
-        if zoom_width % 2:
-            zoom_width += 1
-
+        # Base gameplay is now 820px tall. Punch zoom by increasing
+        # height further and cropping horizontally back to 1080.
         zoom_height = int(
-            608 *
+            820 *
             zoom_factor
         )
 
@@ -1684,8 +1700,9 @@ def build_video_filter(
 
         filters.append(
             f"[0:v]"
-            f"scale="
-            f"{zoom_width}:"
+            f"scale=-2:"
+            f"{zoom_height},"
+            f"crop=1080:"
             f"{zoom_height}"
             f"[{zoom_source}]"
         )
@@ -2394,48 +2411,48 @@ def render_short_brand_card(image_path, dest, seconds, label):
             f"Missing Shorts branding asset: {image_path}"
         )
 
+    channel_file = make_text_file(
+        "v5_7_outro_channel",
+        "VIRALSPAWNTV",
+        width=18,
+    )
+
     cta_file = make_text_file(
-        "v5_6_outro_cta",
+        "v5_7_outro_cta",
         OUTRO_CTA,
         width=18,
     )
 
+    # V5.7: intentionally simple outro.
+    # Use the old image only as a heavily blurred/darkened background so
+    # its extra icons/copy cannot compete with the two messages below.
     filter_complex = (
-        "[0:v]split=2[bgsrc][fgsrc];"
-        "[bgsrc]"
+        "[0:v]"
         "scale=1080:1920:"
         "force_original_aspect_ratio=increase,"
         "crop=1080:1920,"
-        "boxblur=28:14,"
-        "eq=brightness=-0.12"
-        "[bg];"
-        "[fgsrc]"
-        "scale=1000:1780:"
-        "force_original_aspect_ratio=decrease,"
-        "zoompan="
-        "z='min(zoom+0.0018,1.06)':"
-        "d=1:"
-        "s=1000x1780:"
-        "fps=30"
-        "[fg];"
-        "[bg][fg]"
-        "overlay=(W-w)/2:(H-h)/2,"
+        "boxblur=45:20,"
+        "eq=brightness=-0.38:saturation=0.45,"
         "drawbox="
-        "x=90:"
-        "y=1430:"
-        "w=900:"
-        "h=250:"
-        "color=black@0.55:"
-        "t=fill,"
+        "x=0:y=0:w=1080:h=1920:"
+        "color=black@0.42:t=fill,"
+        "drawtext="
+        f"fontfile={FONT}:"
+        f"textfile={channel_file}:"
+        "fontcolor=white:"
+        "fontsize=92:"
+        "x=(w-text_w)/2:"
+        "y=760:"
+        "borderw=5:"
+        "bordercolor=black,"
         "drawtext="
         f"fontfile={FONT}:"
         f"textfile={cta_file}:"
         "fontcolor=white:"
-        "fontsize=56:"
-        "line_spacing=10:"
+        "fontsize=48:"
         "x=(w-text_w)/2:"
-        "y=1495:"
-        "borderw=5:"
+        "y=900:"
+        "borderw=4:"
         "bordercolor=black:"
         "shadowx=3:"
         "shadowy=3:"
@@ -2622,7 +2639,7 @@ def save_metadata(
         "impacts": plan[
             "impacts"
         ],
-        "shorts_branding_version": "5.6-cold-open-subscribe-outro",
+        "shorts_branding_version": "5.7-larger-gameplay-stronger-hook",
         "branding_intro": str(INTRO_IMAGE),
         "branding_outro": str(OUTRO_IMAGE),
         "branding_intro_seconds": INTRO_SECONDS,
