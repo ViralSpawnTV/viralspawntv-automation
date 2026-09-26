@@ -6,11 +6,9 @@ from pathlib import Path
 from playwright.sync_api import sync_playwright
 
 
-RANKED = Path("work/v12_ranked_candidates.json")
+# V12.4 now acquires from the visual-prescreen shortlist.
+RANKED = Path("work/v12_prescreened_candidates.json")
 
-# Permanent cross-run rejection history.
-#
-# Shared with v12_1_pipeline.py and persisted by GitHub Actions.
 REJECTED = Path("shorts_rejected_history.json")
 
 OUTDIR = Path("work/kick_gaming")
@@ -30,14 +28,6 @@ def load_json(path, default):
 
 
 def load_rejected_ids():
-    """
-    Load permanent rejected Shorts clip IDs.
-
-    Supports both:
-    - legacy plain-list format
-    - current dictionary format with clip_ids
-    """
-
     data = load_json(
         REJECTED,
         {
@@ -74,11 +64,6 @@ def load_rejected_ids():
 
 
 def save_rejected_ids(rejected):
-    """
-    Save the permanent rejection history in the same format used
-    by v12_1_pipeline.py.
-    """
-
     clean = sorted(
         {
             str(item).strip()
@@ -117,7 +102,6 @@ def candidate_url(candidate):
 
 
 def acquire(candidate):
-
     clip_id = candidate_id(
         candidate
     )
@@ -139,7 +123,6 @@ def acquire(candidate):
     playlist_urls = []
 
     with sync_playwright() as p:
-
         browser = p.chromium.launch(
             headless=True
         )
@@ -147,7 +130,6 @@ def acquire(candidate):
         page = browser.new_page()
 
         def capture(response):
-
             url = response.url
 
             if ".m3u8" in url:
@@ -170,10 +152,7 @@ def acquire(candidate):
             5000
         )
 
-        # Try to start playback in case the playlist is
-        # lazy-loaded.
         try:
-
             page.locator(
                 "video"
             ).first.click(
@@ -194,14 +173,9 @@ def acquire(candidate):
             "No HLS playlist captured from clip page."
         )
 
-    # Prefer a playlist URL containing this clip ID.
-    #
-    # Otherwise use the last media playlist observed.
-    # FFmpeg can resolve master playlists as well.
     chosen = None
 
     for url in playlist_urls:
-
         if (
             clip_id.lower()
             in url.lower()
@@ -214,10 +188,6 @@ def acquire(candidate):
 
     if OUT.exists():
         OUT.unlink()
-
-    # ---------------------------------------------------------
-    # FIRST ATTEMPT: STREAM COPY
-    # ---------------------------------------------------------
 
     cmd = [
         "ffmpeg",
@@ -237,16 +207,11 @@ def acquire(candidate):
         cmd
     )
 
-    # ---------------------------------------------------------
-    # FALLBACK: NORMALIZE VIDEO/AUDIO
-    # ---------------------------------------------------------
-
     if (
         proc.returncode != 0
         or not OUT.exists()
         or OUT.stat().st_size < 10000
     ):
-
         if OUT.exists():
             OUT.unlink()
 
@@ -289,7 +254,7 @@ def acquire(candidate):
         "success":
             True,
         "version":
-            "12.1-compatible",
+            "12.4-prescreen-compatible",
         "clip_id":
             clip_id,
         "clip_url":
@@ -318,6 +283,34 @@ def acquire(candidate):
             candidate.get(
                 "v12_metadata_reason"
             ),
+        "prescreen_predicted_score":
+            candidate.get(
+                "prescreen_predicted_score"
+            ),
+        "prescreen_probability_72_plus":
+            candidate.get(
+                "prescreen_probability_72_plus"
+            ),
+        "prescreen_hook":
+            candidate.get(
+                "prescreen_hook"
+            ),
+        "prescreen_payoff":
+            candidate.get(
+                "prescreen_payoff"
+            ),
+        "prescreen_action":
+            candidate.get(
+                "prescreen_action"
+            ),
+        "prescreen_clarity":
+            candidate.get(
+                "prescreen_clarity"
+            ),
+        "prescreen_reason":
+            candidate.get(
+                "prescreen_reason"
+            ),
         "local_path":
             str(OUT),
         "rights_status":
@@ -345,10 +338,9 @@ def acquire(candidate):
 
 
 def main():
-
     if not RANKED.exists():
         raise RuntimeError(
-            "Missing work/v12_ranked_candidates.json"
+            "Missing work/v12_prescreened_candidates.json"
         )
 
     data = load_json(
@@ -363,13 +355,12 @@ def main():
 
     rejected = load_rejected_ids()
 
-    # Ensure the permanent history file exists even when empty.
     save_rejected_ids(
         rejected
     )
 
     print(
-        f"Ranked candidates available: "
+        f"Prescreened candidates available: "
         f"{len(candidates)}"
     )
 
@@ -384,7 +375,6 @@ def main():
         candidates,
         1,
     ):
-
         clip_id = candidate_id(
             candidate
         )
@@ -393,26 +383,25 @@ def main():
             continue
 
         if clip_id in rejected:
-
             print(
-                f"SKIP rank {rank}: "
+                f"SKIP prescreen rank {rank}: "
                 f"permanently rejected "
                 f"{clip_id}"
             )
-
             continue
 
         print(
-            f"ACQUIRE rank {rank}: "
+            f"ACQUIRE prescreen rank {rank}: "
             f"{candidate.get('game')} / "
             f"{candidate.get('channel')} / "
             f"{clip_id} / "
-            f"metadata score "
-            f"{candidate.get('v12_metadata_score')}"
+            f"predicted "
+            f"{candidate.get('prescreen_predicted_score')} / "
+            f"P72 "
+            f"{candidate.get('prescreen_probability_72_plus')}"
         )
 
         try:
-
             result = acquire(
                 candidate
             )
@@ -426,7 +415,6 @@ def main():
             return
 
         except Exception as exc:
-
             print(
                 f"ACQUISITION FAILED for "
                 f"{clip_id}: {exc}"
@@ -441,8 +429,6 @@ def main():
                 }
             )
 
-            # A source that cannot be acquired should not keep
-            # consuming expensive attempts in future runs.
             rejected.add(
                 clip_id
             )
@@ -462,7 +448,7 @@ def main():
                 "success":
                     False,
                 "reason":
-                    "ranked_batch_exhausted",
+                    "prescreened_batch_exhausted",
                 "errors":
                     errors,
             },
@@ -472,27 +458,21 @@ def main():
         encoding="utf-8",
     )
 
-    # Save once more before failing so GitHub Actions can
-    # persist every rejection generated during this invocation.
     save_rejected_ids(
         rejected
     )
 
     raise RuntimeError(
-        "No remaining ranked candidate could be acquired."
+        "No remaining prescreened candidate could be acquired."
     )
 
 
 if __name__ == "__main__":
-
     try:
         main()
-
     except Exception as exc:
-
         print(
             "KICK V12 ACQUISITION FAILED:",
             exc,
         )
-
         sys.exit(1)
