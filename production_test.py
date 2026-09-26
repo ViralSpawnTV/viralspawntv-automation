@@ -1,127 +1,95 @@
+import base64
+import json
+import math
+import os
+import pathlib
+import re
+import subprocess
+import textwrap
+
+from openai import OpenAI
+from playwright.sync_api import sync_playwright
+
+
+# ============================================================
+# SETTINGS
+# ============================================================
+
+ROOT = pathlib.Path(__file__).resolve().parent
+WORK = ROOT / "work" / "production"
+FRAMES = WORK / "frames"
+VOICES = WORK / "voices"
+TEXTS = WORK / "texts"
+
+for folder in [WORK, FRAMES, VOICES, TEXTS]:
+    folder.mkdir(parents=True, exist_ok=True)
+
+CHANNEL = "unknown"
+CREATOR = "Unknown Creator"
+
+KICK_WORK = ROOT / "work" / "kick_gaming"
+KICK_VIDEO = KICK_WORK / "selected_kick_gaming_source.mp4"
+KICK_RESULT = KICK_WORK / "acquisition_result.json"
+
+FINAL_VIDEO = WORK / "ViralSpawnTV_Short_V4.mp4"
+
+FONT = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
+
+# V5.1 SHORTS BRAND BOOKENDS
+INTRO_IMAGE = ROOT / "viralspawntv_intro.png"
+OUTRO_IMAGE = ROOT / "viralspawntv_outro.png"
+OUTRO_CTA = "FOLLOW VIRALSPAWNTV FOR DAILY GAMING CLIPS"
+NEON_FRAME = ROOT / "viralspawntv_neon_frame_overlay.png"
+INTRO_SECONDS = 0.0
+OUTRO_SECONDS = 1.0
+CORE_VIDEO = WORK / "ViralSpawnTV_Short_V4_core.mp4"
+INTRO_VIDEO = WORK / "ViralSpawnTV_Short_V5_1_intro.mp4"
+OUTRO_VIDEO = WORK / "ViralSpawnTV_Short_V5_1_outro.mp4"
+
+
+# ============================================================
+# BASIC HELPERS
+# ============================================================
+
+def run(command):
+
+    print("\nRUNNING:")
+    print(" ".join(str(x) for x in command))
+
+    result = subprocess.run(
+        command,
+        capture_output=True,
+        text=True,
     )
 
-    suspicious_hits = sum(
-        1
-        for word in suspicious_words
-        if word in normalized_generated
-    )
+    if result.returncode != 0:
+        print("\nSTDERR:")
+        print(result.stderr[-15000:])
+        raise RuntimeError("Command failed.")
 
-    if suspicious_hits >= 4:
-        raise RuntimeError(
-            "English-output safety gate failed: "
-            "generated ViralSpawnTV text appears to be "
-            "non-English. Upload stopped."
-        )
+    return result
 
-    # --------------------------------------------------------
-    # 6. Generate captions from REAL timestamps
-    # --------------------------------------------------------
 
-    if plan.get("english_caption_segments"):
-        captions = [
-            {
-                "start": float(item["start"]),
-                "end": float(item["end"]),
-                "text": clean_text(
-                    item["text"]
-                ).upper(),
-            }
-            for item in plan[
-                "english_caption_segments"
-            ]
-        ]
+def duration(path):
 
-        (
-            WORK /
-            "v4_captions.json"
-        ).write_text(
-            json.dumps(
-                captions,
-                indent=2
-            ),
-            encoding="utf-8"
-        )
+    result = run([
+        "ffprobe",
+        "-v", "error",
+        "-show_entries", "format=duration",
+        "-of", "default=noprint_wrappers=1:nokey=1",
+        str(path),
+    ])
 
-        print(
-            f"English caption chunks: "
-            f"{len(captions)}"
-        )
+    return float(result.stdout.strip())
 
-    else:
-        # Fallback for an English source or if the model
-        # returns no translated caption segments.
-        captions = create_real_captions(
-            segments,
-            float(
-                plan["segment_start"]
-            ),
-            float(
-                plan["segment_end"]
-            ),
-        )
 
-    # --------------------------------------------------------
-    # 7. Generate context-sensitive AI narration
-    # --------------------------------------------------------
+def encode_image(path):
 
-    beats = generate_voices(
-        client,
-        plan
-    )
+    return base64.b64encode(
+        path.read_bytes()
+    ).decode("utf-8")
 
-    # --------------------------------------------------------
-    # 7B. Remove captions that compete with narration
-    # --------------------------------------------------------
 
-    captions = suppress_captions_during_narration(
-        captions,
-        beats
-    )
+def clean_text(text):
 
-    # --------------------------------------------------------
-    # 8. Render
-    # --------------------------------------------------------
-
-    render(
-        clip,
-        plan,
-        beats,
-        captions
-    )
-
-    # --------------------------------------------------------
-    # 8B. V5.5 cold-open + branded outro
-    # --------------------------------------------------------
-
-    add_short_brand_bookends()
-
-    # --------------------------------------------------------
-    # 9. Save metadata for future YouTube uploader
-    # --------------------------------------------------------
-
-    save_metadata(
-        clip,
-        plan
-    )
-
-    print("\n" + "=" * 65)
-    print("VIRALSPAWNTV V4 COMPLETE")
-    print("=" * 65)
-
-    print(
-        "\nFinished Short:"
-    )
-
-    print(
-        "ViralSpawnTV_Short_V4.mp4"
-    )
-
-    print(
-        "\nV4 gaming render complete."
-    )
-
-    print(
-        "\nThe GitHub workflow may now pass this file "
-        "to youtube_upload.py for PRIVATE upload only."
-    )
-
+    text = str(text)
