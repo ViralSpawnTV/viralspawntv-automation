@@ -14,9 +14,9 @@ OUT = Path("work/v12_prescreened_candidates.json")
 WORK = Path("work/viral_prescreen")
 WORK.mkdir(parents=True, exist_ok=True)
 
-MAX_PRESCREEN = 100
-PROMOTE_COUNT = 30
-BATCH_SIZE = 5
+MAX_PRESCREEN = 40
+PROMOTE_COUNT = 15
+BATCH_SIZE = 8
 
 # Keep this aligned with the real gate in viral_gate.py.
 TARGET_FINAL_SCORE = 72
@@ -68,7 +68,7 @@ def capture_playlist(
         )
 
         page.wait_for_timeout(
-            2500
+            1000
         )
 
         try:
@@ -79,7 +79,7 @@ def capture_playlist(
             )
 
             page.wait_for_timeout(
-                1200
+                500
             )
 
         except Exception:
@@ -145,9 +145,9 @@ def extract_preview_frames(
         "-i",
         playlist_url,
         "-vf",
-        "fps=1/8,scale=480:-2",
+        "fps=1/10,scale=360:-2",
         "-frames:v",
-        "4",
+        "3",
         "-q:v",
         "5",
         pattern,
@@ -163,7 +163,7 @@ def extract_preview_frames(
         clip_dir.glob(
             "frame_*.jpg"
         )
-    )[:4]
+    )[:3]
 
 
 def build_visual_candidates(
@@ -452,7 +452,7 @@ def main():
         )
 
     print(
-        f"V12.4 visual prescreen received "
+        f"V12.5 visual prescreen received "
         f"{len(candidates)} candidates."
     )
 
@@ -466,7 +466,7 @@ def main():
         )
 
     print(
-        f"V12.4 visual prescreen acquired previews for "
+        f"V12.5 visual prescreen acquired previews for "
         f"{len(visual)} candidates."
     )
 
@@ -656,7 +656,7 @@ def main():
         json.dumps(
             {
                 "version":
-                    "12.4-lightweight-visual-prescreen",
+                    "12.5-fast-visual-prescreen",
                 "target_final_score":
                     TARGET_FINAL_SCORE,
                 "input_candidate_count":
@@ -678,7 +678,7 @@ def main():
 
     print()
     print(
-        f"V12.4 PRESCREEN COMPLETE: "
+        f"V12.5 PRESCREEN COMPLETE: "
         f"{len(candidates)} input -> "
         f"{len(visual)} previews -> "
         f"{len(scored)} scored -> "
