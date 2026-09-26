@@ -14,7 +14,7 @@ REJECTED = Path("shorts_rejected_history.json")
 
 # Give V12.1 a deeper search budget while keeping the existing
 # viral-quality threshold unchanged.
-MAX_EXPENSIVE_ATTEMPTS = 15
+MAX_EXPENSIVE_ATTEMPTS = 30
 
 
 def run(script, ok=(0,)):
