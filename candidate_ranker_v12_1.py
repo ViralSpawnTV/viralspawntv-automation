@@ -15,7 +15,7 @@ SHORTS_REJECTED_HISTORY = Path("shorts_rejected_history.json")
 
 # V12.4: let the visual prescreener make the real pre-gate decision.
 MAX_INSPECT = 100
-MAX_RANKED = 100
+MAX_RANKED = 40
 MIN_SCORE = 0
 
 BLOCKED = {
@@ -202,7 +202,7 @@ def inspect_metadata(page, candidate):
         timeout=30000,
     )
 
-    page.wait_for_timeout(700)
+    page.wait_for_timeout(250)
 
     title = norm(page.title())
     desc = ""
@@ -570,7 +570,7 @@ CANDIDATES:
 
     payload = {
         "version":
-            "12.4-visual-prescreen-input",
+            "12.5-fast-prescreen-input",
         "source_candidate_count":
             len(all_candidates),
         "fresh_candidate_count":
@@ -597,7 +597,7 @@ CANDIDATES:
     )
 
     print(
-        f"V12.4 metadata stage: "
+        f"V12.5 metadata stage: "
         f"{len(all_candidates)} discovered -> "
         f"{len(inspected)} deterministic survivors -> "
         f"{len(ranked)} sent to visual prescreen."
