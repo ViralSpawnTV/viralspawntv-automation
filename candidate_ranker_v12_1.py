@@ -10,7 +10,7 @@ SHORTS_HISTORY = Path("history.json")
 SHORTS_REJECTED_HISTORY = Path("shorts_rejected_history.json")
 
 MAX_INSPECT = 60
-MAX_RANKED = 15
+MAX_RANKED = 30
 MIN_SCORE = 40
 
 BLOCKED = {
