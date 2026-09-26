@@ -11,7 +11,7 @@ SHORTS_REJECTED_HISTORY = Path("shorts_rejected_history.json")
 
 MAX_INSPECT = 60
 MAX_RANKED = 30
-MIN_SCORE = 70
+MIN_SCORE = 65
 
 BLOCKED = {
     "casino","gambling","roulette","blackjack","sportsbook","betting","slots",
