@@ -16,62 +16,98 @@ WORK.mkdir(parents=True, exist_ok=True)
 AUDIO = WORK / "audio.wav"
 RESULT = WORK / "viral_gate_result.json"
 
-# V5.5 quality standard:
-# Only clips scoring 80+ are allowed into Shorts production.
 MIN_SCORE = 72
 
 
 def run(command):
-    subprocess.run(command, check=True)
+    subprocess.run(
+        command,
+        check=True,
+    )
 
 
 def extract_audio():
-    run([
-        "ffmpeg", "-y",
-        "-i", str(SOURCE),
-        "-vn",
-        "-ac", "1",
-        "-ar", "16000",
-        "-c:a", "pcm_s16le",
-        str(AUDIO),
-    ])
+    run(
+        [
+            "ffmpeg",
+            "-y",
+            "-i",
+            str(SOURCE),
+            "-vn",
+            "-ac",
+            "1",
+            "-ar",
+            "16000",
+            "-c:a",
+            "pcm_s16le",
+            str(AUDIO),
+        ]
+    )
 
 
 def extract_frames():
-    # Pull representative snapshots across the clip for visual scoring.
-    pattern = str(WORK / "frame_%02d.jpg")
+    pattern = str(
+        WORK
+        /
+        "frame_%02d.jpg"
+    )
 
-    run([
-        "ffmpeg", "-y",
-        "-i", str(SOURCE),
-        "-vf", "fps=1/7,scale=640:-2",
-        "-frames:v", "6",
-        pattern,
-    ])
+    for old in WORK.glob(
+        "frame_*.jpg"
+    ):
+        old.unlink()
+
+    run(
+        [
+            "ffmpeg",
+            "-y",
+            "-i",
+            str(SOURCE),
+            "-vf",
+            "fps=1/7,scale=640:-2",
+            "-frames:v",
+            "6",
+            pattern,
+        ]
+    )
 
     return sorted(
-        WORK.glob("frame_*.jpg")
+        WORK.glob(
+            "frame_*.jpg"
+        )
     )[:6]
 
 
 def transcribe(client):
-    with AUDIO.open("rb") as f:
-        response = client.audio.transcriptions.create(
-            model="whisper-1",
-            file=f,
-            response_format="text",
+    with AUDIO.open(
+        "rb"
+    ) as file:
+        response = (
+            client
+            .audio
+            .transcriptions
+            .create(
+                model="whisper-1",
+                file=file,
+                response_format="text",
+            )
         )
 
-    return str(response).strip()
+    return str(
+        response
+    ).strip()
 
 
 def data_url(path):
     encoded = base64.b64encode(
         path.read_bytes()
-    ).decode("ascii")
+    ).decode(
+        "ascii"
+    )
 
     return (
-        f"data:image/jpeg;base64,{encoded}"
+        f"data:image/jpeg;base64,"
+        f"{encoded}"
     )
 
 
@@ -79,77 +115,59 @@ def score(
     client,
     transcript,
     frames,
-    acquisition
+    acquisition,
 ):
     prompt = f"""
-You are the viral-quality gate for ViralSpawnTV,
+You are the FINAL viral-quality gate for ViralSpawnTV,
 an English-language gaming Shorts channel.
 
-Your job is to reject average clips.
+The CURRENT publish threshold is {MIN_SCORE}/100.
 
-Only clips with strong short-form potential should score 80 or higher.
+A score of {MIN_SCORE} or higher means the clip can be recommended when
+there is a realistic path to a compelling 15-45 second Short.
 
-Score this source clip BEFORE expensive production.
+Do not use an old 80-point recommendation threshold.
+Judge against the CURRENT {MIN_SCORE}-point standard.
 
 ============================================================
 VIRALSPAWNTV QUALITY STANDARD
 ============================================================
 
-We strongly prefer clips with:
-
-- an immediate hook or an obvious opportunity for a strong opening hook
-- something interesting happening within the first few seconds of the
-  usable moment
-- visible gameplay/action or a strong streamer reaction
-- clear stakes, tension, danger, challenge, surprise, humor, or skill
-- a mini-story with setup, escalation, and payoff/reaction
-- clutch plays, fails, rage, surprises, comedy, challenges, close calls,
-  impressive plays, unusual strategy, or unexpected outcomes
-- enough context to turn into a compelling 15-45 second Short
-- moments that support original English ViralSpawnTV commentary
+Strong clips usually have:
+- an immediate hook or obvious strong-hook opportunity
+- interesting action/reaction in the first few usable seconds
+- clear stakes, danger, challenge, surprise, humor, or skill
+- a mini-story with escalation and payoff/reaction
+- enough context for a compelling 15-45 second Short
 - a payoff worth staying to watch
 
 ============================================================
 OPENING-HOOK STANDARD
 ============================================================
 
-The strongest ViralSpawnTV Shorts should give the viewer a reason
-to keep watching within roughly the first 1-2 seconds.
-
-Reward clips where the editor can begin on:
-
+Reward:
 - immediate danger
-- an impossible-looking situation
-- a risky decision
-- a strange or unexpected visual
-- obvious tension
-- a funny setup
-- a challenge already in progress
-- an impressive play already developing
-- a strong streamer reaction
+- impossible-looking situations
+- risky decisions
+- strange/unexpected visuals
+- tension
+- funny setups
+- challenges in progress
+- impressive plays developing
+- strong streamer reactions
 
-Penalize clips that require too much explanation before becoming interesting.
-
-============================================================
-PENALIZE
-============================================================
-
-Penalize heavily for:
-
+Penalize:
 - dead air
-- menus
+- menus/lobbies
 - waiting
-- long walking/travel sections
-- greetings or introductions
+- greetings
 - low-action conversation
-- slow setup with no immediate intrigue
-- confusing clips with no understandable payoff
-- clips where the interesting moment cannot be inferred
-- clips with weak or ordinary outcomes
-- non-gaming content
+- long context requirements
+- confusing footage
+- weak/ordinary outcomes
+- non-gaming
 - gambling/casino content
-- clips dominated by commercial music rather than gaming/story
-- moments that would still feel average after editing
+- commercial-music-dominated footage
 
 ============================================================
 SCORING GUIDE
@@ -157,26 +175,20 @@ SCORING GUIDE
 
 90-100:
 Exceptional viral potential.
-Immediate hook, strong stakes, compelling escalation,
-and a memorable payoff.
 
 80-89:
-Strong publishable ViralSpawnTV candidate.
-Clearly above-average hook and payoff potential.
+Very strong candidate.
 
-70-79:
-Decent gaming clip but not strong enough for the current
-ViralSpawnTV quality standard.
+72-79:
+Good publishable candidate when the hook/story/payoff are clear enough.
 
-Below 70:
+60-71:
+Some potential, but not strong enough for the current publish threshold.
+
+Below 60:
 Weak, ordinary, confusing, slow, or unsuitable.
 
-An 80 should NOT be easy to earn.
-
-Do not inflate scores just because the clip contains gameplay.
-
-Do not require English source speech.
-ViralSpawnTV can translate foreign dialogue.
+Do not inflate scores simply because gameplay exists.
 
 Return ONLY JSON:
 
@@ -192,34 +204,52 @@ Return ONLY JSON:
 }}
 
 IMPORTANT:
-
-"recommended" should normally be true only when the overall score is
-80 or higher AND the clip has a realistic path to a compelling Short.
+Set "recommended" to true when the overall score is {MIN_SCORE} or higher
+AND the footage has a realistic path to a compelling ViralSpawnTV Short.
 
 SOURCE CHANNEL:
 {acquisition.get("channel", "")}
+
+PRESCREEN PREDICTION:
+score={acquisition.get("prescreen_predicted_score")}
+probability_72_plus={acquisition.get("prescreen_probability_72_plus")}
+reason={acquisition.get("prescreen_reason", "")}
 
 TRANSCRIPT:
 {transcript[:9000]}
 """
 
-    content = [{
-        "type": "input_text",
-        "text": prompt
-    }]
+    content = [
+        {
+            "type":
+                "input_text",
+            "text":
+                prompt,
+        }
+    ]
 
     for frame in frames:
-        content.append({
-            "type": "input_image",
-            "image_url": data_url(frame),
-        })
+        content.append(
+            {
+                "type":
+                    "input_image",
+                "image_url":
+                    data_url(
+                        frame
+                    ),
+            }
+        )
 
     response = client.responses.create(
         model="gpt-5.6",
-        input=[{
-            "role": "user",
-            "content": content
-        }],
+        input=[
+            {
+                "role":
+                    "user",
+                "content":
+                    content,
+            }
+        ],
     )
 
     raw = response.output_text.strip()
@@ -227,16 +257,18 @@ TRANSCRIPT:
     raw = re.sub(
         r"^```json\s*",
         "",
-        raw
+        raw,
     )
 
     raw = re.sub(
         r"\s*```$",
         "",
-        raw
+        raw,
     )
 
-    return json.loads(raw)
+    return json.loads(
+        raw
+    )
 
 
 def main():
@@ -265,20 +297,20 @@ def main():
         client,
         transcript,
         frames,
-        acquisition
+        acquisition,
     )
 
     numeric_score = int(
         scored.get(
             "score",
-            0
+            0,
         )
     )
 
     recommended = bool(
         scored.get(
             "recommended",
-            False
+            False,
         )
     )
 
@@ -289,14 +321,18 @@ def main():
     )
 
     result = {
-        "passed": passed,
-        "minimum_score": MIN_SCORE,
-        "clip_id": acquisition.get(
-            "clip_id"
-        ),
-        "channel": acquisition.get(
-            "channel"
-        ),
+        "passed":
+            passed,
+        "minimum_score":
+            MIN_SCORE,
+        "clip_id":
+            acquisition.get(
+                "clip_id"
+            ),
+        "channel":
+            acquisition.get(
+                "channel"
+            ),
         **scored,
     }
 
@@ -304,7 +340,7 @@ def main():
         json.dumps(
             result,
             indent=2,
-            ensure_ascii=False
+            ensure_ascii=False,
         ),
         encoding="utf-8",
     )
@@ -313,7 +349,7 @@ def main():
         json.dumps(
             result,
             indent=2,
-            ensure_ascii=False
+            ensure_ascii=False,
         )
     )
 
@@ -321,7 +357,9 @@ def main():
         print(
             "VIRAL QUALITY GATE: REJECTED"
         )
-        sys.exit(22)
+        sys.exit(
+            22
+        )
 
     print(
         "VIRAL QUALITY GATE: PASSED"
@@ -331,9 +369,11 @@ def main():
 if __name__ == "__main__":
     try:
         main()
-
     except Exception as exc:
         print(
-            f"VIRAL QUALITY GATE ERROR: {exc}"
+            f"VIRAL QUALITY GATE ERROR: "
+            f"{exc}"
         )
-        sys.exit(1)
+        sys.exit(
+            1
+        )
