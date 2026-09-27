@@ -15,7 +15,7 @@ OUT = Path("work/v12_prescreened_candidates.json")
 WORK = Path("work/viral_prescreen")
 WORK.mkdir(parents=True, exist_ok=True)
 
-MAX_VISUAL_CANDIDATES = 24
+MAX_VISUAL_CANDIDATES = 40
 PROMOTE_COUNT = 4
 
 # Phase 1: every window gets only its first ~2 seconds inspected.
@@ -28,24 +28,24 @@ MAX_HOOK_WINDOWS_PER_CLIP = 2
 STORY_BATCH_SIZE = 6
 STORY_FRAME_WORKERS = 4
 
-# V12.12 audio-context pass. Only Phase-2 survivors pay this cost.
+# V12.13 audio-context pass. Only Phase-2 survivors pay this cost.
 AUDIO_TRANSCRIBE_WORKERS = 4
 OPENING_AUDIO_SECONDS = 7.0
 ENDING_AUDIO_SECONDS = 7.0
 
 TARGET_FINAL_SCORE = 72
 
-# V12.12 duration strategy:
+# V12.13 duration strategy:
 # Shorts may now be as short as 40 seconds.
 MIN_SOURCE_SECONDS = 40.0
 TARGET_WINDOW_SECONDS = 55.0
 MIN_WINDOW_SECONDS = 40.0
 MAX_WINDOW_SECONDS = 58.0
 
-# V12.12 Phase-1 ranking funnel.
+# V12.13 Phase-1 ranking funnel.
 # Rank every non-hard-rejected opening and send the top 10 to Phase 2.
 
-# V12.12:
+# V12.13:
 # Phase 2 does not apply another publishability threshold.
 # It ranks the completed candidate windows and sends the top 4 to the
 # unchanged final 72 viral-quality gate.
@@ -289,7 +289,7 @@ def extract_hook_frames(item):
     """
     INPUT-SIDE SEEK:
     seek directly to this specific window start and decode only ~2.1 seconds.
-    This is the key V12.12 speed change.
+    This is the key V12.13 speed change.
     """
     candidate = item[
         "candidate"
@@ -386,7 +386,7 @@ def extract_hook_frames(item):
 
 def extract_story_frames(item):
     """
-    V12.12 Phase 2:
+    V12.13 Phase 2:
     - input-side seek to the middle for visual story evidence
     - input-side seek to the ending for payoff evidence
     - extract a short opening audio sample
@@ -855,7 +855,7 @@ def score_hook_batch(
     batch,
 ):
     prompt = """
-You are PHASE 1 of ViralSpawnTV's V12.12 prescreener.
+You are PHASE 1 of ViralSpawnTV's V12.13 prescreener.
 
 Your ONLY job is to judge whether the FIRST ~2 SECONDS of each proposed
 40-60 second gaming Short are strong enough to stop a viewer from swiping.
@@ -1021,7 +1021,7 @@ def score_story_batch(
     batch,
 ):
     prompt = f"""
-You are PHASE 2 of ViralSpawnTV's V12.12 prescreener.
+You are PHASE 2 of ViralSpawnTV's V12.13 prescreener.
 
 These windows already survived a dedicated first-2-second Big Hook test.
 Now judge whether the REST of the SAME 40-58 second window earns the
@@ -1270,7 +1270,7 @@ def final_rank(row):
         ] * 0.40
     )
 
-    # V12.12 weighting:
+    # V12.13 weighting:
     # 30% visual opening
     # 30% story/payoff
     # 20% audio/context coherence
@@ -1316,7 +1316,7 @@ def main():
         )
 
     print(
-        f"V12.12 TWO-PHASE PRESCREENER received "
+        f"V12.13 TWO-PHASE PRESCREENER received "
         f"{len(candidates)} candidates."
     )
 
@@ -1330,7 +1330,7 @@ def main():
         )
 
     print(
-        f"V12.12 PHASE 1: "
+        f"V12.13 PHASE 1: "
         f"{len(windows)} total windows -> "
         f"opening-only extraction with "
         f"{HOOK_FRAME_WORKERS} workers."
@@ -1350,7 +1350,7 @@ def main():
     )
 
     print(
-        f"V12.12 TIMING | hook_frame_extract: "
+        f"V12.13 TIMING | hook_frame_extract: "
         f"{time.perf_counter() - hook_extract_started:.1f}s"
     )
 
@@ -1451,7 +1451,7 @@ def main():
                 )
             ).strip().lower()
 
-            # V12.12: model scores cannot hard-reject weak gameplay.
+            # V12.13: model scores cannot hard-reject weak gameplay.
             # Only clearly unsuitable content categories are removed.
             hard_reject = content_type in {
                 "gambling",
@@ -1509,7 +1509,7 @@ def main():
                 row
             )
 
-            # V12.12: every non-hard-rejected opening is rankable.
+            # V12.13: every non-hard-rejected opening is rankable.
             row[
                 "prescreen_hook_phase_pass"
             ] = bool(
@@ -1521,12 +1521,12 @@ def main():
             )
 
     print(
-        f"V12.12 TIMING | hook_ai: "
+        f"V12.13 TIMING | hook_ai: "
         f"{time.perf_counter() - hook_ai_started:.1f}s"
     )
 
     # ---------------------------------------------------------
-    # V12.12 TOP-RANKED HOOK SURVIVORS
+    # V12.13 TOP-RANKED HOOK SURVIVORS
     # ---------------------------------------------------------
     # Phase 1 no longer uses arbitrary score floors.
     # Remove only hard-rejected content, rank everything else, and send
@@ -1600,7 +1600,7 @@ def main():
     viable = non_rejected
 
     print(
-        f"V12.12 PHASE 1 COMPLETE: "
+        f"V12.13 PHASE 1 COMPLETE: "
         f"{len(hook_items)} openings scored -> "
         f"{len(non_rejected)} non-hard-rejected -> "
         f"top {len(phase2_seed)} ranked windows advance."
@@ -1629,7 +1629,7 @@ def main():
 
     if not phase2_seed:
         raise RuntimeError(
-            "No non-hard-rejected opening was available for V12.12 Phase 2."
+            "No non-hard-rejected opening was available for V12.13 Phase 2."
         )
 
     story_extract_started = (
@@ -1646,7 +1646,7 @@ def main():
     )
 
     print(
-        f"V12.12 TIMING | story_frame_extract: "
+        f"V12.13 TIMING | story_frame_extract: "
         f"{time.perf_counter() - story_extract_started:.1f}s"
     )
 
@@ -1738,7 +1738,7 @@ def main():
         )
 
     print(
-        f"V12.12 TIMING | audio_context: "
+        f"V12.13 TIMING | audio_context: "
         f"{time.perf_counter() - audio_context_started:.1f}s"
     )
 
@@ -1990,7 +1990,7 @@ def main():
                 candidate
             )
 
-            # V12.12: no Phase-2 publish threshold here.
+            # V12.13: no Phase-2 publish threshold here.
             # Keep the candidate and let rank ordering choose which four
             # windows reach the real viral-quality gate.
 
@@ -1999,7 +1999,7 @@ def main():
             )
 
     print(
-        f"V12.12 TIMING | story_ai: "
+        f"V12.13 TIMING | story_ai: "
         f"{time.perf_counter() - story_ai_started:.1f}s"
     )
 
@@ -2043,7 +2043,7 @@ def main():
         best_by_clip.values()
     )
 
-    # V12.12:
+    # V12.13:
     # Phase 2 ranks all suitable completed stories. No hook/payoff/predicted
     # score threshold is allowed to overrule the final viral gate.
     best_rows.sort(
@@ -2075,7 +2075,7 @@ def main():
     ]
 
     print(
-        f"V12.12 PHASE 2 COMPLETE: "
+        f"V12.13 PHASE 2 COMPLETE: "
         f"{len(final_rows)} completed windows -> "
         f"{len(best_rows)} best-per-clip -> "
         f"top {len(promoted)} sent to final viral gate."
@@ -2088,7 +2088,7 @@ def main():
 
     payload = {
         "version":
-            "12.12-audio-aware-top4",
+            "12.13-quality-first-audio-aware-top4",
         "target_final_score":
             TARGET_FINAL_SCORE,
         "input_candidate_count":
@@ -2133,7 +2133,7 @@ def main():
 
     print()
     print(
-        f"V12.12 TWO-PHASE PRESCREEN COMPLETE: "
+        f"V12.13 TWO-PHASE PRESCREEN COMPLETE: "
         f"{len(windows)} windows -> "
         f"{len(viable)} hook-pass -> "
         f"{len(story_items)} story-inspected -> "
@@ -2142,7 +2142,7 @@ def main():
     )
 
     print(
-        f"V12.12 PRESCREEN TOTAL: "
+        f"V12.13 PRESCREEN TOTAL: "
         f"{time.perf_counter() - started:.1f}s"
     )
 
@@ -2172,7 +2172,7 @@ if __name__ == "__main__":
         main()
     except Exception as exc:
         print(
-            "V12.12 TWO-PHASE PRESCREENER ERROR:",
+            "V12.13 TWO-PHASE PRESCREENER ERROR:",
             exc,
         )
         sys.exit(1)
