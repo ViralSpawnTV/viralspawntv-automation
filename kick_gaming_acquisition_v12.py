@@ -13,8 +13,12 @@ OUTDIR = Path("work/kick_gaming")
 OUT = OUTDIR / "selected_kick_gaming_source.mp4"
 RESULT = OUTDIR / "acquisition_result.json"
 
-MIN_WINDOW_SECONDS = 49.0
+MIN_WINDOW_SECONDS = 40.0
 MAX_WINDOW_SECONDS = 58.5
+
+# HLS segment boundaries can shave a fraction of a second. A local 39s
+# core plus the existing 1s branded outro still yields a 40s final Short.
+MIN_LOCAL_SECONDS = 39.0
 
 KICK_API_TEMPLATE = "https://kick.com/api/v2/clips/{clip_id}/play"
 API_HEADERS = {
@@ -187,7 +191,7 @@ def render_window(
         OUT.unlink()
 
     # Fast path: reuse the cached HLS URL and stream-copy only the proposed
-    # 49-58 second window.
+    # 40-58 second window.
     fast = [
         "ffmpeg",
         "-y",
@@ -221,7 +225,7 @@ def render_window(
             )
 
             if (
-                seconds >= 48.5
+                seconds >= MIN_LOCAL_SECONDS
                 and
                 seconds <= 60.0
             ):
@@ -390,14 +394,14 @@ def acquire(candidate):
             "Acquired window file is missing or too small."
         )
 
-    if local_seconds < 48.5:
+    if local_seconds < MIN_LOCAL_SECONDS:
         raise RuntimeError(
             f"Selected local window too short: "
             f"{local_seconds:.2f}s."
         )
 
     print(
-        f"ACQUIRED V12.10 WINDOW: "
+        f"ACQUIRED V12.11.2 WINDOW: "
         f"original {start:.2f}-{end:.2f}s -> "
         f"local {local_seconds:.2f}s | "
         f"cached_hls={cached_playlist_used}"
@@ -561,7 +565,7 @@ def main():
     )
 
     print(
-        f"V12.10 prescreened candidates available: "
+        f"V12.11.2 prescreened candidates available: "
         f"{len(candidates)}"
     )
 
@@ -588,7 +592,7 @@ def main():
             continue
 
         print(
-            f"ACQUIRE V12.10 rank {rank}: "
+            f"ACQUIRE V12.11.2 rank {rank}: "
             f"{candidate.get('game')} / "
             f"{candidate.get('channel')} / "
             f"{clip_id} | "
@@ -657,7 +661,7 @@ def main():
     )
 
     raise RuntimeError(
-        "No remaining V12.10 prescreened candidate."
+        "No remaining V12.11.2 prescreened candidate."
     )
 
 
@@ -666,7 +670,7 @@ if __name__ == "__main__":
         main()
     except Exception as exc:
         print(
-            "KICK V12.10 ACQUISITION FAILED:",
+            "KICK V12.11.2 ACQUISITION FAILED:",
             exc,
         )
         sys.exit(1)
