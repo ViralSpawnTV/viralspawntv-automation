@@ -401,7 +401,7 @@ def acquire(candidate):
         )
 
     print(
-        f"ACQUIRED V12.12 WINDOW: "
+        f"ACQUIRED V12.13 WINDOW: "
         f"original {start:.2f}-{end:.2f}s -> "
         f"local {local_seconds:.2f}s | "
         f"cached_hls={cached_playlist_used}"
@@ -411,7 +411,7 @@ def acquire(candidate):
         "success":
             True,
         "version":
-            "12.12-audio-aware-window-acquisition",
+            "12.13-quality-first-window-acquisition",
         "clip_id":
             clip_id,
         "clip_url":
@@ -581,7 +581,7 @@ def main():
     )
 
     print(
-        f"V12.12 prescreened candidates available: "
+        f"V12.13 prescreened candidates available: "
         f"{len(candidates)}"
     )
 
@@ -608,7 +608,7 @@ def main():
             continue
 
         print(
-            f"ACQUIRE V12.12 rank {rank}: "
+            f"ACQUIRE V12.13 rank {rank}: "
             f"{candidate.get('game')} / "
             f"{candidate.get('channel')} / "
             f"{clip_id} | "
@@ -677,7 +677,7 @@ def main():
     )
 
     raise RuntimeError(
-        "No remaining V12.12 prescreened candidate."
+        "No remaining V12.13 prescreened candidate."
     )
 
 
@@ -686,7 +686,7 @@ if __name__ == "__main__":
         main()
     except Exception as exc:
         print(
-            "KICK V12.12 ACQUISITION FAILED:",
+            "KICK V12.13 ACQUISITION FAILED:",
             exc,
         )
         sys.exit(1)
