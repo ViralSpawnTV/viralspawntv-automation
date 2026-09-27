@@ -1,4 +1,5 @@
 import json
+import os
 import subprocess
 import sys
 import urllib.request
@@ -115,6 +116,47 @@ def candidate_url(candidate):
         )
         or ""
     ).strip()
+
+
+def forced_candidate_id():
+    return str(
+        os.getenv(
+            "V12_FORCE_CLIP_ID",
+            "",
+        )
+    ).strip()
+
+
+def ordered_candidates(
+    candidates,
+):
+    forced_id = forced_candidate_id()
+
+    if not forced_id:
+        return list(
+            candidates
+        )
+
+    forced = [
+        candidate
+        for candidate in candidates
+        if candidate_id(
+            candidate
+        )
+        ==
+        forced_id
+    ]
+
+    if not forced:
+        raise RuntimeError(
+            f"Forced candidate not found in prescreen list: "
+            f"{forced_id}"
+        )
+
+    # Forced mode intentionally ignores rejection-history ordering.
+    # It is used by the reliability pipeline to re-acquire the best source
+    # after all shortlist candidates have been source-gated.
+    return forced
 
 
 def probe_duration(path):
@@ -401,7 +443,7 @@ def acquire(candidate):
         )
 
     print(
-        f"ACQUIRED V12.13 WINDOW: "
+        f"ACQUIRED V12.14.5 WINDOW: "
         f"original {start:.2f}-{end:.2f}s -> "
         f"local {local_seconds:.2f}s | "
         f"cached_hls={cached_playlist_used}"
@@ -411,7 +453,7 @@ def acquire(candidate):
         "success":
             True,
         "version":
-            "12.13-quality-first-window-acquisition",
+            "12.14.5-forced-candidate-window-acquisition",
         "clip_id":
             clip_id,
         "clip_url":
@@ -581,34 +623,42 @@ def main():
     )
 
     print(
-        f"V12.13 prescreened candidates available: "
+        f"V12.14.5 prescreened candidates available: "
         f"{len(candidates)}"
     )
 
     errors = []
 
+    forced_id = forced_candidate_id()
+
+    candidate_sequence = ordered_candidates(
+        candidates
+    )
+
     for rank, candidate in enumerate(
-        candidates,
+        candidate_sequence,
         1,
     ):
         clip_id = candidate_id(
             candidate
         )
 
+        if not clip_id:
+            continue
+
         if (
-            not clip_id
-            or
+            not forced_id
+            and
             clip_id in rejected
         ):
-            if clip_id:
-                print(
-                    f"SKIP rank {rank}: "
-                    f"rejected {clip_id}"
-                )
+            print(
+                f"SKIP rank {rank}: "
+                f"rejected {clip_id}"
+            )
             continue
 
         print(
-            f"ACQUIRE V12.13 rank {rank}: "
+            f"ACQUIRE V12.14.5 rank {rank}: "
             f"{candidate.get('game')} / "
             f"{candidate.get('channel')} / "
             f"{clip_id} | "
@@ -686,7 +736,7 @@ if __name__ == "__main__":
         main()
     except Exception as exc:
         print(
-            "KICK V12.13 ACQUISITION FAILED:",
+            "KICK V12.14.5 ACQUISITION FAILED:",
             exc,
         )
         sys.exit(1)
