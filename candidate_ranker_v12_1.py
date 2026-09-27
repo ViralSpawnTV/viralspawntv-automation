@@ -13,9 +13,9 @@ OUT = Path("work/v12_ranked_candidates.json")
 SHORTS_HISTORY = Path("history.json")
 SHORTS_REJECTED_HISTORY = Path("shorts_rejected_history.json")
 
-# V12.4: let the visual prescreener make the real pre-gate decision.
+# V12.7: let the visual prescreener make the real pre-gate decision.
 MAX_INSPECT = 100
-MAX_RANKED = 40
+MAX_RANKED = 70
 MIN_SCORE = 0
 
 BLOCKED = {
@@ -323,7 +323,7 @@ def main():
     ]
 
     print(
-        f"V12.4 freshness filter: "
+        f"V12.7 freshness filter: "
         f"{len(all_candidates)} discovered -> "
         f"{len(fresh_candidates)} fresh -> "
         f"{len(candidates)} metadata-inspected."
@@ -597,7 +597,7 @@ CANDIDATES:
     )
 
     print(
-        f"V12.5 metadata stage: "
+        f"V12.7 metadata stage: "
         f"{len(all_candidates)} discovered -> "
         f"{len(inspected)} deterministic survivors -> "
         f"{len(ranked)} sent to visual prescreen."
@@ -609,7 +609,7 @@ if __name__ == "__main__":
         main()
     except Exception as exc:
         print(
-            "V12.4 RANKER FAILED:",
+            "V12.7 RANKER FAILED:",
             exc,
         )
         sys.exit(1)
