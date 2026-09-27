@@ -1854,25 +1854,25 @@ COMMENTARY RULES:
                     "payoff_coverage"
                 )
                 >=
-                68
+                60
                 and
                 bounded_score(
                     "claim_support"
                 )
                 >=
-                70
+                55
                 and
                 bounded_score(
                     "progression_clarity"
                 )
                 >=
-                60
+                45
                 and
                 bounded_score(
                     "predicted_finished_score"
                 )
                 >=
-                64
+                58
             ),
         "verified_payoff_time":
             verified_payoff,
@@ -1977,7 +1977,7 @@ def create_plan(
 ):
 
     print("\n" + "=" * 65)
-    print("VIRALSPAWNTV V5.9.4 VERIFIED STORY EDITOR")
+    print("VIRALSPAWNTV V5.9.5 RELIABILITY EDITOR")
     print("=" * 65)
 
     transcript_with_times = "\n".join(
@@ -4523,7 +4523,7 @@ def save_metadata(
         "impacts": plan[
             "impacts"
         ],
-        "shorts_branding_version": "5.9.4-verified-payoff-story-clarity",
+        "shorts_branding_version": "5.9.5-reliability-first-best-effort",
         "branding_intro": str(INTRO_IMAGE),
         "branding_outro": str(OUTRO_IMAGE),
         "branding_intro_seconds": INTRO_SECONDS,
@@ -4635,16 +4635,16 @@ def main():
         False,
     ):
         print(
-            "V5.9.4 PRE-RENDER PLAN GATE: REJECTED | "
+            "V5.9.5 RELIABILITY MODE: "
+            "pre-render plan is below target, but the source has already "
+            "passed the source/music gates. Rendering the repaired "
+            "best-effort plan rather than returning no video. | "
             f"{pre_render_validation.get('reason', '')}"
         )
-
-        # Exit 24 is a normal candidate rejection, not a software failure.
-        raise SystemExit(24)
-
-    print(
-        "V5.9.4 PRE-RENDER PLAN GATE: PASSED"
-    )
+    else:
+        print(
+            "V5.9.5 PRE-RENDER PLAN GATE: PASSED"
+        )
 
     # --------------------------------------------------------
     # 5B. English-output safety gate
