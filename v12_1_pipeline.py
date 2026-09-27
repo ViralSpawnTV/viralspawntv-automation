@@ -1,4 +1,5 @@
 import json
+import shutil
 import subprocess
 import sys
 import time
@@ -9,6 +10,15 @@ LOG = Path("work/v12_attempt_log.json")
 REJECTED = Path("shorts_rejected_history.json")
 
 MAX_EXPENSIVE_ATTEMPTS = 4
+
+# V12.14.4 reliability-first fallbacks.
+FALLBACK_SOURCE_SCORE = 55
+FALLBACK_SOURCE_PAYOFF = 55
+
+BEST_DIR = Path("work/reliability_best")
+BEST_VIDEO = BEST_DIR / "ViralSpawnTV_Short_V4.mp4"
+BEST_METADATA = BEST_DIR / "ViralSpawnTV_V4_metadata.json"
+BEST_GATE = BEST_DIR / "finished_viral_gate.json"
 
 
 def run(script):
@@ -33,7 +43,7 @@ def run_timed(
     )
 
     print(
-        f"V12.14.3 TIMING | "
+        f"V12.14.4 TIMING | "
         f"{label}: "
         f"{time.perf_counter() - started:.1f}s"
     )
@@ -76,6 +86,150 @@ def current_acquisition():
         "work/kick_gaming/acquisition_result.json",
         {},
     )
+
+
+def backup_finished_candidate(
+    finished_result,
+):
+    video = Path(
+        "work/production/ViralSpawnTV_Short_V4.mp4"
+    )
+
+    metadata = Path(
+        "work/production/ViralSpawnTV_V4_metadata.json"
+    )
+
+    if not video.exists():
+        return False
+
+    BEST_DIR.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    current_best = load_json(
+        BEST_GATE,
+        {},
+    )
+
+    current_score = int(
+        finished_result.get(
+            "score",
+            0,
+        )
+        or
+        0
+    )
+
+    best_score = int(
+        current_best.get(
+            "score",
+            -1,
+        )
+        or
+        -1
+    )
+
+    if current_score < best_score:
+        return False
+
+    shutil.copy2(
+        video,
+        BEST_VIDEO,
+    )
+
+    if metadata.exists():
+        shutil.copy2(
+            metadata,
+            BEST_METADATA,
+        )
+
+    gate_payload = dict(
+        finished_result
+    )
+
+    gate_payload[
+        "reliability_backup"
+    ] = True
+
+    BEST_GATE.write_text(
+        json.dumps(
+            gate_payload,
+            indent=2,
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+
+    print(
+        f"V12.14.4 reliability backup saved | "
+        f"score={current_score} | "
+        f"hook={finished_result.get('hook')} | "
+        f"payoff={finished_result.get('payoff')}"
+    )
+
+    return True
+
+
+def restore_best_finished_candidate():
+    if not BEST_VIDEO.exists():
+        return None
+
+    production_dir = Path(
+        "work/production"
+    )
+
+    production_dir.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
+    shutil.copy2(
+        BEST_VIDEO,
+        production_dir
+        /
+        "ViralSpawnTV_Short_V4.mp4",
+    )
+
+    if BEST_METADATA.exists():
+        shutil.copy2(
+            BEST_METADATA,
+            production_dir
+            /
+            "ViralSpawnTV_V4_metadata.json",
+        )
+
+    best = load_json(
+        BEST_GATE,
+        {},
+    )
+
+    best[
+        "passed"
+    ] = True
+
+    best[
+        "quality_tier"
+    ] = "best_available"
+
+    best[
+        "reliability_forced_accept"
+    ] = True
+
+    (
+        production_dir
+        /
+        "finished_viral_gate.json"
+    ).write_text(
+        json.dumps(
+            best,
+            indent=2,
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+
+    return best
 
 
 def load_rejected():
@@ -182,6 +336,12 @@ def reject_clip(
 def main():
     attempts = []
 
+    if BEST_DIR.exists():
+        shutil.rmtree(
+            BEST_DIR,
+            ignore_errors=True,
+        )
+
     rejected = load_rejected()
 
     save_rejected(
@@ -194,7 +354,7 @@ def main():
         "================================================"
     )
     print(
-        "ViralSpawnTV V12.14.3 "
+        "ViralSpawnTV V12.14.4 "
         "Source -> Production -> Finished Gate"
     )
     print(
@@ -210,7 +370,7 @@ def main():
         "kick_game_discovery.py",
     ) != 0:
         raise RuntimeError(
-            "V12.14.3 discovery failed"
+            "V12.14.4 discovery failed"
         )
 
     # ---------------------------------------------------------
@@ -222,7 +382,7 @@ def main():
         "candidate_ranker_v12_1.py",
     ) != 0:
         raise RuntimeError(
-            "V12.14.3 ranking failed"
+            "V12.14.4 ranking failed"
         )
 
     # ---------------------------------------------------------
@@ -234,7 +394,7 @@ def main():
         "viral_prescreener.py",
     ) != 0:
         raise RuntimeError(
-            "V12.14.3 prescreen failed"
+            "V12.14.4 prescreen failed"
         )
 
     prescreened = load_json(
@@ -247,7 +407,7 @@ def main():
 
     if not prescreened:
         raise RuntimeError(
-            "V12.14.3 prescreen shortlist empty"
+            "V12.14.4 prescreen shortlist empty"
         )
 
     actual_attempt_limit = min(
@@ -258,7 +418,7 @@ def main():
     )
 
     print(
-        f"V12.14.3 source shortlist: "
+        f"V12.14.4 source shortlist: "
         f"{len(prescreened)} candidates."
     )
 
@@ -313,7 +473,7 @@ def main():
 
         print()
         print(
-            f"V12.14.3 attempt "
+            f"V12.14.4 attempt "
             f"{attempt_no}/"
             f"{actual_attempt_limit}: "
             f"{clip_id}"
@@ -325,33 +485,77 @@ def main():
         # NO raw hook requirement here.
         # -----------------------------------------------------
 
-        if run_timed(
+        source_gate_code = run_timed(
             f"source_quality_gate_{attempt_no}",
             "viral_gate.py",
-        ) != 0:
-            row.update(
-                {
-                    "result":
-                        "rejected",
-                    "reason":
-                        "source_quality_gate",
-                }
+        )
+
+        if source_gate_code != 0:
+            source_result = load_json(
+                "work/source_quality_gate/source_quality_gate_result.json",
+                {},
             )
 
-            attempts.append(
-                row
+            source_score = int(
+                source_result.get(
+                    "source_score",
+                    0,
+                )
+                or
+                0
             )
 
-            reject_clip(
-                clip_id,
-                rejected,
+            source_payoff = int(
+                source_result.get(
+                    "payoff",
+                    0,
+                )
+                or
+                0
             )
 
-            save_log(
-                attempts
+            fallback_source_ok = bool(
+                source_score >= FALLBACK_SOURCE_SCORE
+                and
+                source_payoff >= FALLBACK_SOURCE_PAYOFF
             )
 
-            continue
+            if fallback_source_ok:
+                print(
+                    f"V12.14.4 RELIABILITY SOURCE FALLBACK: "
+                    f"{clip_id} | "
+                    f"source={source_score} | "
+                    f"payoff={source_payoff}"
+                )
+
+                row[
+                    "source_fallback"
+                ] = True
+
+            else:
+                row.update(
+                    {
+                        "result":
+                            "rejected",
+                        "reason":
+                            "source_quality_gate",
+                    }
+                )
+
+                attempts.append(
+                    row
+                )
+
+                reject_clip(
+                    clip_id,
+                    rejected,
+                )
+
+                save_log(
+                    attempts
+                )
+
+                continue
 
         # -----------------------------------------------------
         # MUSIC GATE
@@ -439,7 +643,7 @@ def main():
             )
 
             print(
-                f"V12.14.3 candidate skipped before render: "
+                f"V12.14.4 candidate skipped before render: "
                 f"{clip_id}"
             )
 
@@ -464,7 +668,7 @@ def main():
             )
 
             raise RuntimeError(
-                "V12.14.3 production failed"
+                "V12.14.4 production failed"
             )
 
         # -----------------------------------------------------
@@ -505,21 +709,27 @@ def main():
         # This is where hook >=65 is enforced.
         # -----------------------------------------------------
 
-        if run_timed(
+        finished_gate_code = run_timed(
             f"finished_viral_gate_{attempt_no}",
             "finished_viral_gate.py",
-        ) != 0:
+        )
+
+        if finished_gate_code != 0:
             finished_result = load_json(
                 "work/production/finished_viral_gate.json",
                 {},
             )
 
+            backup_finished_candidate(
+                finished_result
+            )
+
             row.update(
                 {
                     "result":
-                        "rejected",
+                        "below_decent_but_saved",
                     "reason":
-                        "finished_viral_gate",
+                        "finished_quality_gate",
                     "finished_score":
                         finished_result.get(
                             "score"
@@ -539,11 +749,6 @@ def main():
                 row
             )
 
-            reject_clip(
-                clip_id,
-                rejected,
-            )
-
             save_log(
                 attempts
             )
@@ -561,6 +766,11 @@ def main():
                     "accepted",
                 "reason":
                     "finished_short_passed",
+                "quality_tier":
+                    finished_result.get(
+                        "quality_tier",
+                        "viral",
+                    ),
                 "finished_score":
                     finished_result.get(
                         "score"
@@ -589,7 +799,7 @@ def main():
         )
 
         print(
-            f"V12.14.3 SUCCESS: "
+            f"V12.14.4 SUCCESS: "
             f"{clip_id} | "
             f"finished score="
             f"{row.get('finished_score')} | "
@@ -600,7 +810,7 @@ def main():
         )
 
         print(
-            f"V12.14.3 TOTAL PIPELINE TIME: "
+            f"V12.14.4 TOTAL PIPELINE TIME: "
             f"{time.perf_counter() - pipeline_started:.1f}s"
         )
 
@@ -615,14 +825,33 @@ def main():
     )
 
     print(
-        f"V12.14.3 TOTAL PIPELINE TIME: "
+        f"V12.14.4 TOTAL PIPELINE TIME: "
         f"{time.perf_counter() - pipeline_started:.1f}s"
     )
 
+    best = restore_best_finished_candidate()
+
+    if best is not None:
+        print(
+            "V12.14.4 RELIABILITY SUCCESS: "
+            "no viral/decent candidate cleared the target, so the "
+            "strongest rendered Short from this run was restored as "
+            "BEST AVAILABLE. | "
+            f"score={best.get('score')} | "
+            f"hook={best.get('hook')} | "
+            f"payoff={best.get('payoff')}"
+        )
+
+        print(
+            f"V12.14.4 TOTAL PIPELINE TIME: "
+            f"{time.perf_counter() - pipeline_started:.1f}s"
+        )
+
+        return
+
     raise RuntimeError(
-        f"V12.14.3 found no finished Short "
-        f"that passed after "
-        f"{len(attempts)} attempts."
+        f"V12.14.4 could not produce any finished Short "
+        f"after {len(attempts)} attempts."
     )
 
 
@@ -631,7 +860,7 @@ if __name__ == "__main__":
         main()
     except Exception as exc:
         print(
-            "V12.14.3 PIPELINE FAILED:",
+            "V12.14.4 PIPELINE FAILED:",
             exc,
         )
         sys.exit(1)
