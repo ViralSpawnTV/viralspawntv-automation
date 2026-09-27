@@ -1,6 +1,7 @@
 import json
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 
@@ -19,6 +20,32 @@ def run(script):
     )
 
     return process.returncode
+
+
+def run_timed(
+    label,
+    script,
+):
+    started = time.perf_counter()
+
+    code = run(
+        script
+    )
+
+    elapsed = (
+        time.perf_counter()
+        -
+        started
+    )
+
+    print(
+        f"V12.10 TIMING | "
+        f"{label}: "
+        f"{elapsed:.1f}s"
+    )
+
+    return code
+
 
 
 def load_json(path, default):
@@ -166,22 +193,26 @@ def main():
     # 1. DISCOVERY
     # ---------------------------------------------------------
 
-    if run(
+    pipeline_started = time.perf_counter()
+
+    if run_timed(
+        "discovery",
         "kick_game_discovery.py"
     ) != 0:
         raise RuntimeError(
-            "V12.9 discovery failed"
+            "V12.10 discovery failed"
         )
 
     # ---------------------------------------------------------
     # 2. ONE-PASS METADATA + HLS + DURATION RANKING
     # ---------------------------------------------------------
 
-    if run(
+    if run_timed(
+        "direct_api_ranker",
         "candidate_ranker_v12_1.py"
     ) != 0:
         raise RuntimeError(
-            "V12.9 one-pass ranking failed"
+            "V12.10 one-pass ranking failed"
         )
 
     ranked = load_json(
@@ -193,7 +224,7 @@ def main():
     )
 
     print(
-        f"V12.9 one-pass stage supplied "
+        f"V12.10 one-pass stage supplied "
         f"{len(ranked)} duration-eligible candidates."
     )
 
@@ -201,11 +232,12 @@ def main():
     # 3. WINDOW-AWARE VISUAL PRESCREEN
     # ---------------------------------------------------------
 
-    if run(
+    if run_timed(
+        "window_prescreener",
         "viral_prescreener.py"
     ) != 0:
         raise RuntimeError(
-            "V12.9 window prescreen failed"
+            "V12.10 window prescreen failed"
         )
 
     prescreened = load_json(
@@ -218,7 +250,7 @@ def main():
 
     if not prescreened:
         raise RuntimeError(
-            "V12.9 prescreen shortlist empty"
+            "V12.10 prescreen shortlist empty"
         )
 
     actual_attempt_limit = min(
@@ -229,12 +261,12 @@ def main():
     )
 
     print(
-        f"V12.9 prescreen shortlist: "
+        f"V12.10 prescreen shortlist: "
         f"{len(prescreened)} candidates."
     )
 
     print(
-        f"V12.9 will inspect at most "
+        f"V12.10 will inspect at most "
         f"{actual_attempt_limit} expensive candidates."
     )
 
@@ -246,7 +278,8 @@ def main():
         1,
         actual_attempt_limit + 1,
     ):
-        code = run(
+        code = run_timed(
+            f"acquisition_attempt_{attempt_no}",
             "kick_gaming_acquisition_v12.py"
         )
 
@@ -323,7 +356,7 @@ def main():
 
         print(
             "\n"
-            f"V12.9 full-gate attempt "
+            f"V12.10 full-gate attempt "
             f"{attempt_no}/"
             f"{actual_attempt_limit}: "
             f"{clip_id} | "
@@ -338,7 +371,8 @@ def main():
         # FINAL 72 VIRAL QUALITY GATE
         # -----------------------------------------------------
 
-        if run(
+        if run_timed(
+            f"viral_gate_attempt_{attempt_no}",
             "viral_gate.py"
         ) != 0:
             row.update(
@@ -369,7 +403,8 @@ def main():
         # MUSIC GATE
         # -----------------------------------------------------
 
-        if run(
+        if run_timed(
+            f"music_gate_attempt_{attempt_no}",
             "music_gate.py"
         ) != 0:
             row.update(
@@ -400,7 +435,8 @@ def main():
         # PRODUCTION
         # -----------------------------------------------------
 
-        if run(
+        if run_timed(
+            f"production_attempt_{attempt_no}",
             "production_test.py"
         ) != 0:
             row.update(
@@ -421,14 +457,15 @@ def main():
             )
 
             raise RuntimeError(
-                "V12.9 Short production failed"
+                "V12.10 Short production failed"
             )
 
         # -----------------------------------------------------
         # FINAL CONTENT GATE
         # -----------------------------------------------------
 
-        if run(
+        if run_timed(
+            f"final_content_gate_attempt_{attempt_no}",
             "final_content_gate.py"
         ) != 0:
             row.update(
@@ -477,9 +514,14 @@ def main():
         )
 
         print(
-            f"V12.9 SUCCESS on attempt "
+            f"V12.10 SUCCESS on attempt "
             f"{attempt_no}: "
             f"{clip_id}"
+        )
+
+        print(
+            f"V12.10 TOTAL PIPELINE TIME: "
+            f"{time.perf_counter() - pipeline_started:.1f}s"
         )
 
         return
@@ -492,8 +534,13 @@ def main():
         rejected
     )
 
+    print(
+        f"V12.10 TOTAL PIPELINE TIME: "
+        f"{time.perf_counter() - pipeline_started:.1f}s"
+    )
+
     raise RuntimeError(
-        f"V12.9 found no publishable Short "
+        f"V12.10 found no publishable Short "
         f"after {len(attempts)} attempted "
         f"candidate(s)."
     )
@@ -504,7 +551,7 @@ if __name__ == "__main__":
         main()
     except Exception as exc:
         print(
-            "V12.9 PIPELINE FAILED:",
+            "V12.10 PIPELINE FAILED:",
             exc,
         )
         sys.exit(1)
