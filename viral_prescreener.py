@@ -14,12 +14,19 @@ OUT = Path("work/v12_prescreened_candidates.json")
 WORK = Path("work/viral_prescreen")
 WORK.mkdir(parents=True, exist_ok=True)
 
-MAX_PRESCREEN = 40
+# V12.7 scans a deeper metadata bench cheaply, but only spends visual/AI
+# work on the first 40 duration-eligible clips.
+MAX_SCAN = 70
+MAX_VISUAL_PRESCREEN = 40
 PROMOTE_COUNT = 25
 BATCH_SIZE = 8
 
-# Keep this aligned with the real gate in viral_gate.py.
+# Keep these aligned with the real gate and V5.9 production strategy.
 TARGET_FINAL_SCORE = 72
+MIN_SOURCE_SECONDS = 49.0
+MIN_BIG_HOOK_SCORE = 72
+MIN_FIRST_SECOND_CLARITY = 60
+MIN_CURIOSITY_GAP = 65
 
 
 def safe_name(value):
@@ -107,10 +114,58 @@ def capture_playlist(
     return playlist_urls[-1]
 
 
+
+def probe_stream_duration(playlist_url):
+    """
+    Cheap duration check before we spend visual/AI work on a source.
+    Returns None if ffprobe cannot determine duration reliably.
+    """
+    try:
+        result = subprocess.run(
+            [
+                "ffprobe",
+                "-v",
+                "error",
+                "-show_entries",
+                "format=duration",
+                "-of",
+                "default=noprint_wrappers=1:nokey=1",
+                playlist_url,
+            ],
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=25,
+        )
+
+        value = result.stdout.strip()
+
+        if not value:
+            return None
+
+        seconds = float(value)
+
+        if seconds <= 0:
+            return None
+
+        return seconds
+
+    except Exception:
+        return None
+
+
 def extract_preview_frames(
     playlist_url,
     clip_id,
 ):
+    """
+    One FFmpeg pass produces:
+    - 3 BIG-HOOK frames from roughly the first 2 seconds
+    - 2 context/payoff frames from later in the clip
+
+    This keeps runtime close to the old prescreener while giving the AI
+    much better information about whether second 0-2 can hold a viewer.
+    """
     clip_dir = (
         WORK
         /
@@ -125,18 +180,38 @@ def extract_preview_frames(
     )
 
     for old in clip_dir.glob(
-        "frame_*.jpg"
+        "*.jpg"
     ):
         old.unlink()
 
-    pattern = str(
+    early_pattern = str(
         clip_dir
         /
-        "frame_%02d.jpg"
+        "hook_%02d.jpg"
     )
 
-    # Match the real viral gate's early-clip visual sampling style,
-    # but use fewer/smaller frames to keep this prescreen cheaper.
+    later_pattern = str(
+        clip_dir
+        /
+        "context_%02d.jpg"
+    )
+
+    filter_complex = (
+        "[0:v]split=2[earlysrc][latersrc];"
+        "[earlysrc]"
+        "trim=start=0:end=2,"
+        "setpts=PTS-STARTPTS,"
+        "fps=1.5,"
+        "scale=360:-2"
+        "[early];"
+        "[latersrc]"
+        "trim=start=8:end=30,"
+        "setpts=PTS-STARTPTS,"
+        "fps=1/10,"
+        "scale=360:-2"
+        "[later]"
+    )
+
     command = [
         "ffmpeg",
         "-y",
@@ -144,13 +219,24 @@ def extract_preview_frames(
         "error",
         "-i",
         playlist_url,
-        "-vf",
-        "fps=1/10,scale=360:-2",
+        "-filter_complex",
+        filter_complex,
+
+        "-map",
+        "[early]",
         "-frames:v",
         "3",
         "-q:v",
         "5",
-        pattern,
+        early_pattern,
+
+        "-map",
+        "[later]",
+        "-frames:v",
+        "2",
+        "-q:v",
+        "5",
+        later_pattern,
     ]
 
     subprocess.run(
@@ -159,17 +245,29 @@ def extract_preview_frames(
         timeout=90,
     )
 
-    return sorted(
+    hook_frames = sorted(
         clip_dir.glob(
-            "frame_*.jpg"
+            "hook_*.jpg"
         )
     )[:3]
 
+    context_frames = sorted(
+        clip_dir.glob(
+            "context_*.jpg"
+        )
+    )[:2]
+
+    return (
+        hook_frames,
+        context_frames,
+    )
 
 def build_visual_candidates(
     candidates,
 ):
     visual = []
+    short_skips = 0
+    unknown_duration = 0
 
     with sync_playwright() as p:
         browser = p.chromium.launch(
@@ -182,6 +280,9 @@ def build_visual_candidates(
             candidates,
             1,
         ):
+            if len(visual) >= MAX_VISUAL_PRESCREEN:
+                break
+
             clip_id = candidate.get(
                 "clip_id"
             )
@@ -191,7 +292,7 @@ def build_visual_candidates(
             )
 
             print(
-                f"PRESCREEN PREVIEW "
+                f"PRESCREEN SCAN "
                 f"{i}/{len(candidates)}: "
                 f"{clip_id}"
             )
@@ -211,20 +312,56 @@ def build_visual_candidates(
 
                 if not playlist:
                     print(
-                        f"  no HLS playlist captured"
+                        "  no HLS playlist captured"
                     )
                     continue
 
-                frames = (
-                    extract_preview_frames(
-                        playlist,
-                        clip_id,
+                source_seconds = (
+                    probe_stream_duration(
+                        playlist
                     )
                 )
 
-                if not frames:
+                if source_seconds is not None:
                     print(
-                        f"  no preview frames extracted"
+                        f"  source duration: "
+                        f"{source_seconds:.2f}s"
+                    )
+
+                    if (
+                        source_seconds
+                        <
+                        MIN_SOURCE_SECONDS
+                    ):
+                        short_skips += 1
+
+                        print(
+                            f"  SKIP: too short for "
+                            f"50-60s strategy "
+                            f"(<{MIN_SOURCE_SECONDS:.0f}s)"
+                        )
+
+                        continue
+
+                else:
+                    unknown_duration += 1
+
+                    print(
+                        "  duration unknown; "
+                        "keeping candidate"
+                    )
+
+                (
+                    hook_frames,
+                    context_frames,
+                ) = extract_preview_frames(
+                    playlist,
+                    clip_id,
+                )
+
+                if not hook_frames:
+                    print(
+                        "  no opening-hook frames extracted"
                     )
                     continue
 
@@ -233,11 +370,29 @@ def build_visual_candidates(
                 )
 
                 row[
-                    "_preview_frames"
+                    "_hook_frames"
                 ] = [
                     str(frame)
-                    for frame in frames
+                    for frame in hook_frames
                 ]
+
+                row[
+                    "_context_frames"
+                ] = [
+                    str(frame)
+                    for frame in context_frames
+                ]
+
+                row[
+                    "prescreen_source_duration_seconds"
+                ] = (
+                    round(
+                        source_seconds,
+                        3,
+                    )
+                    if source_seconds is not None
+                    else None
+                )
 
                 visual.append(
                     row
@@ -250,8 +405,15 @@ def build_visual_candidates(
 
         browser.close()
 
-    return visual
+    print(
+        f"DURATION PREFILTER: "
+        f"{short_skips} clips skipped under "
+        f"{MIN_SOURCE_SECONDS:.0f}s; "
+        f"{unknown_duration} unknown duration; "
+        f"{len(visual)} clips sent to visual AI."
+    )
 
+    return visual
 
 def parse_json(raw):
     raw = raw.strip()
@@ -278,60 +440,88 @@ def score_batch(
     batch,
 ):
     prompt = f"""
-You are the LIGHTWEIGHT VISUAL PRESCREENER for ViralSpawnTV.
+You are the BIG-HOOK VISUAL PRESCREENER for ViralSpawnTV.
 
-Your job is to predict which candidates are MOST LIKELY to pass the
-real ViralSpawnTV viral-quality gate at {TARGET_FINAL_SCORE}+.
+ViralSpawnTV is now targeting 50-60 second gaming Shorts.
+The FINAL viral-quality gate is {TARGET_FINAL_SCORE}+.
 
-You are seeing:
-- clip metadata
-- 1-4 lightweight frames sampled from roughly the first 30 seconds
+Your most important job is NOT simply to find good gameplay.
+Your job is to find source clips whose FIRST 1-2 SECONDS can become a
+strong "Big Hook Opening" that stops a Shorts viewer from swiping.
 
-This is NOT the final gate.
-Do not demand certainty.
-Predict which clips deserve the expensive full audio/transcript/video gate.
+For each candidate you will see:
+1. Three HOOK FRAMES sampled from roughly second 0-2.
+2. Up to two CONTEXT/PAYOFF FRAMES sampled later in the clip.
+3. Metadata.
 
-Use the same concepts as the real gate:
-- immediate hook
-- payoff
-- visible action/reaction
-- clarity
-- stakes/tension/comedy/skill/surprise
-- whether a 15-45 second Short could be compelling
+Score the OPENING aggressively.
 
-Penalize:
-- lobby/menu/static footage
-- low action
-- unclear context
-- no visible escalation
-- ordinary moments
-- confusing footage
+A strong Big Hook opening has one or more of:
+- immediate danger or likely failure
+- a difficult challenge already in progress
+- an impossible-looking situation
+- a surprising visual
+- a funny problem needing resolution
+- clutch pressure
+- an obvious unresolved question
+- a viewer can understand the stakes very quickly
 
-A clip can still be promising when metadata is sparse.
-Do not invent unseen events.
+Penalize the opening heavily for:
+- menus/lobbies
+- walking/travel with no threat
+- waiting
+- ordinary looting/setup
+- static facecam with no clear reaction
+- generic gameplay with no visible stakes
+- context that takes several seconds to understand
+- footage where the first 1-2 seconds give no reason to keep watching
 
-For EVERY candidate, return:
+IMPORTANT:
+Do not reward a clip merely because something good may happen later.
+The OPENING itself needs to give us material for a strong first-second hook.
+
+The later frames are only to estimate whether the clip can sustain a
+50-60 second story and deliver a payoff.
+
+For EVERY candidate return:
 - predicted_score: expected real-gate score 0-100
-- probability_72_plus: integer 0-100 representing your confidence
-  that the real gate will score it {TARGET_FINAL_SCORE} or higher
-- hook
-- payoff
-- action
-- clarity
-- reason
+- probability_72_plus: 0-100 confidence it passes the real gate
+- hook: overall opening-hook strength 0-100
+- first_second_clarity: how quickly a new viewer understands the situation
+- curiosity_gap: how strongly the opening creates a need to know the outcome
+- opening_action: amount of meaningful visible action/reaction immediately
+- payoff: likely payoff strength
+- action: overall action/reaction
+- clarity: overall story clarity
+- hook_type: danger/challenge/impossible/surprise/comedy/clutch/other
+- reason: one short evidence-based explanation
+
+SCORING STANDARD:
+90-100 hook = exceptional stop-the-scroll opening.
+80-89 = strong Big Hook material.
+72-79 = usable but needs strong editing.
+60-71 = mediocre opening.
+Below 60 = weak opening; should normally lose to stronger candidates.
+
+Do not inflate scores.
+Do not invent unseen events.
 
 Return ONLY JSON:
 {{
   "results": [
     {{
       "id": 0,
-      "predicted_score": 76,
+      "predicted_score": 77,
       "probability_72_plus": 78,
-      "hook": 82,
-      "payoff": 70,
-      "action": 79,
-      "clarity": 68,
-      "reason": "short evidence-based reason"
+      "hook": 84,
+      "first_second_clarity": 78,
+      "curiosity_gap": 86,
+      "opening_action": 82,
+      "payoff": 72,
+      "action": 80,
+      "clarity": 70,
+      "hook_type": "clutch",
+      "reason": "Immediate pressure is visible and the outcome is unresolved."
     }}
   ]
 }}
@@ -364,12 +554,44 @@ Return ONLY JSON:
                         f"{row.get('page_description', '')}\n"
                         f"metadata_score: "
                         f"{row.get('v12_metadata_score', 0)}\n"
+                        f"source_duration_seconds: "
+                        f"{row.get('prescreen_source_duration_seconds')}\n"
+                        "THE NEXT IMAGES ARE FIRST-2-SECOND HOOK FRAMES:"
                     ),
             }
         )
 
         for frame_path in row.get(
-            "_preview_frames",
+            "_hook_frames",
+            [],
+        ):
+            path = Path(
+                frame_path
+            )
+
+            if path.exists():
+                content.append(
+                    {
+                        "type":
+                            "input_image",
+                        "image_url":
+                            data_url(
+                                path
+                            ),
+                    }
+                )
+
+        content.append(
+            {
+                "type":
+                    "input_text",
+                "text":
+                    "THE NEXT IMAGES ARE LATER CONTEXT/PAYOFF FRAMES:",
+            }
+        )
+
+        for frame_path in row.get(
+            "_context_frames",
             [],
         ):
             path = Path(
@@ -409,7 +631,6 @@ Return ONLY JSON:
         [],
     )
 
-
 def clamp(value):
     try:
         return max(
@@ -444,7 +665,7 @@ def main():
     candidates = data.get(
         "candidates",
         [],
-    )[:MAX_PRESCREEN]
+    )[:MAX_SCAN]
 
     if not candidates:
         raise RuntimeError(
@@ -452,7 +673,7 @@ def main():
         )
 
     print(
-        f"V12.6 visual prescreen received "
+        f"V12.7 Big Hook prescreener received "
         f"{len(candidates)} candidates."
     )
 
@@ -537,6 +758,16 @@ def main():
                 None,
             )
 
+            promoted.pop(
+                "_hook_frames",
+                None,
+            )
+
+            promoted.pop(
+                "_context_frames",
+                None,
+            )
+
             promoted.update(
                 {
                     "prescreen_predicted_score":
@@ -557,6 +788,24 @@ def main():
                                 "hook"
                             )
                         ),
+                    "prescreen_first_second_clarity":
+                        clamp(
+                            result.get(
+                                "first_second_clarity"
+                            )
+                        ),
+                    "prescreen_curiosity_gap":
+                        clamp(
+                            result.get(
+                                "curiosity_gap"
+                            )
+                        ),
+                    "prescreen_opening_action":
+                        clamp(
+                            result.get(
+                                "opening_action"
+                            )
+                        ),
                     "prescreen_payoff":
                         clamp(
                             result.get(
@@ -575,6 +824,13 @@ def main():
                                 "clarity"
                             )
                         ),
+                    "prescreen_hook_type":
+                        str(
+                            result.get(
+                                "hook_type",
+                                "other",
+                            )
+                        ).strip().lower(),
                     "prescreen_reason":
                         str(
                             result.get(
@@ -585,28 +841,72 @@ def main():
                 }
             )
 
-            # Composite ranking favors predicted pass probability first,
-            # then expected real-gate score and hook quality.
+            promoted[
+                "prescreen_big_hook_pass"
+            ] = bool(
+                promoted[
+                    "prescreen_hook"
+                ] >= MIN_BIG_HOOK_SCORE
+                and
+                promoted[
+                    "prescreen_first_second_clarity"
+                ] >= MIN_FIRST_SECOND_CLARITY
+                and
+                promoted[
+                    "prescreen_curiosity_gap"
+                ] >= MIN_CURIOSITY_GAP
+            )
+
+            # V12.7: Big Hook dominates the ranking.
+            #
+            # 70% of the score now comes from the opening itself:
+            # hook + curiosity gap + first-second clarity.
+            rank_score = (
+                promoted[
+                    "prescreen_hook"
+                ] * 0.35
+                +
+                promoted[
+                    "prescreen_curiosity_gap"
+                ] * 0.20
+                +
+                promoted[
+                    "prescreen_first_second_clarity"
+                ] * 0.15
+                +
+                promoted[
+                    "prescreen_probability_72_plus"
+                ] * 0.10
+                +
+                promoted[
+                    "prescreen_predicted_score"
+                ] * 0.08
+                +
+                promoted[
+                    "prescreen_payoff"
+                ] * 0.07
+                +
+                promoted[
+                    "prescreen_opening_action"
+                ] * 0.05
+            )
+
+            # Weak openings are deliberately demoted even if the later
+            # gameplay looks good.
+            if promoted[
+                "prescreen_hook"
+            ] < 60:
+                rank_score *= 0.55
+
+            elif promoted[
+                "prescreen_hook"
+            ] < MIN_BIG_HOOK_SCORE:
+                rank_score *= 0.78
+
             promoted[
                 "prescreen_rank_score"
             ] = round(
-                (
-                    promoted[
-                        "prescreen_probability_72_plus"
-                    ] * 0.50
-                    +
-                    promoted[
-                        "prescreen_predicted_score"
-                    ] * 0.30
-                    +
-                    promoted[
-                        "prescreen_hook"
-                    ] * 0.12
-                    +
-                    promoted[
-                        "prescreen_payoff"
-                    ] * 0.08
-                ),
+                rank_score,
                 2,
             )
 
@@ -621,6 +921,12 @@ def main():
 
     scored.sort(
         key=lambda row: (
+            bool(
+                row.get(
+                    "prescreen_big_hook_pass",
+                    False,
+                )
+            ),
             float(
                 row.get(
                     "prescreen_rank_score",
@@ -629,13 +935,13 @@ def main():
             ),
             float(
                 row.get(
-                    "prescreen_probability_72_plus",
+                    "prescreen_hook",
                     0,
                 )
             ),
             float(
                 row.get(
-                    "prescreen_predicted_score",
+                    "prescreen_probability_72_plus",
                     0,
                 )
             ),
@@ -656,9 +962,17 @@ def main():
         json.dumps(
             {
                 "version":
-                    "12.5-fast-visual-prescreen",
+                    "12.7-big-hook-prescreen",
                 "target_final_score":
                     TARGET_FINAL_SCORE,
+                "minimum_source_seconds":
+                    MIN_SOURCE_SECONDS,
+                "minimum_big_hook_score":
+                    MIN_BIG_HOOK_SCORE,
+                "minimum_first_second_clarity":
+                    MIN_FIRST_SECOND_CLARITY,
+                "minimum_curiosity_gap":
+                    MIN_CURIOSITY_GAP,
                 "input_candidate_count":
                     len(candidates),
                 "preview_success_count":
@@ -678,7 +992,7 @@ def main():
 
     print()
     print(
-        f"V12.6 PRESCREEN COMPLETE: "
+        f"V12.7 BIG HOOK PRESCREEN COMPLETE: "
         f"{len(candidates)} input -> "
         f"{len(visual)} previews -> "
         f"{len(scored)} scored -> "
@@ -695,6 +1009,9 @@ def main():
             f"pred={row.get('prescreen_predicted_score')} | "
             f"P72={row.get('prescreen_probability_72_plus')} | "
             f"hook={row.get('prescreen_hook')} | "
+            f"clarity1s={row.get('prescreen_first_second_clarity')} | "
+            f"curiosity={row.get('prescreen_curiosity_gap')} | "
+            f"hookpass={row.get('prescreen_big_hook_pass')} | "
             f"rank={row.get('prescreen_rank_score')}"
         )
 
