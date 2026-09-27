@@ -18,12 +18,12 @@ OUT = Path("work/v12_ranked_candidates.json")
 SHORTS_HISTORY = Path("history.json")
 SHORTS_REJECTED_HISTORY = Path("shorts_rejected_history.json")
 
-# V12.10 DIRECT-API PASS:
+# V12.11.2 DIRECT-API PASS:
 # Normal path: no individual Kick clip page loads at all.
 MAX_INSPECT = 100
 MAX_RANKED = 40
 MIN_SCORE = 0
-MIN_SOURCE_SECONDS = 49.0
+MIN_SOURCE_SECONDS = 40.0
 
 API_WORKERS = 12
 API_TIMEOUT_SECONDS = 10
@@ -633,7 +633,7 @@ def probe_stream_duration(playlist_url):
 
 def inspect_metadata_browser_fallback(page, candidate):
     """
-    Emergency fallback only. V12.10 normally uses the direct Kick clip
+    Emergency fallback only. V12.11.2 normally uses the direct Kick clip
     API and never opens individual clip pages.
     """
     playlist_urls = []
@@ -876,7 +876,7 @@ def main():
     ]
 
     print(
-        f"V12.10 freshness filter: "
+        f"V12.11.2 freshness filter: "
         f"{len(all_candidates)} discovered -> "
         f"{len(fresh_candidates)} fresh -> "
         f"{len(candidates)} metadata-inspected."
@@ -897,7 +897,7 @@ def main():
     unknown_duration_count = 0
 
     print(
-        f"V12.10 DIRECT API: querying "
+        f"V12.11.2 DIRECT API: querying "
         f"{len(candidates)} clips with "
         f"{API_WORKERS} workers."
     )
@@ -1044,7 +1044,7 @@ def main():
         )
 
         print(
-            f"V12.10 API fallback: only "
+            f"V12.11.2 API fallback: only "
             f"{len(inspected)} eligible direct survivors; "
             f"trying up to "
             f"{len(fallback_targets)} clip pages."
@@ -1093,7 +1093,7 @@ def main():
                     ):
                         continue
 
-                    # Keep consumers on the unified V12.10 field name.
+                    # Keep consumers on the unified V12.11.2 field name.
                     row[
                         "media_url"
                     ] = row.get(
@@ -1140,7 +1140,7 @@ def main():
             browser.close()
 
     print(
-        "V12.10 API STATS: "
+        "V12.11.2 API STATS: "
         f"{api_successes} direct API responses, "
         f"{len(api_failures)} direct failures, "
         f"{too_short_count} under {MIN_SOURCE_SECONDS:.0f}s, "
@@ -1392,7 +1392,7 @@ CANDIDATES:
     )
 
     print(
-        f"V12.10 direct-API metadata/duration stage: "
+        f"V12.11.2 direct-API metadata/duration stage: "
         f"{len(all_candidates)} discovered -> "
         f"{len(inspected)} deterministic survivors -> "
         f"{len(ranked)} sent to visual prescreen."
@@ -1404,7 +1404,7 @@ if __name__ == "__main__":
         main()
     except Exception as exc:
         print(
-            "V12.10 RANKER FAILED:",
+            "V12.11.2 RANKER FAILED:",
             exc,
         )
         sys.exit(1)
