@@ -32,23 +32,19 @@ def run_timed(
         script
     )
 
-    elapsed = (
-        time.perf_counter()
-        -
-        started
-    )
-
     print(
-        f"V12.13 TIMING | "
+        f"V12.14 TIMING | "
         f"{label}: "
-        f"{elapsed:.1f}s"
+        f"{time.perf_counter() - started:.1f}s"
     )
 
     return code
 
 
-
-def load_json(path, default):
+def load_json(
+    path,
+    default,
+):
     try:
         return json.loads(
             Path(path).read_text(
@@ -91,13 +87,21 @@ def load_rejected():
         },
     )
 
-    if isinstance(data, dict):
+    if isinstance(
+        data,
+        dict,
+    ):
         clip_ids = data.get(
             "clip_ids",
             [],
         )
-    elif isinstance(data, list):
+
+    elif isinstance(
+        data,
+        list,
+    ):
         clip_ids = data
+
     else:
         clip_ids = []
 
@@ -184,60 +188,53 @@ def main():
         rejected
     )
 
+    pipeline_started = time.perf_counter()
+
     print(
-        f"Loaded {len(rejected)} permanently "
-        f"rejected Shorts clip IDs."
+        "================================================"
+    )
+    print(
+        "ViralSpawnTV V12.14 "
+        "Source -> Production -> Finished Gate"
+    )
+    print(
+        "================================================"
     )
 
     # ---------------------------------------------------------
-    # 1. DISCOVERY
+    # 1. BROAD DISCOVERY
     # ---------------------------------------------------------
-
-    pipeline_started = time.perf_counter()
 
     if run_timed(
         "discovery",
-        "kick_game_discovery.py"
+        "kick_game_discovery.py",
     ) != 0:
         raise RuntimeError(
-            "V12.13 discovery failed"
+            "V12.14 discovery failed"
         )
 
     # ---------------------------------------------------------
-    # 2. ONE-PASS METADATA + HLS + DURATION RANKING
+    # 2. QUALITY-FIRST API RANK
     # ---------------------------------------------------------
 
     if run_timed(
         "direct_api_ranker",
-        "candidate_ranker_v12_1.py"
+        "candidate_ranker_v12_1.py",
     ) != 0:
         raise RuntimeError(
-            "V12.13 one-pass ranking failed"
+            "V12.14 ranking failed"
         )
 
-    ranked = load_json(
-        "work/v12_ranked_candidates.json",
-        {},
-    ).get(
-        "candidates",
-        [],
-    )
-
-    print(
-        f"V12.13 one-pass stage supplied "
-        f"{len(ranked)} duration-eligible candidates."
-    )
-
     # ---------------------------------------------------------
-    # 3. WINDOW-AWARE VISUAL PRESCREEN
+    # 3. PAYOFF-FIRST SOURCE PRESCREEN
     # ---------------------------------------------------------
 
     if run_timed(
-        "window_prescreener",
-        "viral_prescreener.py"
+        "payoff_first_prescreener",
+        "viral_prescreener.py",
     ) != 0:
         raise RuntimeError(
-            "V12.13 window prescreen failed"
+            "V12.14 prescreen failed"
         )
 
     prescreened = load_json(
@@ -250,7 +247,7 @@ def main():
 
     if not prescreened:
         raise RuntimeError(
-            "V12.13 prescreen shortlist empty"
+            "V12.14 prescreen shortlist empty"
         )
 
     actual_attempt_limit = min(
@@ -261,17 +258,12 @@ def main():
     )
 
     print(
-        f"V12.13 prescreen shortlist: "
+        f"V12.14 source shortlist: "
         f"{len(prescreened)} candidates."
     )
 
-    print(
-        f"V12.13 will inspect at most "
-        f"{actual_attempt_limit} expensive candidates."
-    )
-
     # ---------------------------------------------------------
-    # 4. FULL GATE LOOP
+    # 4. CANDIDATE LOOP
     # ---------------------------------------------------------
 
     for attempt_no in range(
@@ -279,26 +271,11 @@ def main():
         actual_attempt_limit + 1,
     ):
         code = run_timed(
-            f"acquisition_attempt_{attempt_no}",
-            "kick_gaming_acquisition_v12.py"
+            f"acquisition_{attempt_no}",
+            "kick_gaming_acquisition_v12.py",
         )
 
         if code != 0:
-            attempts.append(
-                {
-                    "attempt":
-                        attempt_no,
-                    "result":
-                        "failed",
-                    "reason":
-                        "shortlist_exhausted_or_acquisition_failed",
-                }
-            )
-
-            save_log(
-                attempts
-            )
-
             break
 
         acq = current_acquisition()
@@ -320,29 +297,9 @@ def main():
                 acq.get(
                     "game"
                 ),
-            "window_start_original":
-                acq.get(
-                    "proposed_window_start_original"
-                ),
-            "window_end_original":
-                acq.get(
-                    "proposed_window_end_original"
-                ),
             "prescreen_rank_score":
                 acq.get(
                     "prescreen_rank_score"
-                ),
-            "prescreen_predicted_score":
-                acq.get(
-                    "prescreen_predicted_score"
-                ),
-            "prescreen_probability_72_plus":
-                acq.get(
-                    "prescreen_probability_72_plus"
-                ),
-            "prescreen_hook":
-                acq.get(
-                    "prescreen_hook"
                 ),
             "prescreen_story_sustain":
                 acq.get(
@@ -354,33 +311,30 @@ def main():
                 ),
         }
 
+        print()
         print(
-            "\n"
-            f"V12.13 full-gate attempt "
+            f"V12.14 attempt "
             f"{attempt_no}/"
             f"{actual_attempt_limit}: "
-            f"{clip_id} | "
-            f"window="
-            f"{row.get('window_start_original')}-"
-            f"{row.get('window_end_original')} | "
-            f"rank="
-            f"{row.get('prescreen_rank_score')}"
+            f"{clip_id}"
         )
 
         # -----------------------------------------------------
-        # FINAL 72 VIRAL QUALITY GATE
+        # RAW SOURCE QUALITY GATE
+        #
+        # NO raw hook requirement here.
         # -----------------------------------------------------
 
         if run_timed(
-            f"viral_gate_attempt_{attempt_no}",
-            "viral_gate.py"
+            f"source_quality_gate_{attempt_no}",
+            "viral_gate.py",
         ) != 0:
             row.update(
                 {
                     "result":
                         "rejected",
                     "reason":
-                        "viral_quality_gate",
+                        "source_quality_gate",
                 }
             )
 
@@ -404,8 +358,8 @@ def main():
         # -----------------------------------------------------
 
         if run_timed(
-            f"music_gate_attempt_{attempt_no}",
-            "music_gate.py"
+            f"music_gate_{attempt_no}",
+            "music_gate.py",
         ) != 0:
             row.update(
                 {
@@ -432,12 +386,12 @@ def main():
             continue
 
         # -----------------------------------------------------
-        # PRODUCTION
+        # PRODUCTION CREATES THE BIG HOOK
         # -----------------------------------------------------
 
         if run_timed(
-            f"production_attempt_{attempt_no}",
-            "production_test.py"
+            f"production_{attempt_no}",
+            "production_test.py",
         ) != 0:
             row.update(
                 {
@@ -457,16 +411,16 @@ def main():
             )
 
             raise RuntimeError(
-                "V12.13 Short production failed"
+                "V12.14 production failed"
             )
 
         # -----------------------------------------------------
-        # FINAL CONTENT GATE
+        # FINAL CONTENT / GAMBLING SAFETY GATE
         # -----------------------------------------------------
 
         if run_timed(
-            f"final_content_gate_attempt_{attempt_no}",
-            "final_content_gate.py"
+            f"final_content_gate_{attempt_no}",
+            "final_content_gate.py",
         ) != 0:
             row.update(
                 {
@@ -492,12 +446,80 @@ def main():
 
             continue
 
+        # -----------------------------------------------------
+        # ACTUAL FINISHED-SHORT VIRAL GATE
+        #
+        # This is where hook >=65 is enforced.
+        # -----------------------------------------------------
+
+        if run_timed(
+            f"finished_viral_gate_{attempt_no}",
+            "finished_viral_gate.py",
+        ) != 0:
+            finished_result = load_json(
+                "work/production/finished_viral_gate.json",
+                {},
+            )
+
+            row.update(
+                {
+                    "result":
+                        "rejected",
+                    "reason":
+                        "finished_viral_gate",
+                    "finished_score":
+                        finished_result.get(
+                            "score"
+                        ),
+                    "finished_hook":
+                        finished_result.get(
+                            "hook"
+                        ),
+                    "finished_payoff":
+                        finished_result.get(
+                            "payoff"
+                        ),
+                }
+            )
+
+            attempts.append(
+                row
+            )
+
+            reject_clip(
+                clip_id,
+                rejected,
+            )
+
+            save_log(
+                attempts
+            )
+
+            continue
+
+        finished_result = load_json(
+            "work/production/finished_viral_gate.json",
+            {},
+        )
+
         row.update(
             {
                 "result":
                     "accepted",
                 "reason":
-                    "all_gates_passed",
+                    "finished_short_passed",
+                "finished_score":
+                    finished_result.get(
+                        "score"
+                    ),
+                "finished_hook":
+                    finished_result.get(
+                        "hook"
+                    ),
+                "finished_payoff":
+                    finished_result.get(
+                        "payoff"
+                    ),
             }
         )
 
@@ -514,13 +536,18 @@ def main():
         )
 
         print(
-            f"V12.13 SUCCESS on attempt "
-            f"{attempt_no}: "
-            f"{clip_id}"
+            f"V12.14 SUCCESS: "
+            f"{clip_id} | "
+            f"finished score="
+            f"{row.get('finished_score')} | "
+            f"hook="
+            f"{row.get('finished_hook')} | "
+            f"payoff="
+            f"{row.get('finished_payoff')}"
         )
 
         print(
-            f"V12.13 TOTAL PIPELINE TIME: "
+            f"V12.14 TOTAL PIPELINE TIME: "
             f"{time.perf_counter() - pipeline_started:.1f}s"
         )
 
@@ -535,14 +562,14 @@ def main():
     )
 
     print(
-        f"V12.13 TOTAL PIPELINE TIME: "
+        f"V12.14 TOTAL PIPELINE TIME: "
         f"{time.perf_counter() - pipeline_started:.1f}s"
     )
 
     raise RuntimeError(
-        f"V12.13 found no publishable Short "
-        f"after {len(attempts)} attempted "
-        f"candidate(s)."
+        f"V12.14 found no finished Short "
+        f"that passed after "
+        f"{len(attempts)} attempts."
     )
 
 
@@ -551,7 +578,7 @@ if __name__ == "__main__":
         main()
     except Exception as exc:
         print(
-            "V12.13 PIPELINE FAILED:",
+            "V12.14 PIPELINE FAILED:",
             exc,
         )
         sys.exit(1)
