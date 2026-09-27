@@ -401,7 +401,7 @@ def acquire(candidate):
         )
 
     print(
-        f"ACQUIRED V12.11.2 WINDOW: "
+        f"ACQUIRED V12.12 WINDOW: "
         f"original {start:.2f}-{end:.2f}s -> "
         f"local {local_seconds:.2f}s | "
         f"cached_hls={cached_playlist_used}"
@@ -411,7 +411,7 @@ def acquire(candidate):
         "success":
             True,
         "version":
-            "12.10-direct-api-window-acquisition",
+            "12.12-audio-aware-window-acquisition",
         "clip_id":
             clip_id,
         "clip_url":
@@ -495,6 +495,22 @@ def acquire(candidate):
             candidate.get(
                 "prescreen_clarity"
             ),
+        "prescreen_opening_coherence":
+            candidate.get(
+                "prescreen_opening_coherence"
+            ),
+        "prescreen_audio_context":
+            candidate.get(
+                "prescreen_audio_context"
+            ),
+        "prescreen_ending_audio_relevance":
+            candidate.get(
+                "prescreen_ending_audio_relevance"
+            ),
+        "prescreen_audio_reason":
+            candidate.get(
+                "prescreen_audio_reason"
+            ),
         "prescreen_rank_score":
             candidate.get(
                 "prescreen_rank_score"
@@ -565,7 +581,7 @@ def main():
     )
 
     print(
-        f"V12.11.2 prescreened candidates available: "
+        f"V12.12 prescreened candidates available: "
         f"{len(candidates)}"
     )
 
@@ -592,7 +608,7 @@ def main():
             continue
 
         print(
-            f"ACQUIRE V12.11.2 rank {rank}: "
+            f"ACQUIRE V12.12 rank {rank}: "
             f"{candidate.get('game')} / "
             f"{candidate.get('channel')} / "
             f"{clip_id} | "
@@ -661,7 +677,7 @@ def main():
     )
 
     raise RuntimeError(
-        "No remaining V12.11.2 prescreened candidate."
+        "No remaining V12.12 prescreened candidate."
     )
 
 
@@ -670,7 +686,7 @@ if __name__ == "__main__":
         main()
     except Exception as exc:
         print(
-            "KICK V12.11.2 ACQUISITION FAILED:",
+            "KICK V12.12 ACQUISITION FAILED:",
             exc,
         )
         sys.exit(1)
