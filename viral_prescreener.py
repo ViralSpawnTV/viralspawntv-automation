@@ -16,39 +16,23 @@ WORK = Path("work/viral_prescreen")
 WORK.mkdir(parents=True, exist_ok=True)
 
 MAX_VISUAL_CANDIDATES = 40
+PAYOFF_PHASE_SURVIVORS = 12
 PROMOTE_COUNT = 4
+MAX_WINDOWS_PER_CLIP = 3
 
-# Phase 1: every window gets only its first ~2 seconds inspected.
-HOOK_BATCH_SIZE = 12
-HOOK_FRAME_WORKERS = 6
-HOOK_PHASE_SURVIVORS = 10
-MAX_HOOK_WINDOWS_PER_CLIP = 2
-
-# Phase 2: only the strongest opening windows get middle/end evidence.
+PAYOFF_BATCH_SIZE = 10
+PAYOFF_FRAME_WORKERS = 5
 STORY_BATCH_SIZE = 6
 STORY_FRAME_WORKERS = 4
-
-# V12.13 audio-context pass. Only Phase-2 survivors pay this cost.
 AUDIO_TRANSCRIBE_WORKERS = 4
-OPENING_AUDIO_SECONDS = 7.0
-ENDING_AUDIO_SECONDS = 7.0
 
-TARGET_FINAL_SCORE = 72
-
-# V12.13 duration strategy:
-# Shorts may now be as short as 40 seconds.
 MIN_SOURCE_SECONDS = 40.0
-TARGET_WINDOW_SECONDS = 55.0
 MIN_WINDOW_SECONDS = 40.0
+TARGET_WINDOW_SECONDS = 55.0
 MAX_WINDOW_SECONDS = 58.0
 
-# V12.13 Phase-1 ranking funnel.
-# Rank every non-hard-rejected opening and send the top 10 to Phase 2.
-
-# V12.13:
-# Phase 2 does not apply another publishability threshold.
-# It ranks the completed candidate windows and sends the top 4 to the
-# unchanged final 72 viral-quality gate.
+OPENING_AUDIO_SECONDS = 7.0
+ENDING_AUDIO_SECONDS = 7.0
 
 
 def safe_name(value):
@@ -57,16 +41,6 @@ def safe_name(value):
         "_",
         str(value or "clip"),
     )[:80]
-
-
-def data_url(path):
-    encoded = base64.b64encode(
-        path.read_bytes()
-    ).decode("ascii")
-
-    return (
-        f"data:image/jpeg;base64,{encoded}"
-    )
 
 
 def clamp(value):
@@ -87,31 +61,28 @@ def clamp(value):
 
 
 def parse_json(raw):
-    raw = str(
-        raw or ""
-    ).strip()
+    raw = str(raw or "").strip()
+    raw = re.sub(r"^```json\s*", "", raw)
+    raw = re.sub(r"\s*```$", "", raw)
+    return json.loads(raw)
 
-    raw = re.sub(
-        r"^```json\s*",
-        "",
-        raw,
-    )
 
-    raw = re.sub(
-        r"\s*```$",
-        "",
-        raw,
-    )
-
-    return json.loads(
-        raw
-    )
+def data_url(path):
+    encoded = base64.b64encode(
+        Path(path).read_bytes()
+    ).decode("ascii")
+    return f"data:image/jpeg;base64,{encoded}"
 
 
 def make_windows(source_seconds):
-    seconds = float(
-        source_seconds
-    )
+    """
+    Build up to three 40-58 second windows.
+
+    V12.14 judges the ENDING/PAYOFF first. The window itself is still
+    continuous, but later ranking starts from "is the ending worth waiting
+    for?" rather than "does the raw source already have a viral first second?"
+    """
+    seconds = float(source_seconds)
 
     if seconds < MIN_SOURCE_SECONDS:
         return []
@@ -119,15 +90,9 @@ def make_windows(source_seconds):
     if seconds <= MAX_WINDOW_SECONDS:
         return [
             {
-                "start":
-                    0.0,
-                "end":
-                    round(
-                        seconds,
-                        3,
-                    ),
-                "label":
-                    "full",
+                "start": 0.0,
+                "end": round(seconds, 3),
+                "label": "full",
             }
         ]
 
@@ -142,40 +107,19 @@ def make_windows(source_seconds):
     )
 
     if seconds <= 75:
-        raw_starts = [
+        starts = [
             0.0,
             max_start,
         ]
     else:
-        raw_starts = [
+        starts = [
             0.0,
             max_start / 2.0,
             max_start,
         ]
 
-    starts = []
-
-    for value in raw_starts:
-        value = round(
-            max(
-                0.0,
-                min(
-                    value,
-                    max_start,
-                ),
-            ),
-            3,
-        )
-
-        if not any(
-            abs(
-                value - old
-            ) < 4.0
-            for old in starts
-        ):
-            starts.append(
-                value
-            )
+    windows = []
+    seen = []
 
     labels = [
         "early",
@@ -183,46 +127,50 @@ def make_windows(source_seconds):
         "late",
     ]
 
-    windows = []
+    for i, start in enumerate(starts):
+        start = round(
+            max(
+                0.0,
+                min(
+                    start,
+                    max_start,
+                ),
+            ),
+            3,
+        )
 
-    for i, start in enumerate(
-        starts
-    ):
+        if any(
+            abs(start - old) < 5.0
+            for old in seen
+        ):
+            continue
+
+        seen.append(start)
+
         end = min(
             seconds,
             start + length,
         )
 
-        if (
-            end - start
-            <
-            MIN_WINDOW_SECONDS
-        ):
+        if end - start < MIN_WINDOW_SECONDS:
             continue
 
         windows.append(
             {
-                "start":
-                    round(
-                        start,
-                        3,
-                    ),
-                "end":
-                    round(
-                        end,
-                        3,
-                    ),
-                "label":
-                    labels[
-                        min(
-                            i,
-                            len(labels) - 1,
-                        )
-                    ],
+                "start": start,
+                "end": round(end, 3),
+                "label": labels[
+                    min(
+                        i,
+                        len(labels) - 1,
+                    )
+                ],
             }
         )
 
-    return windows
+    return windows[
+        :MAX_WINDOWS_PER_CLIP
+    ]
 
 
 def build_window_index(candidates):
@@ -239,14 +187,11 @@ def build_window_index(candidates):
         ).strip()
 
         media_url = str(
-            candidate.get(
-                "media_url"
-            )
+            candidate.get("media_url")
             or
-            candidate.get(
-                "playlist_url"
-            )
-            or ""
+            candidate.get("playlist_url")
+            or
+            ""
         ).strip()
 
         source_seconds = candidate.get(
@@ -285,11 +230,18 @@ def build_window_index(candidates):
     return items
 
 
-def extract_hook_frames(item):
+def run_ffmpeg(command, timeout=45):
+    subprocess.run(
+        command,
+        check=True,
+        timeout=timeout,
+    )
+
+
+def extract_payoff_evidence(item):
     """
-    INPUT-SIDE SEEK:
-    seek directly to this specific window start and decode only ~2.1 seconds.
-    This is the key V12.13 speed change.
+    Phase 1 only inspects the last ~7 seconds of a proposed window.
+    This is deliberately payoff-first.
     """
     candidate = item[
         "candidate"
@@ -312,6 +264,17 @@ def extract_hook_frames(item):
         ]
     )
 
+    end = float(
+        window[
+            "end"
+        ]
+    )
+
+    ending_seek = max(
+        start,
+        end - 7.0,
+    )
+
     clip_dir = (
         WORK
         /
@@ -327,55 +290,96 @@ def extract_hook_frames(item):
         exist_ok=True,
     )
 
-    for old in clip_dir.glob(
-        "hook_*.jpg"
-    ):
-        old.unlink()
+    for pattern in [
+        "payoff_*.jpg",
+        "payoff_audio.wav",
+    ]:
+        for old in clip_dir.glob(
+            pattern
+        ):
+            old.unlink()
 
-    pattern = str(
+    frame_pattern = str(
         clip_dir
         /
-        "hook_%02d.jpg"
+        "payoff_%02d.jpg"
     )
 
-    command = [
+    payoff_audio = (
+        clip_dir
+        /
+        "payoff_audio.wav"
+    )
+
+    frame_cmd = [
         "ffmpeg",
         "-y",
         "-loglevel",
         "error",
         "-ss",
-        f"{start:.3f}",
+        f"{ending_seek:.3f}",
         "-i",
         item[
             "media_url"
         ],
         "-t",
-        "2.10",
+        "7.0",
         "-an",
         "-vf",
-        "fps=1.5,scale=360:-2",
+        "fps=0.5,scale=360:-2",
         "-frames:v",
         "3",
         "-q:v",
         "5",
-        pattern,
+        frame_pattern,
     ]
 
-    subprocess.run(
-        command,
-        check=True,
-        timeout=45,
+    audio_cmd = [
+        "ffmpeg",
+        "-y",
+        "-loglevel",
+        "error",
+        "-ss",
+        f"{ending_seek:.3f}",
+        "-i",
+        item[
+            "media_url"
+        ],
+        "-t",
+        f"{ENDING_AUDIO_SECONDS:.2f}",
+        "-vn",
+        "-ac",
+        "1",
+        "-ar",
+        "16000",
+        "-c:a",
+        "pcm_s16le",
+        str(
+            payoff_audio
+        ),
+    ]
+
+    run_ffmpeg(
+        frame_cmd
     )
 
-    frames = sorted(
-        clip_dir.glob(
-            "hook_*.jpg"
+    try:
+        run_ffmpeg(
+            audio_cmd
         )
-    )[:3]
+    except Exception:
+        try:
+            payoff_audio.unlink()
+        except Exception:
+            pass
 
-    return [
+    frames = [
         str(path)
-        for path in frames
+        for path in sorted(
+            clip_dir.glob(
+                "payoff_*.jpg"
+            )
+        )[:3]
         if (
             path.exists()
             and
@@ -383,17 +387,26 @@ def extract_hook_frames(item):
         )
     ]
 
+    return {
+        "payoff_frames":
+            frames,
+        "payoff_audio":
+            (
+                str(payoff_audio)
+                if (
+                    payoff_audio.exists()
+                    and
+                    payoff_audio.stat().st_size > 1000
+                )
+                else ""
+            ),
+    }
 
-def extract_story_frames(item):
+
+def extract_story_evidence(item):
     """
-    V12.13 Phase 2:
-    - input-side seek to the middle for visual story evidence
-    - input-side seek to the ending for payoff evidence
-    - extract a short opening audio sample
-    - extract a short ending audio sample
-
-    Audio extraction is best-effort. A clip with no usable audio still stays
-    in the visual ranking pool.
+    Phase 2 examines setup + middle + opening audio only after a window has
+    demonstrated a potentially worthwhile ending.
     """
     candidate = item[
         "candidate"
@@ -428,23 +441,6 @@ def extract_story_frames(item):
         (end - start) * 0.50
     )
 
-    middle_seek = max(
-        start,
-        middle - 1.5,
-    )
-
-    ending_seek = max(
-        start,
-        end - 6.0,
-    )
-
-    opening_audio_seek = start
-
-    ending_audio_seek = max(
-        start,
-        end - ENDING_AUDIO_SECONDS,
-    )
-
     clip_dir = (
         WORK
         /
@@ -461,26 +457,25 @@ def extract_story_frames(item):
     )
 
     for pattern in [
+        "setup_*.jpg",
         "middle_*.jpg",
-        "ending_*.jpg",
         "opening_audio.wav",
-        "ending_audio.wav",
     ]:
         for old in clip_dir.glob(
             pattern
         ):
             old.unlink()
 
+    setup_pattern = str(
+        clip_dir
+        /
+        "setup_%02d.jpg"
+    )
+
     middle_pattern = str(
         clip_dir
         /
         "middle_%02d.jpg"
-    )
-
-    ending_pattern = str(
-        clip_dir
-        /
-        "ending_%02d.jpg"
     )
 
     opening_audio = (
@@ -489,10 +484,32 @@ def extract_story_frames(item):
         "opening_audio.wav"
     )
 
-    ending_audio = (
-        clip_dir
-        /
-        "ending_audio.wav"
+    setup_cmd = [
+        "ffmpeg",
+        "-y",
+        "-loglevel",
+        "error",
+        "-ss",
+        f"{start:.3f}",
+        "-i",
+        item[
+            "media_url"
+        ],
+        "-t",
+        "4.0",
+        "-an",
+        "-vf",
+        "fps=0.5,scale=360:-2",
+        "-frames:v",
+        "2",
+        "-q:v",
+        "5",
+        setup_pattern,
+    ]
+
+    middle_seek = max(
+        start,
+        middle - 2.0,
     )
 
     middle_cmd = [
@@ -507,10 +524,10 @@ def extract_story_frames(item):
             "media_url"
         ],
         "-t",
-        "3.20",
+        "4.0",
         "-an",
         "-vf",
-        "fps=0.7,scale=360:-2",
+        "fps=0.5,scale=360:-2",
         "-frames:v",
         "2",
         "-q:v",
@@ -518,36 +535,13 @@ def extract_story_frames(item):
         middle_pattern,
     ]
 
-    ending_cmd = [
+    audio_cmd = [
         "ffmpeg",
         "-y",
         "-loglevel",
         "error",
         "-ss",
-        f"{ending_seek:.3f}",
-        "-i",
-        item[
-            "media_url"
-        ],
-        "-t",
-        "6.00",
-        "-an",
-        "-vf",
-        "fps=0.5,scale=360:-2",
-        "-frames:v",
-        "3",
-        "-q:v",
-        "5",
-        ending_pattern,
-    ]
-
-    opening_audio_cmd = [
-        "ffmpeg",
-        "-y",
-        "-loglevel",
-        "error",
-        "-ss",
-        f"{opening_audio_seek:.3f}",
+        f"{start:.3f}",
         "-i",
         item[
             "media_url"
@@ -566,50 +560,17 @@ def extract_story_frames(item):
         ),
     ]
 
-    ending_audio_cmd = [
-        "ffmpeg",
-        "-y",
-        "-loglevel",
-        "error",
-        "-ss",
-        f"{ending_audio_seek:.3f}",
-        "-i",
-        item[
-            "media_url"
-        ],
-        "-t",
-        f"{ENDING_AUDIO_SECONDS:.2f}",
-        "-vn",
-        "-ac",
-        "1",
-        "-ar",
-        "16000",
-        "-c:a",
-        "pcm_s16le",
-        str(
-            ending_audio
-        ),
-    ]
-
-    subprocess.run(
-        middle_cmd,
-        check=True,
-        timeout=45,
+    run_ffmpeg(
+        setup_cmd
     )
 
-    subprocess.run(
-        ending_cmd,
-        check=True,
-        timeout=45,
+    run_ffmpeg(
+        middle_cmd
     )
 
-    # Audio is best-effort. Missing/unsupported audio must not destroy an
-    # otherwise usable gaming candidate.
     try:
-        subprocess.run(
-            opening_audio_cmd,
-            check=True,
-            timeout=45,
+        run_ffmpeg(
+            audio_cmd
         )
     except Exception:
         try:
@@ -617,56 +578,42 @@ def extract_story_frames(item):
         except Exception:
             pass
 
-    try:
-        subprocess.run(
-            ending_audio_cmd,
-            check=True,
-            timeout=45,
+    setup_frames = [
+        str(path)
+        for path in sorted(
+            clip_dir.glob(
+                "setup_*.jpg"
+            )
+        )[:2]
+        if (
+            path.exists()
+            and
+            path.stat().st_size > 0
         )
-    except Exception:
-        try:
-            ending_audio.unlink()
-        except Exception:
-            pass
+    ]
 
-    middle_frames = sorted(
-        clip_dir.glob(
-            "middle_*.jpg"
+    middle_frames = [
+        str(path)
+        for path in sorted(
+            clip_dir.glob(
+                "middle_*.jpg"
+            )
+        )[:2]
+        if (
+            path.exists()
+            and
+            path.stat().st_size > 0
         )
-    )[:2]
-
-    ending_frames = sorted(
-        clip_dir.glob(
-            "ending_*.jpg"
-        )
-    )[:3]
+    ]
 
     return {
+        "setup_frames":
+            setup_frames,
         "middle_frames":
-            [
-                str(path)
-                for path in middle_frames
-                if (
-                    path.exists()
-                    and
-                    path.stat().st_size > 0
-                )
-            ],
-        "ending_frames":
-            [
-                str(path)
-                for path in ending_frames
-                if (
-                    path.exists()
-                    and
-                    path.stat().st_size > 0
-                )
-            ],
+            middle_frames,
         "opening_audio":
             (
-                str(
-                    opening_audio
-                )
+                str(opening_audio)
                 if (
                     opening_audio.exists()
                     and
@@ -674,22 +621,56 @@ def extract_story_frames(item):
                 )
                 else ""
             ),
-        "ending_audio":
-            (
-                str(
-                    ending_audio
-                )
-                if (
-                    ending_audio.exists()
-                    and
-                    ending_audio.stat().st_size > 1000
-                )
-                else ""
-            ),
     }
 
 
-def transcribe_audio_file(path):
+def extract_parallel(
+    items,
+    fn,
+    workers,
+    label,
+):
+    results = {}
+
+    with ThreadPoolExecutor(
+        max_workers=workers
+    ) as executor:
+        future_map = {
+            executor.submit(
+                fn,
+                item,
+            ): item
+            for item in items
+        }
+
+        for future in as_completed(
+            future_map
+        ):
+            item = future_map[
+                future
+            ]
+
+            try:
+                results[
+                    item[
+                        "window_item_id"
+                    ]
+                ] = future.result()
+
+            except Exception as exc:
+                print(
+                    f"{label} extraction failed "
+                    f"{item['candidate'].get('clip_id')} "
+                    f"window="
+                    f"{item['window'].get('start'):.1f}-"
+                    f"{item['window'].get('end'):.1f}: "
+                    f"{exc}"
+                )
+
+    return results
+
+
+def transcribe_file(path):
     path = Path(
         str(
             path or ""
@@ -726,34 +707,15 @@ def transcribe_audio_file(path):
 
     except Exception as exc:
         print(
-            f"AUDIO TRANSCRIBE FAILED "
+            f"Transcript failed "
             f"{path.name}: {exc}"
         )
-
         return ""
 
 
-def transcribe_story_audio(item):
-    return {
-        "opening_transcript":
-            transcribe_audio_file(
-                item.get(
-                    "opening_audio",
-                    "",
-                )
-            ),
-        "ending_transcript":
-            transcribe_audio_file(
-                item.get(
-                    "ending_audio",
-                    "",
-                )
-            ),
-    }
-
-
-def transcribe_audio_parallel(
+def transcribe_parallel(
     items,
+    path_key,
 ):
     results = {}
 
@@ -762,8 +724,11 @@ def transcribe_audio_parallel(
     ) as executor:
         future_map = {
             executor.submit(
-                transcribe_story_audio,
-                item,
+                transcribe_file,
+                item.get(
+                    path_key,
+                    "",
+                ),
             ): item
             for item in items
         }
@@ -775,154 +740,75 @@ def transcribe_audio_parallel(
                 future
             ]
 
-            item_id = item[
-                "window_item_id"
-            ]
-
             try:
                 results[
-                    item_id
+                    item[
+                        "window_item_id"
+                    ]
                 ] = future.result()
 
-            except Exception as exc:
-                print(
-                    f"AUDIO CONTEXT FAILED "
-                    f"{item['candidate'].get('clip_id')}: "
-                    f"{exc}"
-                )
-
+            except Exception:
                 results[
-                    item_id
-                ] = {
-                    "opening_transcript":
-                        "",
-                    "ending_transcript":
-                        "",
-                }
-
-    return results
-
-def extract_phase_parallel(
-    items,
-    fn,
-    workers,
-    label,
-):
-    results = {}
-
-    with ThreadPoolExecutor(
-        max_workers=workers
-    ) as executor:
-        future_map = {
-            executor.submit(
-                fn,
-                item,
-            ): item
-            for item in items
-        }
-
-        for future in as_completed(
-            future_map
-        ):
-            item = future_map[
-                future
-            ]
-
-            item_id = item[
-                "window_item_id"
-            ]
-
-            try:
-                results[
-                    item_id
-                ] = future.result()
-
-            except Exception as exc:
-                print(
-                    f"{label} extraction failed "
-                    f"{item['candidate'].get('clip_id')} "
-                    f"window="
-                    f"{item['window'].get('start')}-"
-                    f"{item['window'].get('end')}: "
-                    f"{exc}"
-                )
+                    item[
+                        "window_item_id"
+                    ]
+                ] = ""
 
     return results
 
 
-def score_hook_batch(
+def score_payoff_batch(
     client,
     batch,
 ):
     prompt = """
-You are PHASE 1 of ViralSpawnTV's V12.13 prescreener.
+You are Phase 1 of ViralSpawnTV V12.14.
 
-Your ONLY job is to judge whether the FIRST ~2 SECONDS of each proposed
-40-60 second gaming Short are strong enough to stop a viewer from swiping.
+This is PAYOFF-FIRST source selection.
 
-IMPORTANT:
-You are intentionally NOT given the title, description, creator popularity,
-view count, game name, or later frames.
+Each item is a proposed 40-58 second gaming window. You are shown only
+evidence from its FINAL ~7 seconds plus any transcript from those seconds.
 
-Judge ONLY what is actually visible in these opening frames.
+Judge whether the ending contains something worth building a Short around.
 
 Reward:
-- immediate danger
-- obvious clutch pressure
-- a challenge already happening
-- surprising/funny visual problem
-- unusual action
-- visually understandable conflict
-- a clear unresolved outcome
-- strong visible reaction
+- a decisive win/loss
+- kill/elimination/clutch result
+- goal/save/comeback result
+- fail/crash/death
+- escape/survival
+- reveal/surprise
+- strong streamer reaction
+- punchline/comedic result
+- meaningful challenge result
 
-Penalize heavily:
-- healing/repositioning with no visible danger
-- menus/lobbies
-- routine running/driving/flying
-- looting
-- static facecam
-- clutter where a new viewer cannot tell what matters
-- ordinary gameplay
-- openings that require explanation before becoming interesting
+Penalize:
+- menus
+- inventory/loadout screens
+- routine movement
+- unresolved action
+- ordinary repositioning
+- endings where nothing materially changes
 
-Return:
-- hook 0-100
-- first_second_clarity 0-100
-- curiosity_gap 0-100
-- opening_action 0-100
-- hard_reject true/false
-- content_type gaming/gambling/non_gaming/music_performance/unclear
-- reason
-
-HARD-REJECT RULE:
-hard_reject=true ONLY when the visible content is clearly:
+Hard-reject ONLY:
 - gambling/casino
-- non-gaming content
+- clearly non-gaming material
 - music-performance content
 
-A weak, boring, confusing, slow, or low-action GAMING opening is NOT a
-hard reject. Score its hook/clarity/curiosity/action low, but set
-hard_reject=false and content_type="gaming" or "unclear".
-
-This distinction is critical. Phase 1 ranks weak gaming openings; it does
-not eliminate them except for clearly unsuitable content types.
-
-Use 80+ only for genuinely strong stop-the-scroll openings.
-Do not inflate scores.
+A weak gaming ending is NOT a hard reject. Give it low scores.
 
 Return ONLY JSON:
 {
   "results": [
     {
       "id": 0,
-      "hook": 82,
-      "first_second_clarity": 78,
-      "curiosity_gap": 84,
-      "opening_action": 80,
+      "payoff": 78,
+      "ending_strength": 75,
+      "payoff_clarity": 72,
+      "reaction": 70,
       "hard_reject": false,
       "content_type": "gaming",
-      "reason": "Visible immediate threat with a clear unresolved outcome."
+      "reason": "A decisive result occurs and the reaction makes the ending feel complete."
     }
   ]
 }
@@ -940,35 +826,40 @@ Return ONLY JSON:
     for local_id, item in enumerate(
         batch
     ):
+        candidate = item[
+            "candidate"
+        ]
+
         content.append(
             {
                 "type":
                     "input_text",
                 "text":
                     (
-                        f"OPENING {local_id}\n"
-                        "The next images are consecutive samples "
-                        "from only the first ~2 seconds."
+                        f"WINDOW {local_id}\n"
+                        f"clip_id="
+                        f"{candidate.get('clip_id')}\n"
+                        f"duration="
+                        f"{item['window']['end'] - item['window']['start']:.1f}s\n"
+                        "ENDING TRANSCRIPT:\n"
+                        f"{item.get('payoff_transcript') or '(no usable transcript)'}\n"
+                        "NEXT: ENDING FRAMES"
                     ),
             }
         )
 
-        for frame_path in item.get(
-            "hook_frames",
+        for frame in item.get(
+            "payoff_frames",
             [],
         ):
-            path = Path(
-                frame_path
-            )
-
-            if path.exists():
+            if Path(frame).exists():
                 content.append(
                     {
                         "type":
                             "input_image",
                         "image_url":
                             data_url(
-                                path
+                                frame
                             ),
                     }
                 )
@@ -995,23 +886,23 @@ Return ONLY JSON:
     )
 
 
-def hook_rank(row):
+def payoff_rank(row):
     return round(
         row[
-            "prescreen_hook"
+            "prescreen_payoff"
         ] * 0.45
         +
         row[
-            "prescreen_curiosity_gap"
-        ] * 0.30
+            "prescreen_ending_strength"
+        ] * 0.25
         +
         row[
-            "prescreen_first_second_clarity"
+            "prescreen_payoff_clarity"
         ] * 0.15
         +
         row[
-            "prescreen_opening_action"
-        ] * 0.10,
+            "prescreen_reaction"
+        ] * 0.15,
         2,
     )
 
@@ -1020,87 +911,57 @@ def score_story_batch(
     client,
     batch,
 ):
-    prompt = f"""
-You are PHASE 2 of ViralSpawnTV's V12.13 prescreener.
+    prompt = """
+You are Phase 2 of ViralSpawnTV V12.14.
 
-These windows already survived a dedicated first-2-second Big Hook test.
-Now judge whether the REST of the SAME 40-58 second window earns the
-viewer staying until the end.
+These gaming windows already have the strongest available endings/payoffs.
+Now decide whether the footage BEFORE that payoff contains enough material
+for ViralSpawnTV's editor to MAKE a good 40-60 second Short.
 
-The final viral gate threshold is {TARGET_FINAL_SCORE}/100.
+IMPORTANT:
+Do NOT require the raw source to already have a viral first-second hook.
+The production editor will create a Big Hook using truthful on-screen text,
+narration, captions and pacing.
 
-For each candidate you will see:
-- its already-measured VISUAL opening-hook scores
-- OPENING AUDIO TRANSCRIPT from roughly the first 7 seconds
-- 2 MIDDLE frames
-- up to 3 ENDING/PAYOFF frames
-- ENDING AUDIO TRANSCRIPT from roughly the final 7 seconds
+Judge the SOURCE MATERIAL for:
+- story_sustain: meaningful progression toward the ending
+- action: meaningful gameplay/reaction rather than filler
+- clarity: enough understandable context to tell the story
+- setup_quality: whether the beginning gives usable facts/stakes
+- editability: whether an editor can create a compelling opening without
+  inventing anything
+- source_score: overall quality of the raw material as editable source
 
-Use the transcripts to catch cases that screenshots cannot:
-- speech/commentary unrelated to the visible gameplay
-- confusing opening chatter
-- whether the spoken context explains the stakes
-- whether the ending audio supports a real payoff/reaction
-- whether the apparent story already happened before this window
+Penalize long stretches of:
+- routine travel
+- menus/inventory/loadouts
+- dead air
+- unrelated chatter
+- repetitive low-stakes movement
 
-Judge:
-- opening_coherence: do opening audio + visuals describe one understandable moment?
-- audio_context: does the spoken context help or at least fit the gameplay story?
-- ending_audio_relevance: does ending speech/reaction support the visible payoff?
-- story_sustain: does the window keep progressing?
-- payoff: is the result/reaction worth waiting for?
-- ending_strength: is the outcome clear and satisfying?
-- action: meaningful action/reaction over the story
-- clarity: can a new viewer follow the basic story?
-- predicted_score: expected final-gate score
-- probability_72_plus
-- hard_reject
-- content_type gaming/gambling/non_gaming/music_performance/unclear
-- reason
-- audio_reason: one short explanation of whether the speech helps, hurts,
-  or is unavailable
+Do NOT punish a merely slow raw first second if the window has a strong
+story and payoff that can be truthfully reframed in production.
 
-If a transcript is empty, unusable, silent, or non-English, do NOT
-automatically punish the candidate. Use a neutral score around 50 for the
-audio-only metrics unless the available evidence clearly supports another
-score. ViralSpawnTV can translate foreign speech later.
-
-HARD-REJECT RULE:
-Set hard_reject=true ONLY for clearly unsuitable content:
-gambling/casino, clearly non-gaming footage, or music-performance content.
-
-A weak story, weak ending, low action, low clarity, or weak payoff is NOT
-a hard reject. Score those qualities low and keep the window in the ranked
-pool so the unchanged final 72 gate can make the publish decision.
-
-Do NOT reward a window simply because the ending has a win banner.
-Do NOT reward long stretches of routine flying, running, healing,
-repositioning, looting, or setup.
-
-The opening score is already known; do not re-score it from metadata.
+Hard-reject ONLY gambling/casino, clearly non-gaming, or music-performance
+content.
 
 Return ONLY JSON:
-{{
+{
   "results": [
-    {{
+    {
       "id": 0,
-      "predicted_score": 78,
-      "probability_72_plus": 75,
-      "opening_coherence": 82,
-      "audio_context": 76,
-      "ending_audio_relevance": 79,
+      "source_score": 72,
       "story_sustain": 72,
-      "payoff": 78,
-      "ending_strength": 75,
-      "action": 74,
-      "clarity": 72,
+      "action": 70,
+      "clarity": 74,
+      "setup_quality": 68,
+      "editability": 80,
       "hard_reject": false,
       "content_type": "gaming",
-      "reason": "The middle escalates and the ending delivers a clear payoff.",
-      "audio_reason": "Opening speech matches the visible stakes and the ending reaction supports the payoff."
-    }}
+      "reason": "The source has clear progression toward a worthwhile ending and enough truthful context to build a stronger opening."
+    }
   ]
-}}
+}
 """
 
     content = [
@@ -1119,10 +980,6 @@ Return ONLY JSON:
             "candidate"
         ]
 
-        window = item[
-            "window"
-        ]
-
         content.append(
             {
                 "type":
@@ -1130,44 +987,31 @@ Return ONLY JSON:
                 "text":
                     (
                         f"WINDOW {local_id}\n"
-                        f"duration="
-                        f"{window['end'] - window['start']:.1f}s\n"
-                        f"hook={item.get('prescreen_hook')}\n"
-                        f"first_second_clarity="
-                        f"{item.get('prescreen_first_second_clarity')}\n"
-                        f"curiosity_gap="
-                        f"{item.get('prescreen_curiosity_gap')}\n"
-                        f"opening_action="
-                        f"{item.get('prescreen_opening_action')}\n"
-                        f"hook_rank="
-                        f"{item.get('prescreen_hook_rank')}\n"
-                        f"kick_views="
-                        f"{candidate.get('kick_view_count', 0)}\n"
-                        f"kick_likes="
-                        f"{candidate.get('kick_like_count', 0)}\n"
-                        "OPENING AUDIO TRANSCRIPT:\n"
+                        f"clip_id="
+                        f"{candidate.get('clip_id')}\n"
+                        f"payoff={item.get('prescreen_payoff')}\n"
+                        f"ending_strength={item.get('prescreen_ending_strength')}\n"
+                        f"payoff_clarity={item.get('prescreen_payoff_clarity')}\n"
+                        f"reaction={item.get('prescreen_reaction')}\n"
+                        "OPENING TRANSCRIPT:\n"
                         f"{item.get('opening_transcript') or '(no usable transcript)'}\n"
-                        "NEXT: MIDDLE FRAMES"
+                        "NEXT: SETUP FRAMES"
                     ),
             }
         )
 
-        for frame_path in item.get(
-            "middle_frames",
+        for frame in item.get(
+            "setup_frames",
             [],
         ):
-            path = Path(
-                frame_path
-            )
-
-            if path.exists():
+            if Path(frame).exists():
                 content.append(
                     {
                         "type":
                             "input_image",
                         "image_url":
                             data_url(
-                                path
+                                frame
                             ),
                     }
                 )
@@ -1177,30 +1021,22 @@ Return ONLY JSON:
                 "type":
                     "input_text",
                 "text":
-                    (
-                        "NEXT: ENDING / PAYOFF FRAMES\n"
-                        "ENDING AUDIO TRANSCRIPT:\n"
-                        f"{item.get('ending_transcript') or '(no usable transcript)'}"
-                    ),
+                    "NEXT: MIDDLE FRAMES",
             }
         )
 
-        for frame_path in item.get(
-            "ending_frames",
+        for frame in item.get(
+            "middle_frames",
             [],
         ):
-            path = Path(
-                frame_path
-            )
-
-            if path.exists():
+            if Path(frame).exists():
                 content.append(
                     {
                         "type":
                             "input_image",
                         "image_url":
                             data_url(
-                                path
+                                frame
                             ),
                     }
                 )
@@ -1228,68 +1064,39 @@ Return ONLY JSON:
 
 
 def final_rank(row):
-    opening = row[
-        "prescreen_hook_rank"
-    ]
-
-    story = (
+    return round(
+        row[
+            "prescreen_payoff_rank"
+        ] * 0.45
+        +
+        row[
+            "prescreen_source_score"
+        ] * 0.20
+        +
         row[
             "prescreen_story_sustain"
-        ] * 0.40
+        ] * 0.15
         +
         row[
-            "prescreen_payoff"
-        ] * 0.40
+            "prescreen_editability"
+        ] * 0.10
         +
-        row[
-            "prescreen_ending_strength"
-        ] * 0.20
-    )
-
-    audio_context_score = (
-        row[
-            "prescreen_opening_coherence"
-        ] * 0.50
-        +
-        row[
-            "prescreen_audio_context"
-        ] * 0.30
-        +
-        row[
-            "prescreen_ending_audio_relevance"
-        ] * 0.20
-    )
-
-    clarity_action = (
-        row[
-            "prescreen_clarity"
-        ] * 0.60
-        +
-        row[
-            "prescreen_action"
-        ] * 0.40
-    )
-
-    # V12.13 weighting:
-    # 30% visual opening
-    # 30% story/payoff
-    # 20% audio/context coherence
-    # 10% clarity/action
-    # 10% predicted final-gate probability
-    return round(
-        opening * 0.30
-        +
-        story * 0.30
-        +
-        audio_context_score * 0.20
-        +
-        clarity_action * 0.10
-        +
-        row[
-            "prescreen_probability_72_plus"
-        ] * 0.10,
+        (
+            row[
+                "prescreen_action"
+            ]
+            +
+            row[
+                "prescreen_clarity"
+            ]
+        )
+        /
+        2.0
+        *
+        0.10,
         2,
     )
+
 
 def main():
     if not INPUT.exists():
@@ -1312,13 +1119,8 @@ def main():
 
     if not candidates:
         raise RuntimeError(
-            "No duration-eligible ranked candidates."
+            "No ranked candidates."
         )
-
-    print(
-        f"V12.13 TWO-PHASE PRESCREENER received "
-        f"{len(candidates)} candidates."
-    )
 
     windows = build_window_index(
         candidates
@@ -1326,99 +1128,92 @@ def main():
 
     if not windows:
         raise RuntimeError(
-            "No eligible candidate windows."
+            "No eligible 40-58 second windows."
         )
 
     print(
-        f"V12.13 PHASE 1: "
-        f"{len(windows)} total windows -> "
-        f"opening-only extraction with "
-        f"{HOOK_FRAME_WORKERS} workers."
+        f"V12.14 PAYOFF-FIRST: "
+        f"{len(candidates)} ranked sources -> "
+        f"{len(windows)} candidate windows."
     )
 
-    hook_extract_started = (
-        time.perf_counter()
+    # ---------------------------------------------------------
+    # PHASE 1: PAYOFF FIRST
+    # ---------------------------------------------------------
+
+    payoff_started = time.perf_counter()
+
+    extracted = extract_parallel(
+        windows,
+        extract_payoff_evidence,
+        PAYOFF_FRAME_WORKERS,
+        "payoff",
     )
 
-    hook_frame_results = (
-        extract_phase_parallel(
-            windows,
-            extract_hook_frames,
-            HOOK_FRAME_WORKERS,
-            "hook",
-        )
-    )
-
-    print(
-        f"V12.13 TIMING | hook_frame_extract: "
-        f"{time.perf_counter() - hook_extract_started:.1f}s"
-    )
-
-    hook_items = []
+    payoff_items = []
 
     for item in windows:
-        frames = hook_frame_results.get(
+        evidence = extracted.get(
             item[
                 "window_item_id"
-            ],
-            [],
+            ]
         )
 
-        if not frames:
+        if not isinstance(
+            evidence,
+            dict,
+        ):
+            continue
+
+        if not evidence.get(
+            "payoff_frames"
+        ):
             continue
 
         row = dict(
             item
         )
 
-        row[
-            "hook_frames"
-        ] = frames
+        row.update(
+            evidence
+        )
 
-        hook_items.append(
+        payoff_items.append(
             row
         )
 
-    if not hook_items:
-        raise RuntimeError(
-            "No opening frames extracted."
+    payoff_transcripts = transcribe_parallel(
+        payoff_items,
+        "payoff_audio",
+    )
+
+    for item in payoff_items:
+        item[
+            "payoff_transcript"
+        ] = payoff_transcripts.get(
+            item[
+                "window_item_id"
+            ],
+            "",
         )
 
     client = OpenAI()
-
-    hook_ai_started = (
-        time.perf_counter()
-    )
-
-    phase1_scored = []
+    payoff_scored = []
 
     for start in range(
         0,
-        len(hook_items),
-        HOOK_BATCH_SIZE,
+        len(payoff_items),
+        PAYOFF_BATCH_SIZE,
     ):
-        batch = hook_items[
+        batch = payoff_items[
             start:
-            start + HOOK_BATCH_SIZE
+            start + PAYOFF_BATCH_SIZE
         ]
 
-        print(
-            f"HOOK AI batch "
-            f"{start // HOOK_BATCH_SIZE + 1}/"
-            f"{(len(hook_items) + HOOK_BATCH_SIZE - 1) // HOOK_BATCH_SIZE}"
+        results = score_payoff_batch(
+            client,
+            batch,
         )
-
-        try:
-            results = score_hook_batch(
-                client,
-                batch,
-            )
-
-        except Exception as exc:
-            print(
-                f"hook batch failed: {exc}"
-            )
-            continue
 
         by_id = {}
 
@@ -1432,7 +1227,7 @@ def main():
                     )
                 ] = result
             except Exception:
-                continue
+                pass
 
         for local_id, item in enumerate(
             batch
@@ -1451,118 +1246,88 @@ def main():
                 )
             ).strip().lower()
 
-            # V12.13: model scores cannot hard-reject weak gameplay.
-            # Only clearly unsuitable content categories are removed.
-            hard_reject = content_type in {
-                "gambling",
-                "non_gaming",
-                "music_performance",
-            }
+            hard_reject = (
+                content_type
+                in {
+                    "gambling",
+                    "non_gaming",
+                    "music_performance",
+                }
+            )
+
+            if hard_reject:
+                continue
 
             row = dict(
                 item
             )
 
-            row.update(
-                {
-                    "prescreen_hook":
-                        clamp(
-                            result.get(
-                                "hook"
-                            )
-                        ),
-                    "prescreen_first_second_clarity":
-                        clamp(
-                            result.get(
-                                "first_second_clarity"
-                            )
-                        ),
-                    "prescreen_curiosity_gap":
-                        clamp(
-                            result.get(
-                                "curiosity_gap"
-                            )
-                        ),
-                    "prescreen_opening_action":
-                        clamp(
-                            result.get(
-                                "opening_action"
-                            )
-                        ),
-                    "prescreen_hard_reject":
-                        hard_reject,
-                    "prescreen_content_type":
-                        content_type,
-                    "prescreen_hook_reason":
-                        str(
-                            result.get(
-                                "reason",
-                                "",
-                            )
-                        ).strip(),
-                }
+            row[
+                "prescreen_payoff"
+            ] = clamp(
+                result.get(
+                    "payoff"
+                )
             )
 
             row[
-                "prescreen_hook_rank"
-            ] = hook_rank(
-                row
+                "prescreen_ending_strength"
+            ] = clamp(
+                result.get(
+                    "ending_strength"
+                )
             )
 
-            # V12.13: every non-hard-rejected opening is rankable.
             row[
-                "prescreen_hook_phase_pass"
-            ] = bool(
-                not hard_reject
+                "prescreen_payoff_clarity"
+            ] = clamp(
+                result.get(
+                    "payoff_clarity"
+                )
             )
 
-            phase1_scored.append(
+            row[
+                "prescreen_reaction"
+            ] = clamp(
+                result.get(
+                    "reaction"
+                )
+            )
+
+            row[
+                "prescreen_payoff_reason"
+            ] = str(
+                result.get(
+                    "reason",
+                    "",
+                )
+            ).strip()
+
+            row[
+                "prescreen_payoff_rank"
+            ] = payoff_rank(
                 row
             )
 
-    print(
-        f"V12.13 TIMING | hook_ai: "
-        f"{time.perf_counter() - hook_ai_started:.1f}s"
-    )
+            payoff_scored.append(
+                row
+            )
 
-    # ---------------------------------------------------------
-    # V12.13 TOP-RANKED HOOK SURVIVORS
-    # ---------------------------------------------------------
-    # Phase 1 no longer uses arbitrary score floors.
-    # Remove only hard-rejected content, rank everything else, and send
-    # the strongest 10 opening windows to Phase 2 (max 2 per source).
-
-    non_rejected = [
-        row
-        for row in phase1_scored
-        if not row.get(
-            "prescreen_hard_reject",
-            False,
-        )
-    ]
-
-    non_rejected.sort(
-        key=lambda row: (
-            float(
-                row.get(
-                    "prescreen_hook_rank",
-                    0,
-                )
-            ),
-            float(
-                row.get(
-                    "prescreen_hook",
-                    0,
-                )
-            ),
+    payoff_scored.sort(
+        key=lambda row: float(
+            row.get(
+                "prescreen_payoff_rank",
+                0,
+            )
         ),
         reverse=True,
     )
 
-    per_clip_counts = {}
+    # Max 2 windows from the same source entering Phase 2.
+    per_clip = {}
     phase2_seed = []
 
-    for row in non_rejected:
+    for row in payoff_scored:
         clip_id = str(
             row[
                 "candidate"
@@ -1572,38 +1337,37 @@ def main():
             )
         )
 
-        count = per_clip_counts.get(
+        count = per_clip.get(
             clip_id,
             0,
         )
 
-        if (
-            count
-            >= MAX_HOOK_WINDOWS_PER_CLIP
-        ):
+        if count >= 2:
             continue
 
         phase2_seed.append(
             row
         )
 
-        per_clip_counts[
+        per_clip[
             clip_id
         ] = count + 1
 
         if (
-            len(phase2_seed)
-            >= HOOK_PHASE_SURVIVORS
+            len(
+                phase2_seed
+            )
+            >=
+            PAYOFF_PHASE_SURVIVORS
         ):
             break
 
-    viable = non_rejected
-
     print(
-        f"V12.13 PHASE 1 COMPLETE: "
-        f"{len(hook_items)} openings scored -> "
-        f"{len(non_rejected)} non-hard-rejected -> "
-        f"top {len(phase2_seed)} ranked windows advance."
+        f"V12.14 PAYOFF PHASE: "
+        f"{len(payoff_items)} endings inspected -> "
+        f"{len(payoff_scored)} usable -> "
+        f"{len(phase2_seed)} strongest payoffs advance | "
+        f"{time.perf_counter() - payoff_started:.1f}s"
     )
 
     for i, row in enumerate(
@@ -1611,62 +1375,46 @@ def main():
         1,
     ):
         print(
-            f"HOOK TOP {i}: "
+            f"PAYOFF TOP {i}: "
             f"{row['candidate'].get('clip_id')} | "
             f"window="
-            f"{row['window'].get('start'):.1f}-"
-            f"{row['window'].get('end'):.1f}s | "
-            f"hook={row.get('prescreen_hook')} | "
-            f"clarity1s="
-            f"{row.get('prescreen_first_second_clarity')} | "
-            f"curiosity="
-            f"{row.get('prescreen_curiosity_gap')} | "
-            f"action="
-            f"{row.get('prescreen_opening_action')} | "
-            f"hookrank="
-            f"{row.get('prescreen_hook_rank')}"
+            f"{row['window']['start']:.1f}-"
+            f"{row['window']['end']:.1f}s | "
+            f"payoff={row.get('prescreen_payoff')} | "
+            f"ending={row.get('prescreen_ending_strength')} | "
+            f"rank={row.get('prescreen_payoff_rank')}"
         )
 
     if not phase2_seed:
         raise RuntimeError(
-            "No non-hard-rejected opening was available for V12.13 Phase 2."
+            "No gaming window survived payoff phase."
         )
 
-    story_extract_started = (
-        time.perf_counter()
-    )
+    # ---------------------------------------------------------
+    # PHASE 2: SOURCE STORY / EDITABILITY
+    # ---------------------------------------------------------
 
-    story_results = (
-        extract_phase_parallel(
-            phase2_seed,
-            extract_story_frames,
-            STORY_FRAME_WORKERS,
-            "story",
-        )
-    )
+    story_started = time.perf_counter()
 
-    print(
-        f"V12.13 TIMING | story_frame_extract: "
-        f"{time.perf_counter() - story_extract_started:.1f}s"
+    story_evidence = extract_parallel(
+        phase2_seed,
+        extract_story_evidence,
+        STORY_FRAME_WORKERS,
+        "story",
     )
 
     story_items = []
 
     for item in phase2_seed:
-        frames = story_results.get(
+        evidence = story_evidence.get(
             item[
                 "window_item_id"
             ]
         )
 
         if not isinstance(
-            frames,
+            evidence,
             dict,
-        ):
-            continue
-
-        if not frames.get(
-            "ending_frames"
         ):
             continue
 
@@ -1675,76 +1423,27 @@ def main():
         )
 
         row.update(
-            frames
+            evidence
         )
 
         story_items.append(
             row
         )
 
-    if not story_items:
-        raise RuntimeError(
-            "No Phase-2 story frames extracted."
-        )
-
-    audio_context_started = (
-        time.perf_counter()
-    )
-
-    audio_context_results = (
-        transcribe_audio_parallel(
-            story_items
-        )
+    opening_transcripts = transcribe_parallel(
+        story_items,
+        "opening_audio",
     )
 
     for item in story_items:
-        audio_data = (
-            audio_context_results.get(
-                item[
-                    "window_item_id"
-                ],
-                {},
-            )
-        )
-
         item[
             "opening_transcript"
-        ] = str(
-            audio_data.get(
-                "opening_transcript",
-                "",
-            )
-        ).strip()
-
-        item[
-            "ending_transcript"
-        ] = str(
-            audio_data.get(
-                "ending_transcript",
-                "",
-            )
-        ).strip()
-
-        print(
-            f"AUDIO CONTEXT: "
-            f"{item['candidate'].get('clip_id')} | "
-            f"window="
-            f"{item['window'].get('start'):.1f}-"
-            f"{item['window'].get('end'):.1f}s | "
-            f"opening_chars="
-            f"{len(item['opening_transcript'])} | "
-            f"ending_chars="
-            f"{len(item['ending_transcript'])}"
+        ] = opening_transcripts.get(
+            item[
+                "window_item_id"
+            ],
+            "",
         )
-
-    print(
-        f"V12.13 TIMING | audio_context: "
-        f"{time.perf_counter() - audio_context_started:.1f}s"
-    )
-
-    story_ai_started = (
-        time.perf_counter()
-    )
 
     final_rows = []
 
@@ -1758,23 +1457,10 @@ def main():
             start + STORY_BATCH_SIZE
         ]
 
-        print(
-            f"STORY AI batch "
-            f"{start // STORY_BATCH_SIZE + 1}/"
-            f"{(len(story_items) + STORY_BATCH_SIZE - 1) // STORY_BATCH_SIZE}"
+        results = score_story_batch(
+            client,
+            batch,
         )
-
-        try:
-            results = score_story_batch(
-                client,
-                batch,
-            )
-
-        except Exception as exc:
-            print(
-                f"story batch failed: {exc}"
-            )
-            continue
 
         by_id = {}
 
@@ -1788,7 +1474,7 @@ def main():
                     )
                 ] = result
             except Exception:
-                continue
+                pass
 
         for local_id, item in enumerate(
             batch
@@ -1800,42 +1486,21 @@ def main():
             if not result:
                 continue
 
-            story_content_type = str(
+            content_type = str(
                 result.get(
                     "content_type",
                     "unclear",
                 )
             ).strip().lower()
 
-            story_hard_reject = (
-                story_content_type
+            if (
+                content_type
                 in {
                     "gambling",
                     "non_gaming",
                     "music_performance",
                 }
-            )
-
-            print(
-                f"STORY RESULT {local_id}: "
-                f"clip={item['candidate'].get('clip_id')} | "
-                f"window="
-                f"{item['window'].get('start'):.1f}-"
-                f"{item['window'].get('end'):.1f}s | "
-                f"pred={clamp(result.get('predicted_score'))} | "
-                f"coherence={clamp(result.get('opening_coherence', 50))} | "
-                f"audio={clamp(result.get('audio_context', 50))} | "
-                f"end_audio={clamp(result.get('ending_audio_relevance', 50))} | "
-                f"story={clamp(result.get('story_sustain'))} | "
-                f"payoff={clamp(result.get('payoff'))} | "
-                f"ending={clamp(result.get('ending_strength'))} | "
-                f"clarity={clamp(result.get('clarity'))} | "
-                f"content_type={story_content_type} | "
-                f"hard_reject={story_hard_reject} | "
-                f"reason={str(result.get('reason', '')).strip()}"
-            )
-
-            if story_hard_reject:
+            ):
                 continue
 
             candidate = dict(
@@ -1844,145 +1509,135 @@ def main():
                 ]
             )
 
-            candidate.update(
-                {
-                    "proposed_window_start":
-                        float(
-                            item[
-                                "window"
-                            ][
-                                "start"
-                            ]
-                        ),
-                    "proposed_window_end":
-                        float(
-                            item[
-                                "window"
-                            ][
-                                "end"
-                            ]
-                        ),
-                    "proposed_window_label":
-                        item[
-                            "window"
-                        ][
-                            "label"
-                        ],
-                    "prescreen_hook":
-                        item[
-                            "prescreen_hook"
-                        ],
-                    "prescreen_first_second_clarity":
-                        item[
-                            "prescreen_first_second_clarity"
-                        ],
-                    "prescreen_curiosity_gap":
-                        item[
-                            "prescreen_curiosity_gap"
-                        ],
-                    "prescreen_opening_action":
-                        item[
-                            "prescreen_opening_action"
-                        ],
-                    "prescreen_hook_rank":
-                        item[
-                            "prescreen_hook_rank"
-                        ],
-                    "prescreen_hook_reason":
-                        item[
-                            "prescreen_hook_reason"
-                        ],
-                    "prescreen_predicted_score":
-                        clamp(
-                            result.get(
-                                "predicted_score"
-                            )
-                        ),
-                    "prescreen_probability_72_plus":
-                        clamp(
-                            result.get(
-                                "probability_72_plus"
-                            )
-                        ),
-                    "prescreen_opening_coherence":
-                        clamp(
-                            result.get(
-                                "opening_coherence",
-                                50,
-                            )
-                        ),
-                    "prescreen_audio_context":
-                        clamp(
-                            result.get(
-                                "audio_context",
-                                50,
-                            )
-                        ),
-                    "prescreen_ending_audio_relevance":
-                        clamp(
-                            result.get(
-                                "ending_audio_relevance",
-                                50,
-                            )
-                        ),
-                    "prescreen_story_sustain":
-                        clamp(
-                            result.get(
-                                "story_sustain"
-                            )
-                        ),
-                    "prescreen_payoff":
-                        clamp(
-                            result.get(
-                                "payoff"
-                            )
-                        ),
-                    "prescreen_ending_strength":
-                        clamp(
-                            result.get(
-                                "ending_strength"
-                            )
-                        ),
-                    "prescreen_action":
-                        clamp(
-                            result.get(
-                                "action"
-                            )
-                        ),
-                    "prescreen_clarity":
-                        clamp(
-                            result.get(
-                                "clarity"
-                            )
-                        ),
-                    "prescreen_story_content_type":
-                        story_content_type,
-                    "prescreen_opening_transcript":
-                        item.get(
-                            "opening_transcript",
-                            "",
-                        ),
-                    "prescreen_ending_transcript":
-                        item.get(
-                            "ending_transcript",
-                            "",
-                        ),
-                    "prescreen_audio_reason":
-                        str(
-                            result.get(
-                                "audio_reason",
-                                "",
-                            )
-                        ).strip(),
-                    "prescreen_reason":
-                        str(
-                            result.get(
-                                "reason",
-                                "",
-                            )
-                        ).strip(),
-                }
+            candidate[
+                "proposed_window_start"
+            ] = float(
+                item[
+                    "window"
+                ][
+                    "start"
+                ]
             )
+
+            candidate[
+                "proposed_window_end"
+            ] = float(
+                item[
+                    "window"
+                ][
+                    "end"
+                ]
+            )
+
+            candidate[
+                "proposed_window_label"
+            ] = item[
+                "window"
+            ][
+                "label"
+            ]
+
+            candidate[
+                "prescreen_payoff"
+            ] = item[
+                "prescreen_payoff"
+            ]
+
+            candidate[
+                "prescreen_ending_strength"
+            ] = item[
+                "prescreen_ending_strength"
+            ]
+
+            candidate[
+                "prescreen_payoff_clarity"
+            ] = item[
+                "prescreen_payoff_clarity"
+            ]
+
+            candidate[
+                "prescreen_reaction"
+            ] = item[
+                "prescreen_reaction"
+            ]
+
+            candidate[
+                "prescreen_payoff_rank"
+            ] = item[
+                "prescreen_payoff_rank"
+            ]
+
+            candidate[
+                "prescreen_source_score"
+            ] = clamp(
+                result.get(
+                    "source_score"
+                )
+            )
+
+            candidate[
+                "prescreen_story_sustain"
+            ] = clamp(
+                result.get(
+                    "story_sustain"
+                )
+            )
+
+            candidate[
+                "prescreen_action"
+            ] = clamp(
+                result.get(
+                    "action"
+                )
+            )
+
+            candidate[
+                "prescreen_clarity"
+            ] = clamp(
+                result.get(
+                    "clarity"
+                )
+            )
+
+            candidate[
+                "prescreen_setup_quality"
+            ] = clamp(
+                result.get(
+                    "setup_quality"
+                )
+            )
+
+            candidate[
+                "prescreen_editability"
+            ] = clamp(
+                result.get(
+                    "editability"
+                )
+            )
+
+            # Compatibility with older acquisition/log fields.
+            candidate[
+                "prescreen_predicted_score"
+            ] = candidate[
+                "prescreen_source_score"
+            ]
+
+            candidate[
+                "prescreen_probability_72_plus"
+            ] = 0
+
+            candidate[
+                "prescreen_hook"
+            ] = 0
+
+            candidate[
+                "prescreen_reason"
+            ] = str(
+                result.get(
+                    "reason",
+                    "",
+                )
+            ).strip()
 
             candidate[
                 "prescreen_rank_score"
@@ -1990,20 +1645,34 @@ def main():
                 candidate
             )
 
-            # V12.13: no Phase-2 publish threshold here.
-            # Keep the candidate and let rank ordering choose which four
-            # windows reach the real viral-quality gate.
-
             final_rows.append(
                 candidate
             )
 
+            print(
+                f"SOURCE RESULT: "
+                f"{candidate.get('clip_id')} | "
+                f"source={candidate.get('prescreen_source_score')} | "
+                f"story={candidate.get('prescreen_story_sustain')} | "
+                f"payoff={candidate.get('prescreen_payoff')} | "
+                f"ending={candidate.get('prescreen_ending_strength')} | "
+                f"editability={candidate.get('prescreen_editability')} | "
+                f"rank={candidate.get('prescreen_rank_score')}"
+            )
+
     print(
-        f"V12.13 TIMING | story_ai: "
-        f"{time.perf_counter() - story_ai_started:.1f}s"
+        f"V12.14 STORY PHASE: "
+        f"{len(story_items)} windows -> "
+        f"{len(final_rows)} scored | "
+        f"{time.perf_counter() - story_started:.1f}s"
     )
 
-    # Keep only the best surviving window per clip.
+    if not final_rows:
+        raise RuntimeError(
+            "No usable source stories survived Phase 2."
+        )
+
+    # Keep only best window per source clip.
     best_by_clip = {}
 
     for row in final_rows:
@@ -2043,20 +1712,11 @@ def main():
         best_by_clip.values()
     )
 
-    # V12.13:
-    # Phase 2 ranks all suitable completed stories. No hook/payoff/predicted
-    # score threshold is allowed to overrule the final viral gate.
     best_rows.sort(
         key=lambda row: (
             float(
                 row.get(
                     "prescreen_rank_score",
-                    0,
-                )
-            ),
-            float(
-                row.get(
-                    "prescreen_predicted_score",
                     0,
                 )
             ),
@@ -2074,41 +1734,21 @@ def main():
         :PROMOTE_COUNT
     ]
 
-    print(
-        f"V12.13 PHASE 2 COMPLETE: "
-        f"{len(final_rows)} completed windows -> "
-        f"{len(best_rows)} best-per-clip -> "
-        f"top {len(promoted)} sent to final viral gate."
-    )
-
-    OUT.parent.mkdir(
-        parents=True,
-        exist_ok=True,
-    )
-
     payload = {
         "version":
-            "12.13-quality-first-audio-aware-top4",
-        "target_final_score":
-            TARGET_FINAL_SCORE,
+            "12.14-payoff-first-source-quality",
+        "strategy":
+            "payoff_first_then_story_editability",
         "input_candidate_count":
             len(candidates),
-        "all_window_count":
+        "candidate_window_count":
             len(windows),
-        "hook_frame_window_count":
-            len(hook_items),
-        "non_hard_rejected_hook_count":
-            len(non_rejected),
-        "hook_ranked_pool_count":
-            len(viable),
-        "phase2_seed_count":
-            len(phase2_seed),
+        "payoff_scored_count":
+            len(payoff_scored),
         "story_phase_count":
             len(story_items),
         "best_clip_count":
             len(best_rows),
-        "promotion_policy":
-            "top_4_phase2_rank_no_publish_threshold",
         "promoted_count":
             len(promoted),
         "prescreen_seconds":
@@ -2122,6 +1762,11 @@ def main():
             promoted,
     }
 
+    OUT.parent.mkdir(
+        parents=True,
+        exist_ok=True,
+    )
+
     OUT.write_text(
         json.dumps(
             payload,
@@ -2133,17 +1778,10 @@ def main():
 
     print()
     print(
-        f"V12.13 TWO-PHASE PRESCREEN COMPLETE: "
+        f"V12.14 PRESCREEN COMPLETE: "
         f"{len(windows)} windows -> "
-        f"{len(viable)} hook-pass -> "
-        f"{len(story_items)} story-inspected -> "
-        f"{len(best_rows)} best-per-clip -> "
+        f"{len(best_rows)} source clips -> "
         f"{len(promoted)} promoted."
-    )
-
-    print(
-        f"V12.13 PRESCREEN TOTAL: "
-        f"{time.perf_counter() - started:.1f}s"
     )
 
     for i, row in enumerate(
@@ -2156,13 +1794,10 @@ def main():
             f"window="
             f"{row.get('proposed_window_start'):.1f}-"
             f"{row.get('proposed_window_end'):.1f}s | "
-            f"hook={row.get('prescreen_hook')} | "
-            f"hookrank={row.get('prescreen_hook_rank')} | "
-            f"coherence={row.get('prescreen_opening_coherence')} | "
-            f"audio={row.get('prescreen_audio_context')} | "
+            f"source={row.get('prescreen_source_score')} | "
             f"story={row.get('prescreen_story_sustain')} | "
             f"payoff={row.get('prescreen_payoff')} | "
-            f"pred={row.get('prescreen_predicted_score')} | "
+            f"ending={row.get('prescreen_ending_strength')} | "
             f"rank={row.get('prescreen_rank_score')}"
         )
 
@@ -2172,7 +1807,7 @@ if __name__ == "__main__":
         main()
     except Exception as exc:
         print(
-            "V12.13 TWO-PHASE PRESCREENER ERROR:",
+            "V12.14 PRESCREENER ERROR:",
             exc,
         )
         sys.exit(1)
