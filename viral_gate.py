@@ -129,7 +129,7 @@ You are the FINAL viral-quality gate for ViralSpawnTV,
 an English-language gaming Shorts channel.
 
 The local video is ALREADY the exact 40-58 second window selected by the
-V12.11 two-phase prescreener. Judge THIS WHOLE WINDOW independently.
+V12.12 audio-aware two-phase prescreener. Judge THIS WHOLE WINDOW independently.
 
 Publish threshold: {MIN_SCORE}/100.
 
@@ -183,9 +183,13 @@ PRESCREEN:
 pred={acquisition.get("prescreen_predicted_score")}
 P72={acquisition.get("prescreen_probability_72_plus")}
 hook={acquisition.get("prescreen_hook")}
+opening_coherence={acquisition.get("prescreen_opening_coherence")}
+audio_context={acquisition.get("prescreen_audio_context")}
+ending_audio_relevance={acquisition.get("prescreen_ending_audio_relevance")}
 story={acquisition.get("prescreen_story_sustain")}
 payoff={acquisition.get("prescreen_payoff")}
 ending={acquisition.get("prescreen_ending_strength")}
+audio_reason={acquisition.get("prescreen_audio_reason", "")}
 reason={acquisition.get("prescreen_reason", "")}
 
 TRANSCRIPT:
@@ -357,12 +361,12 @@ def main():
 
     if not passed:
         print(
-            "V12.11.3 VIRAL QUALITY GATE: REJECTED"
+            "V12.12 VIRAL QUALITY GATE: REJECTED"
         )
         sys.exit(22)
 
     print(
-        "V12.11.3 VIRAL QUALITY GATE: PASSED"
+        "V12.12 VIRAL QUALITY GATE: PASSED"
     )
 
 
@@ -371,7 +375,7 @@ if __name__ == "__main__":
         main()
     except Exception as exc:
         print(
-            f"V12.11.3 VIRAL QUALITY GATE ERROR: "
+            f"V12.12 VIRAL QUALITY GATE ERROR: "
             f"{exc}"
         )
         sys.exit(1)
