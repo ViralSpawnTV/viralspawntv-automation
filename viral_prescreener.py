@@ -35,11 +35,11 @@ TARGET_WINDOW_SECONDS = 55.0
 MIN_WINDOW_SECONDS = 49.0
 MAX_WINDOW_SECONDS = 58.0
 
-# Phase-1 opening requirements. These are intentionally stricter than V12.10
-# because its top window scored hook=73 in prescreen but only 61 at the real gate.
-MIN_HOOK_PHASE_SCORE = 70
-MIN_HOOK_PHASE_CLARITY = 60
-MIN_HOOK_PHASE_CURIOSITY = 64
+# V12.11.1.1 Phase-1 ranking funnel.
+# Rank openings instead of requiring three separate pass/fail thresholds.
+PREFERRED_HOOK_FLOOR = 55
+ABSOLUTE_HOOK_FLOOR = 50
+MIN_PHASE2_WINDOWS = 6
 
 # Final primary shortlist standards.
 MIN_PRIMARY_PREDICTED = 72
@@ -297,7 +297,7 @@ def extract_hook_frames(item):
     """
     INPUT-SIDE SEEK:
     seek directly to this specific window start and decode only ~2.1 seconds.
-    This is the key V12.11 speed change.
+    This is the key V12.11.1 speed change.
     """
     candidate = item[
         "candidate"
@@ -625,7 +625,7 @@ def score_hook_batch(
     batch,
 ):
     prompt = """
-You are PHASE 1 of ViralSpawnTV's V12.11 prescreener.
+You are PHASE 1 of ViralSpawnTV's V12.11.1 prescreener.
 
 Your ONLY job is to judge whether the FIRST ~2 SECONDS of each proposed
 50-60 second gaming Short are strong enough to stop a viewer from swiping.
@@ -778,7 +778,7 @@ def score_story_batch(
     batch,
 ):
     prompt = f"""
-You are PHASE 2 of ViralSpawnTV's V12.11 prescreener.
+You are PHASE 2 of ViralSpawnTV's V12.11.1 prescreener.
 
 These windows already survived a dedicated first-2-second Big Hook test.
 Now judge whether the REST of the SAME 49-58 second window earns the
@@ -1013,7 +1013,7 @@ def main():
         )
 
     print(
-        f"V12.11 TWO-PHASE PRESCREENER received "
+        f"V12.11.1 TWO-PHASE PRESCREENER received "
         f"{len(candidates)} candidates."
     )
 
@@ -1027,7 +1027,7 @@ def main():
         )
 
     print(
-        f"V12.11 PHASE 1: "
+        f"V12.11.1 PHASE 1: "
         f"{len(windows)} total windows -> "
         f"opening-only extraction with "
         f"{HOOK_FRAME_WORKERS} workers."
@@ -1047,7 +1047,7 @@ def main():
     )
 
     print(
-        f"V12.11 TIMING | hook_frame_extract: "
+        f"V12.11.1 TIMING | hook_frame_extract: "
         f"{time.perf_counter() - hook_extract_started:.1f}s"
     )
 
@@ -1211,6 +1211,8 @@ def main():
                 row
             )
 
+            # V12.11.1.1: Phase 1 is a ranking funnel, not an
+            # all-or-nothing three-threshold gate.
             row[
                 "prescreen_hook_phase_pass"
             ] = bool(
@@ -1218,15 +1220,7 @@ def main():
                 and
                 row[
                     "prescreen_hook"
-                ] >= MIN_HOOK_PHASE_SCORE
-                and
-                row[
-                    "prescreen_first_second_clarity"
-                ] >= MIN_HOOK_PHASE_CLARITY
-                and
-                row[
-                    "prescreen_curiosity_gap"
-                ] >= MIN_HOOK_PHASE_CURIOSITY
+                ] >= PREFERRED_HOOK_FLOOR
             )
 
             phase1_scored.append(
@@ -1234,41 +1228,102 @@ def main():
             )
 
     print(
-        f"V12.11 TIMING | hook_ai: "
+        f"V12.11.1 TIMING | hook_ai: "
         f"{time.perf_counter() - hook_ai_started:.1f}s"
     )
 
-    viable = [
+    # ---------------------------------------------------------
+    # V12.11.1.1 RANKED HOOK SURVIVORS
+    # ---------------------------------------------------------
+    non_rejected = [
         row
         for row in phase1_scored
-        if (
-            not row.get(
-                "prescreen_hard_reject",
-                False,
-            )
-            and
-            row.get(
-                "prescreen_hook_phase_pass",
-                False,
-            )
+        if not row.get(
+            "prescreen_hard_reject",
+            False,
         )
     ]
 
-    viable.sort(
-        key=lambda row: float(
-            row.get(
-                "prescreen_hook_rank",
-                0,
-            )
+    non_rejected.sort(
+        key=lambda row: (
+            float(
+                row.get(
+                    "prescreen_hook_rank",
+                    0,
+                )
+            ),
+            float(
+                row.get(
+                    "prescreen_hook",
+                    0,
+                )
+            ),
         ),
         reverse=True,
     )
 
-    # Prevent one long source from consuming most of Phase 2.
+    preferred_pool = [
+        row
+        for row in non_rejected
+        if row.get(
+            "prescreen_hook",
+            0,
+        ) >= PREFERRED_HOOK_FLOOR
+    ]
+
+    backup_pool = [
+        row
+        for row in non_rejected
+        if (
+            ABSOLUTE_HOOK_FLOOR
+            <= row.get(
+                "prescreen_hook",
+                0,
+            )
+            < PREFERRED_HOOK_FLOOR
+        )
+    ]
+
+    ranked_pool = list(
+        preferred_pool
+    )
+
+    # If too few openings clear 55, backfill from hooks 50-54.
+    if (
+        len(ranked_pool)
+        < MIN_PHASE2_WINDOWS
+    ):
+        needed = (
+            MIN_PHASE2_WINDOWS
+            -
+            len(ranked_pool)
+        )
+
+        ranked_pool.extend(
+            backup_pool[:needed]
+        )
+
+    # Emergency safety: if every non-rejected opening scores below 50,
+    # advance only the best four rather than killing the whole run.
+    emergency_backfill_used = False
+
+    if (
+        not ranked_pool
+        and non_rejected
+    ):
+        emergency_backfill_used = True
+
+        ranked_pool = non_rejected[
+            :min(
+                4,
+                len(non_rejected),
+            )
+        ]
+
     per_clip_counts = {}
     phase2_seed = []
 
-    for row in viable:
+    for row in ranked_pool:
         clip_id = str(
             row[
                 "candidate"
@@ -1285,8 +1340,7 @@ def main():
 
         if (
             count
-            >=
-            MAX_HOOK_WINDOWS_PER_CLIP
+            >= MAX_HOOK_WINDOWS_PER_CLIP
         ):
             continue
 
@@ -1299,24 +1353,53 @@ def main():
         ] = count + 1
 
         if (
-            len(
-                phase2_seed
-            )
-            >=
-            HOOK_PHASE_SURVIVORS
+            len(phase2_seed)
+            >= HOOK_PHASE_SURVIVORS
         ):
             break
 
+    viable = ranked_pool
+
     print(
-        f"V12.11 PHASE 1 COMPLETE: "
+        f"V12.11.1.1 PHASE 1 COMPLETE: "
         f"{len(hook_items)} openings scored -> "
-        f"{len(viable)} passed hook thresholds -> "
-        f"{len(phase2_seed)} advance to story phase."
+        f"{len(preferred_pool)} hooks >= "
+        f"{PREFERRED_HOOK_FLOOR} -> "
+        f"{len(backup_pool)} hooks "
+        f"{ABSOLUTE_HOOK_FLOOR}-"
+        f"{PREFERRED_HOOK_FLOOR - 1} -> "
+        f"{len(phase2_seed)} ranked windows advance."
     )
+
+    if emergency_backfill_used:
+        print(
+            "V12.11.1.1 PHASE 1: emergency top-4 backfill used."
+        )
+
+    for i, row in enumerate(
+        phase2_seed,
+        1,
+    ):
+        print(
+            f"HOOK TOP {i}: "
+            f"{row['candidate'].get('clip_id')} | "
+            f"window="
+            f"{row['window'].get('start'):.1f}-"
+            f"{row['window'].get('end'):.1f}s | "
+            f"hook={row.get('prescreen_hook')} | "
+            f"clarity1s="
+            f"{row.get('prescreen_first_second_clarity')} | "
+            f"curiosity="
+            f"{row.get('prescreen_curiosity_gap')} | "
+            f"action="
+            f"{row.get('prescreen_opening_action')} | "
+            f"hookrank="
+            f"{row.get('prescreen_hook_rank')}"
+        )
 
     if not phase2_seed:
         raise RuntimeError(
-            "No window survived V12.11 hook phase."
+            "No non-rejected opening was available for V12.11.1.1 Phase 2."
         )
 
     story_extract_started = (
@@ -1333,7 +1416,7 @@ def main():
     )
 
     print(
-        f"V12.11 TIMING | story_frame_extract: "
+        f"V12.11.1 TIMING | story_frame_extract: "
         f"{time.perf_counter() - story_extract_started:.1f}s"
     )
 
@@ -1617,7 +1700,7 @@ def main():
             )
 
     print(
-        f"V12.11 TIMING | story_ai: "
+        f"V12.11.1 TIMING | story_ai: "
         f"{time.perf_counter() - story_ai_started:.1f}s"
     )
 
@@ -1760,7 +1843,7 @@ def main():
 
     payload = {
         "version":
-            "12.11-two-phase-hook-story",
+            "12.11.1-ranked-hook-survivors",
         "target_final_score":
             TARGET_FINAL_SCORE,
         "input_candidate_count":
@@ -1769,8 +1852,16 @@ def main():
             len(windows),
         "hook_frame_window_count":
             len(hook_items),
-        "hook_pass_count":
+        "preferred_hook_pool_count":
+            len(preferred_pool),
+        "backup_hook_pool_count":
+            len(backup_pool),
+        "hook_ranked_pool_count":
             len(viable),
+        "phase2_seed_count":
+            len(phase2_seed),
+        "emergency_hook_backfill_used":
+            emergency_backfill_used,
         "story_phase_count":
             len(story_items),
         "best_clip_count":
@@ -1803,7 +1894,7 @@ def main():
 
     print()
     print(
-        f"V12.11 TWO-PHASE PRESCREEN COMPLETE: "
+        f"V12.11.1 TWO-PHASE PRESCREEN COMPLETE: "
         f"{len(windows)} windows -> "
         f"{len(viable)} hook-pass -> "
         f"{len(story_items)} story-inspected -> "
@@ -1812,7 +1903,7 @@ def main():
     )
 
     print(
-        f"V12.11 PRESCREEN TOTAL: "
+        f"V12.11.1 PRESCREEN TOTAL: "
         f"{time.perf_counter() - started:.1f}s"
     )
 
@@ -1840,7 +1931,7 @@ if __name__ == "__main__":
         main()
     except Exception as exc:
         print(
-            "V12.11 TWO-PHASE PRESCREENER ERROR:",
+            "V12.11.1 TWO-PHASE PRESCREENER ERROR:",
             exc,
         )
         sys.exit(1)
