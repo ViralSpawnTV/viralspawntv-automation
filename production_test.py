@@ -42,6 +42,17 @@ OUTRO_CTA = "FOLLOW FOR DAILY GAMING CLIPS"
 NEON_FRAME = ROOT / "viralspawntv_neon_frame_overlay.png"
 INTRO_SECONDS = 0.0
 OUTRO_SECONDS = 1.0
+
+# V5.8 DURATION TARGET
+# The final Short includes the 1-second branded outro.
+# A 49-58 second core therefore produces a ~50-59 second final Short.
+FINAL_MIN_SECONDS = 50.0
+FINAL_MAX_SECONDS = 60.0
+CORE_MIN_SECONDS = FINAL_MIN_SECONDS - OUTRO_SECONDS
+CORE_MAX_SECONDS = 58.0
+CORE_IDEAL_MIN_SECONDS = 52.0
+CORE_IDEAL_MAX_SECONDS = 58.0
+
 CORE_VIDEO = WORK / "ViralSpawnTV_Short_V4_core.mp4"
 INTRO_VIDEO = WORK / "ViralSpawnTV_Short_V5_1_intro.mp4"
 OUTRO_VIDEO = WORK / "ViralSpawnTV_Short_V5_1_outro.mp4"
@@ -503,7 +514,15 @@ TIMESTAMPED TRANSCRIPT:
 Representative video frames are supplied after this prompt.
 
 Your job is to turn this source into a highly engaging,
-fast-paced, professional 25-45 second YouTube Short.
+fast-paced, professional YouTube Short whose FINAL runtime is 50-60 seconds.
+
+The finished video adds a 1-second ViralSpawnTV outro after the selected
+source segment. Therefore, select a CORE gameplay segment between 49 and
+58 seconds whenever the source supports it.
+
+Prefer a 52-58 second CORE segment. Do not pad with dead air simply to
+reach the target; choose the strongest continuous story that naturally
+fills this range.
 
 Do not invent facts.
 
@@ -518,7 +537,17 @@ or visible video supports it.
 SELECT THE CLIP
 ============================================================
 
-Choose ONE continuous 25-45 second segment.
+Choose ONE continuous CORE segment.
+
+DURATION REQUIREMENT:
+- Absolute minimum CORE length: 49 seconds.
+- Preferred CORE length: 52-58 seconds.
+- Absolute maximum CORE length: 58 seconds.
+- The separate 1-second ViralSpawnTV outro makes the final Short about
+  50-59 seconds.
+
+If the source is only slightly longer than 49 seconds, use nearly the
+entire usable source rather than shortening it.
 
 OPENING-HOOK PRIORITY:
 The first 1-2 seconds are the most important part of the Short.
@@ -711,7 +740,7 @@ American English. If the source is already English, preserve its
 meaning while cleaning it up for readable Shorts captions.
 
 Do NOT caption every sentence.
-Prefer roughly 6-14 useful caption moments across a 25-45 second Short.
+Prefer roughly 8-16 useful caption moments across a 49-58 second CORE Short.
 Leave intentional gaps with no captions.
 Do not invent dialogue.
 Keep each caption short, ideally 2-7 words.
@@ -849,32 +878,80 @@ Return ONLY valid JSON:
         plan["segment_end"]
     )
 
+    # V5.8 duration enforcement.
+    if seconds < CORE_MIN_SECONDS:
+        raise RuntimeError(
+            f"Source clip is only {seconds:.2f}s; "
+            f"need at least {CORE_MIN_SECONDS:.1f}s "
+            "for the 50-60 second Shorts strategy."
+        )
+
+    # Prefer at least 52 seconds when the source is long enough.
+    preferred_min = min(
+        CORE_IDEAL_MIN_SECONDS,
+        seconds,
+    )
+
+    max_start = max(
+        0.0,
+        seconds - preferred_min,
+    )
+
     start = max(
         0.0,
         min(
             start,
-            max(
-                0,
-                seconds - 25
-            )
+            max_start,
         )
     )
 
+    # Force the AI-selected segment to be long enough even if
+    # the model proposes a shorter cut.
+    end = max(
+        end,
+        start + preferred_min,
+    )
+
+    # Never exceed the source or our core-duration ceiling.
     end = min(
         seconds,
-        max(
-            end,
-            start + 25
-        )
+        end,
+        start + CORE_MAX_SECONDS,
     )
 
-    if end - start > 45:
-        end = start + 45
+    # Final safety: guarantee at least the absolute 49-second core.
+    if end - start < CORE_MIN_SECONDS:
+        start = max(
+            0.0,
+            min(
+                start,
+                seconds - CORE_MIN_SECONDS,
+            )
+        )
+
+        end = min(
+            seconds,
+            start + max(
+                CORE_MIN_SECONDS,
+                preferred_min,
+            )
+        )
 
     plan["segment_start"] = start
     plan["segment_end"] = end
 
     clip_length = end - start
+
+    if not (
+        CORE_MIN_SECONDS
+        <= clip_length
+        <= CORE_MAX_SECONDS + 0.05
+    ):
+        raise RuntimeError(
+            f"V5.8 core duration invalid: {clip_length:.2f}s. "
+            f"Expected {CORE_MIN_SECONDS:.1f}-"
+            f"{CORE_MAX_SECONDS:.1f}s."
+        )
 
     # ---------------------------------------------
     # Commentary validation
@@ -2566,6 +2643,19 @@ def add_short_brand_bookends():
             f"final={final_duration:.2f}s"
         )
 
+    # V5.8: hard-enforce requested final runtime.
+    if not (
+        FINAL_MIN_SECONDS
+        <= final_duration
+        <= FINAL_MAX_SECONDS
+    ):
+        raise RuntimeError(
+            "V5.8 final duration gate failed: "
+            f"{final_duration:.2f}s. "
+            f"Expected {FINAL_MIN_SECONDS:.0f}-"
+            f"{FINAL_MAX_SECONDS:.0f}s."
+        )
+
     print("\\n" + "=" * 65)
     print("V5.1 SHORTS BRANDING COMPLETE")
     print("=" * 65)
@@ -2639,7 +2729,7 @@ def save_metadata(
         "impacts": plan[
             "impacts"
         ],
-        "shorts_branding_version": "5.7-larger-gameplay-stronger-hook",
+        "shorts_branding_version": "5.8-duration-50-60",
         "branding_intro": str(INTRO_IMAGE),
         "branding_outro": str(OUTRO_IMAGE),
         "branding_intro_seconds": INTRO_SECONDS,
