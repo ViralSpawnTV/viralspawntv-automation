@@ -357,12 +357,12 @@ def main():
 
     if not passed:
         print(
-            "V12.11.2 VIRAL QUALITY GATE: REJECTED"
+            "V12.11.3 VIRAL QUALITY GATE: REJECTED"
         )
         sys.exit(22)
 
     print(
-        "V12.11.2 VIRAL QUALITY GATE: PASSED"
+        "V12.11.3 VIRAL QUALITY GATE: PASSED"
     )
 
 
@@ -371,7 +371,7 @@ if __name__ == "__main__":
         main()
     except Exception as exc:
         print(
-            f"V12.11.2 VIRAL QUALITY GATE ERROR: "
+            f"V12.11.3 VIRAL QUALITY GATE ERROR: "
             f"{exc}"
         )
         sys.exit(1)
