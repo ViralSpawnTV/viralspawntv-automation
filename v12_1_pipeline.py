@@ -33,7 +33,7 @@ def run_timed(
     )
 
     print(
-        f"V12.14 TIMING | "
+        f"V12.14.3 TIMING | "
         f"{label}: "
         f"{time.perf_counter() - started:.1f}s"
     )
@@ -194,7 +194,7 @@ def main():
         "================================================"
     )
     print(
-        "ViralSpawnTV V12.14 "
+        "ViralSpawnTV V12.14.3 "
         "Source -> Production -> Finished Gate"
     )
     print(
@@ -210,7 +210,7 @@ def main():
         "kick_game_discovery.py",
     ) != 0:
         raise RuntimeError(
-            "V12.14 discovery failed"
+            "V12.14.3 discovery failed"
         )
 
     # ---------------------------------------------------------
@@ -222,7 +222,7 @@ def main():
         "candidate_ranker_v12_1.py",
     ) != 0:
         raise RuntimeError(
-            "V12.14 ranking failed"
+            "V12.14.3 ranking failed"
         )
 
     # ---------------------------------------------------------
@@ -234,7 +234,7 @@ def main():
         "viral_prescreener.py",
     ) != 0:
         raise RuntimeError(
-            "V12.14 prescreen failed"
+            "V12.14.3 prescreen failed"
         )
 
     prescreened = load_json(
@@ -247,7 +247,7 @@ def main():
 
     if not prescreened:
         raise RuntimeError(
-            "V12.14 prescreen shortlist empty"
+            "V12.14.3 prescreen shortlist empty"
         )
 
     actual_attempt_limit = min(
@@ -258,7 +258,7 @@ def main():
     )
 
     print(
-        f"V12.14 source shortlist: "
+        f"V12.14.3 source shortlist: "
         f"{len(prescreened)} candidates."
     )
 
@@ -313,7 +313,7 @@ def main():
 
         print()
         print(
-            f"V12.14 attempt "
+            f"V12.14.3 attempt "
             f"{attempt_no}/"
             f"{actual_attempt_limit}: "
             f"{clip_id}"
@@ -389,10 +389,63 @@ def main():
         # PRODUCTION CREATES THE BIG HOOK
         # -----------------------------------------------------
 
-        if run_timed(
+        production_code = run_timed(
             f"production_{attempt_no}",
             "production_test.py",
-        ) != 0:
+        )
+
+        if production_code == 24:
+            pre_render = load_json(
+                "work/production/pre_render_plan_gate.json",
+                {},
+            )
+
+            row.update(
+                {
+                    "result":
+                        "rejected",
+                    "reason":
+                        "pre_render_plan_gate",
+                    "pre_render_predicted_score":
+                        pre_render.get(
+                            "predicted_finished_score"
+                        ),
+                    "pre_render_payoff_coverage":
+                        pre_render.get(
+                            "payoff_coverage"
+                        ),
+                    "pre_render_progression":
+                        pre_render.get(
+                            "progression_clarity"
+                        ),
+                    "pre_render_claim_support":
+                        pre_render.get(
+                            "claim_support"
+                        ),
+                }
+            )
+
+            attempts.append(
+                row
+            )
+
+            reject_clip(
+                clip_id,
+                rejected,
+            )
+
+            save_log(
+                attempts
+            )
+
+            print(
+                f"V12.14.3 candidate skipped before render: "
+                f"{clip_id}"
+            )
+
+            continue
+
+        if production_code != 0:
             row.update(
                 {
                     "result":
@@ -411,7 +464,7 @@ def main():
             )
 
             raise RuntimeError(
-                "V12.14 production failed"
+                "V12.14.3 production failed"
             )
 
         # -----------------------------------------------------
@@ -536,7 +589,7 @@ def main():
         )
 
         print(
-            f"V12.14 SUCCESS: "
+            f"V12.14.3 SUCCESS: "
             f"{clip_id} | "
             f"finished score="
             f"{row.get('finished_score')} | "
@@ -547,7 +600,7 @@ def main():
         )
 
         print(
-            f"V12.14 TOTAL PIPELINE TIME: "
+            f"V12.14.3 TOTAL PIPELINE TIME: "
             f"{time.perf_counter() - pipeline_started:.1f}s"
         )
 
@@ -562,12 +615,12 @@ def main():
     )
 
     print(
-        f"V12.14 TOTAL PIPELINE TIME: "
+        f"V12.14.3 TOTAL PIPELINE TIME: "
         f"{time.perf_counter() - pipeline_started:.1f}s"
     )
 
     raise RuntimeError(
-        f"V12.14 found no finished Short "
+        f"V12.14.3 found no finished Short "
         f"that passed after "
         f"{len(attempts)} attempts."
     )
@@ -578,7 +631,7 @@ if __name__ == "__main__":
         main()
     except Exception as exc:
         print(
-            "V12.14 PIPELINE FAILED:",
+            "V12.14.3 PIPELINE FAILED:",
             exc,
         )
         sys.exit(1)
