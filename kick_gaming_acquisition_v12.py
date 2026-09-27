@@ -1,9 +1,9 @@
 import json
 import subprocess
 import sys
+import urllib.request
 from pathlib import Path
 
-from playwright.sync_api import sync_playwright
 
 
 RANKED = Path("work/v12_prescreened_candidates.json")
@@ -15,6 +15,19 @@ RESULT = OUTDIR / "acquisition_result.json"
 
 MIN_WINDOW_SECONDS = 49.0
 MAX_WINDOW_SECONDS = 58.5
+
+KICK_API_TEMPLATE = "https://kick.com/api/v2/clips/{clip_id}/play"
+API_HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/130.0.0.0 Safari/537.36"
+    ),
+    "Accept": "application/json, text/plain, */*",
+    "Referer": "https://kick.com/",
+    "Origin": "https://kick.com",
+    "X-Requested-With": "XMLHttpRequest",
+}
 
 
 def load_json(path, default):
@@ -122,65 +135,47 @@ def probe_duration(path):
     )
 
 
-def recapture_playlist(
-    clip_url,
+def refresh_media_url(
     clip_id,
 ):
-    urls = []
-
-    with sync_playwright() as p:
-        browser = p.chromium.launch(
-            headless=True
-        )
-
-        page = browser.new_page()
-
-        def capture(response):
-            if ".m3u8" in response.url:
-                urls.append(
-                    response.url
-                )
-
-        page.on(
-            "response",
-            capture,
-        )
-
-        page.goto(
-            clip_url,
-            wait_until="domcontentloaded",
-            timeout=35000,
-        )
-
-        page.wait_for_timeout(
-            600
-        )
-
-        try:
-            page.locator(
-                "video"
-            ).first.click(
-                timeout=1200
-            )
-
-            page.wait_for_timeout(
-                500
-            )
-
-        except Exception:
-            pass
-
-        browser.close()
-
-    for url in urls:
-        if clip_id.lower() in url.lower():
-            return url
-
-    return (
-        urls[-1]
-        if urls
-        else None
+    url = KICK_API_TEMPLATE.format(
+        clip_id=clip_id
     )
+
+    request = urllib.request.Request(
+        url,
+        headers=API_HEADERS,
+        method="GET",
+    )
+
+    with urllib.request.urlopen(
+        request,
+        timeout=12,
+    ) as response:
+        payload = json.loads(
+            response.read().decode(
+                "utf-8",
+                errors="replace",
+            )
+        )
+
+    clip = payload.get(
+        "clip"
+    )
+
+    if not isinstance(
+        clip,
+        dict,
+    ):
+        return None
+
+    return str(
+        clip.get(
+            "clip_url",
+            "",
+        )
+    ).strip() or None
+
 
 
 def render_window(
@@ -329,9 +324,13 @@ def acquire(candidate):
 
     playlist_url = str(
         candidate.get(
-            "playlist_url",
-            "",
+            "media_url"
         )
+        or
+        candidate.get(
+            "playlist_url"
+        )
+        or ""
     ).strip()
 
     cached_playlist_used = bool(
@@ -361,15 +360,14 @@ def acquire(candidate):
     # revisit instead of doing it for every candidate.
     if local_seconds is None:
         playlist_url = (
-            recapture_playlist(
-                clip_url,
+            refresh_media_url(
                 clip_id,
             )
         )
 
         if not playlist_url:
             raise RuntimeError(
-                "No HLS playlist available; "
+                "No direct Kick media URL available; "
                 + "; ".join(errors)
             )
 
@@ -399,7 +397,7 @@ def acquire(candidate):
         )
 
     print(
-        f"ACQUIRED V12.9 WINDOW: "
+        f"ACQUIRED V12.10 WINDOW: "
         f"original {start:.2f}-{end:.2f}s -> "
         f"local {local_seconds:.2f}s | "
         f"cached_hls={cached_playlist_used}"
@@ -409,7 +407,7 @@ def acquire(candidate):
         "success":
             True,
         "version":
-            "12.9-window-acquisition",
+            "12.10-direct-api-window-acquisition",
         "clip_id":
             clip_id,
         "clip_url":
@@ -501,6 +499,21 @@ def acquire(candidate):
             candidate.get(
                 "prescreen_reason"
             ),
+        "kick_view_count":
+            candidate.get(
+                "kick_view_count",
+                0,
+            ),
+        "kick_like_count":
+            candidate.get(
+                "kick_like_count",
+                0,
+            ),
+        "kick_like_rate_pct":
+            candidate.get(
+                "kick_like_rate_pct",
+                0.0,
+            ),
         "rights_status":
             "unverified",
         "creator_permission_verified":
@@ -548,7 +561,7 @@ def main():
     )
 
     print(
-        f"V12.9 prescreened candidates available: "
+        f"V12.10 prescreened candidates available: "
         f"{len(candidates)}"
     )
 
@@ -575,7 +588,7 @@ def main():
             continue
 
         print(
-            f"ACQUIRE V12.9 rank {rank}: "
+            f"ACQUIRE V12.10 rank {rank}: "
             f"{candidate.get('game')} / "
             f"{candidate.get('channel')} / "
             f"{clip_id} | "
@@ -644,7 +657,7 @@ def main():
     )
 
     raise RuntimeError(
-        "No remaining V12.9 prescreened candidate."
+        "No remaining V12.10 prescreened candidate."
     )
 
 
@@ -653,7 +666,7 @@ if __name__ == "__main__":
         main()
     except Exception as exc:
         print(
-            "KICK V12.9 ACQUISITION FAILED:",
+            "KICK V12.10 ACQUISITION FAILED:",
             exc,
         )
         sys.exit(1)
