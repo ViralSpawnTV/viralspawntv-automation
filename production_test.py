@@ -2260,7 +2260,7 @@ def build_video_filter(
         "fontcolor=white:"
         "fontsize=68:"
         "line_spacing=8:"
-        "x=max(95,(w-text_w)/2):"
+        "x='max(95,(w-text_w)/2)':"
         # Keep text safely below the top UI area and centered vertically
         # inside the panel for 1-3 lines.
         "y=205:"
