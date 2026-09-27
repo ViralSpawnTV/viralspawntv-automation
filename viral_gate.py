@@ -10,14 +10,13 @@ from openai import OpenAI
 
 SOURCE = Path("work/kick_gaming/selected_kick_gaming_source.mp4")
 ACQUISITION = Path("work/kick_gaming/acquisition_result.json")
-WORK = Path("work/viral_gate")
+WORK = Path("work/source_quality_gate")
 WORK.mkdir(parents=True, exist_ok=True)
 
 AUDIO = WORK / "audio.wav"
-RESULT = WORK / "viral_gate_result.json"
+RESULT = WORK / "source_quality_gate_result.json"
 
-MIN_SCORE = 72
-MIN_HOOK = 65
+MIN_SOURCE_SCORE = 65
 MIN_PAYOFF = 60
 
 
@@ -50,18 +49,17 @@ def extract_audio():
 
 
 def extract_frames():
+    for old in WORK.glob(
+        "frame_*.jpg"
+    ):
+        old.unlink()
+
     pattern = str(
         WORK
         /
         "frame_%02d.jpg"
     )
 
-    for old in WORK.glob(
-        "frame_*.jpg"
-    ):
-        old.unlink()
-
-    # Sample through the entire 50-60 second selected window.
     run(
         [
             "ffmpeg",
@@ -71,9 +69,9 @@ def extract_frames():
             "-i",
             str(SOURCE),
             "-vf",
-            "fps=1/9,scale=640:-2",
+            "fps=1/7,scale=640:-2",
             "-frames:v",
-            "7",
+            "9",
             "-q:v",
             "4",
             pattern,
@@ -84,7 +82,7 @@ def extract_frames():
         WORK.glob(
             "frame_*.jpg"
         )
-    )[:7]
+    )[:9]
 
 
 def transcribe(client):
@@ -111,7 +109,6 @@ def data_url(path):
     encoded = base64.b64encode(
         path.read_bytes()
     ).decode("ascii")
-
     return (
         f"data:image/jpeg;base64,"
         f"{encoded}"
@@ -125,71 +122,75 @@ def score(
     acquisition,
 ):
     prompt = f"""
-You are the FINAL viral-quality gate for ViralSpawnTV,
-an English-language gaming Shorts channel.
+You are the V12.14 SOURCE QUALITY GATE for ViralSpawnTV.
 
-The local video is ALREADY the exact 40-58 second window selected by the
-V12.13 audio-aware two-phase prescreener. Judge THIS WHOLE WINDOW independently.
+This is NOT the final viral-Short gate.
 
-Publish threshold: {MIN_SCORE}/100.
+You are judging RAW gaming footage before ViralSpawnTV production creates:
+- the Big Hook opening
+- truthful narration
+- on-screen headline
+- captions
+- pacing/emphasis
+- branding
 
-The current ViralSpawnTV strategy is:
-- final Short around 40-60 seconds
-- strong first-second Big Hook
-- enough story/escalation to sustain the longer Short
-- clear payoff near the end
+Therefore DO NOT reject a source merely because its raw first second is
+slow or because it does not already look like a finished viral Short.
 
-A clip with a strong beginning but 40 seconds of routine movement should
-NOT pass.
+Question:
+DOES THIS RAW 40-58 SECOND GAMING WINDOW CONTAIN ENOUGH QUALITY MATERIAL
+FOR OUR EDITOR TO MAKE A STRONG SHORT?
 
-A clip with good action but no understandable opening should NOT pass.
+Score:
+- story_sustain
+- payoff
+- ending_strength
+- action
+- clarity
+- editability
+- source_score overall
 
-A clip with no satisfying result/reaction/payoff should NOT pass.
+A worthwhile source normally has:
+- real progression
+- a meaningful result/reaction/payoff
+- enough context to explain the stakes truthfully
+- enough action/change to avoid 40 seconds of filler
+
+Penalize:
+- long routine travel
+- menus/inventory/loadouts
+- unresolved footage
+- repetitive low-stakes play
+- no meaningful result
+- source where a strong hook would require inventing facts
 
 Hard reject:
-- gambling / casino
+- gambling/casino
 - clearly non-gaming
 - commercial-music-dominated content
-- confusing or ordinary footage with no meaningful story
-
-SCORING:
-90-100 exceptional
-80-89 very strong
-72-79 publishable if hook + story + payoff are genuinely adequate
-60-71 some potential but below current quality target
-below 60 weak/ordinary/unsuitable
 
 Return ONLY JSON:
 {{
-  "score": 0-100,
-  "hook": 0-100,
+  "source_score": 0-100,
   "story_sustain": 0-100,
   "payoff": 0-100,
   "ending_strength": 0-100,
   "action": 0-100,
   "clarity": 0-100,
+  "editability": 0-100,
   "recommended": true or false,
-  "reason": "one concise evidence-based explanation",
+  "reason": "concise evidence-based explanation",
   "moment_type": "clutch/fail/rage/funny/reaction/challenge/surprise/other"
 }}
 
-Set recommended=true only when the overall score is {MIN_SCORE}+ and the
-window is genuinely worth publishing as a 40-60 second ViralSpawnTV Short.
-
-SOURCE CHANNEL:
-{acquisition.get("channel", "")}
+Set recommended=true when this is genuinely worth sending to production.
+The raw opening itself does NOT need to be viral.
 
 PRESCREEN:
-pred={acquisition.get("prescreen_predicted_score")}
-P72={acquisition.get("prescreen_probability_72_plus")}
-hook={acquisition.get("prescreen_hook")}
-opening_coherence={acquisition.get("prescreen_opening_coherence")}
-audio_context={acquisition.get("prescreen_audio_context")}
-ending_audio_relevance={acquisition.get("prescreen_ending_audio_relevance")}
+source={acquisition.get("prescreen_predicted_score")}
 story={acquisition.get("prescreen_story_sustain")}
 payoff={acquisition.get("prescreen_payoff")}
 ending={acquisition.get("prescreen_ending_strength")}
-audio_reason={acquisition.get("prescreen_audio_reason", "")}
 reason={acquisition.get("prescreen_reason", "")}
 
 TRANSCRIPT:
@@ -230,13 +231,11 @@ TRANSCRIPT:
     )
 
     raw = response.output_text.strip()
-
     raw = re.sub(
         r"^```json\s*",
         "",
         raw,
     )
-
     raw = re.sub(
         r"\s*```$",
         "",
@@ -263,7 +262,9 @@ def main():
     client = OpenAI()
 
     extract_audio()
+
     frames = extract_frames()
+
     transcript = transcribe(
         client
     )
@@ -275,16 +276,9 @@ def main():
         acquisition,
     )
 
-    numeric_score = int(
+    source_score = int(
         scored.get(
-            "score",
-            0,
-        )
-    )
-
-    hook = int(
-        scored.get(
-            "hook",
+            "source_score",
             0,
         )
     )
@@ -306,9 +300,7 @@ def main():
     passed = bool(
         recommended
         and
-        numeric_score >= MIN_SCORE
-        and
-        hook >= MIN_HOOK
+        source_score >= MIN_SOURCE_SCORE
         and
         payoff >= MIN_PAYOFF
     )
@@ -316,10 +308,8 @@ def main():
     result = {
         "passed":
             passed,
-        "minimum_score":
-            MIN_SCORE,
-        "minimum_hook":
-            MIN_HOOK,
+        "minimum_source_score":
+            MIN_SOURCE_SCORE,
         "minimum_payoff":
             MIN_PAYOFF,
         "clip_id":
@@ -361,12 +351,12 @@ def main():
 
     if not passed:
         print(
-            "V12.13 VIRAL QUALITY GATE: REJECTED"
+            "V12.14 SOURCE QUALITY GATE: REJECTED"
         )
         sys.exit(22)
 
     print(
-        "V12.13 VIRAL QUALITY GATE: PASSED"
+        "V12.14 SOURCE QUALITY GATE: PASSED"
     )
 
 
@@ -375,7 +365,7 @@ if __name__ == "__main__":
         main()
     except Exception as exc:
         print(
-            f"V12.13 VIRAL QUALITY GATE ERROR: "
+            f"V12.14 SOURCE QUALITY GATE ERROR: "
             f"{exc}"
         )
         sys.exit(1)
