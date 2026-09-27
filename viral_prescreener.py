@@ -16,7 +16,7 @@ WORK = Path("work/viral_prescreen")
 WORK.mkdir(parents=True, exist_ok=True)
 
 MAX_VISUAL_CANDIDATES = 24
-PROMOTE_COUNT = 8
+PROMOTE_COUNT = 4
 
 # Phase 1: every window gets only its first ~2 seconds inspected.
 HOOK_BATCH_SIZE = 12
@@ -30,32 +30,20 @@ STORY_FRAME_WORKERS = 4
 
 TARGET_FINAL_SCORE = 72
 
-# V12.11.2 duration strategy:
+# V12.11.3 duration strategy:
 # Shorts may now be as short as 40 seconds.
 MIN_SOURCE_SECONDS = 40.0
 TARGET_WINDOW_SECONDS = 55.0
 MIN_WINDOW_SECONDS = 40.0
 MAX_WINDOW_SECONDS = 58.0
 
-# V12.11.2 Phase-1 ranking funnel.
+# V12.11.3 Phase-1 ranking funnel.
 # Rank every non-hard-rejected opening and send the top 10 to Phase 2.
 
-# Final primary shortlist standards.
-MIN_PRIMARY_PREDICTED = 72
-MIN_PRIMARY_HOOK = 76
-MIN_PRIMARY_FIRST_SECOND_CLARITY = 64
-MIN_PRIMARY_CURIOSITY = 70
-MIN_PRIMARY_STORY = 63
-MIN_PRIMARY_PAYOFF = 63
-MIN_PRIMARY_ENDING = 58
-MIN_PRIMARY_CLARITY = 58
-
-# Close-enough fallbacks still have to be strong in BOTH stages.
-MIN_FALLBACK_PREDICTED = 67
-MIN_FALLBACK_HOOK = 71
-MIN_FALLBACK_STORY = 59
-MIN_FALLBACK_PAYOFF = 59
-MIN_FALLBACK_RANK = 67.0
+# V12.11.3:
+# Phase 2 does not apply another publishability threshold.
+# It ranks the completed candidate windows and sends the top 4 to the
+# unchanged final 72 viral-quality gate.
 
 
 def safe_name(value):
@@ -296,7 +284,7 @@ def extract_hook_frames(item):
     """
     INPUT-SIDE SEEK:
     seek directly to this specific window start and decode only ~2.1 seconds.
-    This is the key V12.11.2 speed change.
+    This is the key V12.11.3 speed change.
     """
     candidate = item[
         "candidate"
@@ -624,7 +612,7 @@ def score_hook_batch(
     batch,
 ):
     prompt = """
-You are PHASE 1 of ViralSpawnTV's V12.11.2 prescreener.
+You are PHASE 1 of ViralSpawnTV's V12.11.3 prescreener.
 
 Your ONLY job is to judge whether the FIRST ~2 SECONDS of each proposed
 40-60 second gaming Short are strong enough to stop a viewer from swiping.
@@ -661,8 +649,21 @@ Return:
 - curiosity_gap 0-100
 - opening_action 0-100
 - hard_reject true/false
-- content_type gaming/gambling/non_gaming/unclear
+- content_type gaming/gambling/non_gaming/music_performance/unclear
 - reason
+
+HARD-REJECT RULE:
+hard_reject=true ONLY when the visible content is clearly:
+- gambling/casino
+- non-gaming content
+- music-performance content
+
+A weak, boring, confusing, slow, or low-action GAMING opening is NOT a
+hard reject. Score its hook/clarity/curiosity/action low, but set
+hard_reject=false and content_type="gaming" or "unclear".
+
+This distinction is critical. Phase 1 ranks weak gaming openings; it does
+not eliminate them except for clearly unsuitable content types.
 
 Use 80+ only for genuinely strong stop-the-scroll openings.
 Do not inflate scores.
@@ -777,7 +778,7 @@ def score_story_batch(
     batch,
 ):
     prompt = f"""
-You are PHASE 2 of ViralSpawnTV's V12.11.2 prescreener.
+You are PHASE 2 of ViralSpawnTV's V12.11.3 prescreener.
 
 These windows already survived a dedicated first-2-second Big Hook test.
 Now judge whether the REST of the SAME 40-58 second window earns the
@@ -799,12 +800,16 @@ Judge:
 - predicted_score: expected final-gate score
 - probability_72_plus
 - hard_reject
+- content_type gaming/gambling/non_gaming/music_performance/unclear
 - reason
 
-Set hard_reject=true ONLY for clearly unsuitable content such as
+HARD-REJECT RULE:
+Set hard_reject=true ONLY for clearly unsuitable content:
 gambling/casino, clearly non-gaming footage, or music-performance content.
-A weak story, low action, or weak payoff is NOT a hard reject; score it
-low instead so the normal ranking and final 72 gate can decide.
+
+A weak story, weak ending, low action, low clarity, or weak payoff is NOT
+a hard reject. Score those qualities low and keep the window in the ranked
+pool so the unchanged final 72 gate can make the publish decision.
 
 Do NOT reward a window simply because the ending has a win banner.
 Do NOT reward long stretches of routine flying, running, healing,
@@ -825,6 +830,7 @@ Return ONLY JSON:
       "action": 74,
       "clarity": 72,
       "hard_reject": false,
+      "content_type": "gaming",
       "reason": "The middle escalates and the ending delivers a clear payoff."
     }}
   ]
@@ -1017,7 +1023,7 @@ def main():
         )
 
     print(
-        f"V12.11.2 TWO-PHASE PRESCREENER received "
+        f"V12.11.3 TWO-PHASE PRESCREENER received "
         f"{len(candidates)} candidates."
     )
 
@@ -1031,7 +1037,7 @@ def main():
         )
 
     print(
-        f"V12.11.2 PHASE 1: "
+        f"V12.11.3 PHASE 1: "
         f"{len(windows)} total windows -> "
         f"opening-only extraction with "
         f"{HOOK_FRAME_WORKERS} workers."
@@ -1051,7 +1057,7 @@ def main():
     )
 
     print(
-        f"V12.11.2 TIMING | hook_frame_extract: "
+        f"V12.11.3 TIMING | hook_frame_extract: "
         f"{time.perf_counter() - hook_extract_started:.1f}s"
     )
 
@@ -1152,18 +1158,13 @@ def main():
                 )
             ).strip().lower()
 
-            hard_reject = bool(
-                result.get(
-                    "hard_reject",
-                    False,
-                )
-            )
-
-            if content_type in {
+            # V12.11.3: model scores cannot hard-reject weak gameplay.
+            # Only clearly unsuitable content categories are removed.
+            hard_reject = content_type in {
                 "gambling",
                 "non_gaming",
-            }:
-                hard_reject = True
+                "music_performance",
+            }
 
             row = dict(
                 item
@@ -1215,7 +1216,7 @@ def main():
                 row
             )
 
-            # V12.11.2: every non-hard-rejected opening is rankable.
+            # V12.11.3: every non-hard-rejected opening is rankable.
             row[
                 "prescreen_hook_phase_pass"
             ] = bool(
@@ -1227,12 +1228,12 @@ def main():
             )
 
     print(
-        f"V12.11.2 TIMING | hook_ai: "
+        f"V12.11.3 TIMING | hook_ai: "
         f"{time.perf_counter() - hook_ai_started:.1f}s"
     )
 
     # ---------------------------------------------------------
-    # V12.11.2 TOP-RANKED HOOK SURVIVORS
+    # V12.11.3 TOP-RANKED HOOK SURVIVORS
     # ---------------------------------------------------------
     # Phase 1 no longer uses arbitrary score floors.
     # Remove only hard-rejected content, rank everything else, and send
@@ -1306,7 +1307,7 @@ def main():
     viable = non_rejected
 
     print(
-        f"V12.11.2 PHASE 1 COMPLETE: "
+        f"V12.11.3 PHASE 1 COMPLETE: "
         f"{len(hook_items)} openings scored -> "
         f"{len(non_rejected)} non-hard-rejected -> "
         f"top {len(phase2_seed)} ranked windows advance."
@@ -1335,7 +1336,7 @@ def main():
 
     if not phase2_seed:
         raise RuntimeError(
-            "No non-hard-rejected opening was available for V12.11.2 Phase 2."
+            "No non-hard-rejected opening was available for V12.11.3 Phase 2."
         )
 
     story_extract_started = (
@@ -1352,7 +1353,7 @@ def main():
     )
 
     print(
-        f"V12.11.2 TIMING | story_frame_extract: "
+        f"V12.11.3 TIMING | story_frame_extract: "
         f"{time.perf_counter() - story_extract_started:.1f}s"
     )
 
@@ -1451,11 +1452,20 @@ def main():
             if not result:
                 continue
 
-            story_hard_reject = bool(
+            story_content_type = str(
                 result.get(
-                    "hard_reject",
-                    False,
+                    "content_type",
+                    "unclear",
                 )
+            ).strip().lower()
+
+            story_hard_reject = (
+                story_content_type
+                in {
+                    "gambling",
+                    "non_gaming",
+                    "music_performance",
+                }
             )
 
             print(
@@ -1469,6 +1479,7 @@ def main():
                 f"payoff={clamp(result.get('payoff'))} | "
                 f"ending={clamp(result.get('ending_strength'))} | "
                 f"clarity={clamp(result.get('clarity'))} | "
+                f"content_type={story_content_type} | "
                 f"hard_reject={story_hard_reject} | "
                 f"reason={str(result.get('reason', '')).strip()}"
             )
@@ -1572,6 +1583,8 @@ def main():
                                 "clarity"
                             )
                         ),
+                    "prescreen_story_content_type":
+                        story_content_type,
                     "prescreen_reason":
                         str(
                             result.get(
@@ -1588,72 +1601,16 @@ def main():
                 candidate
             )
 
-            candidate[
-                "prescreen_primary_pass"
-            ] = bool(
-                candidate[
-                    "prescreen_predicted_score"
-                ] >= MIN_PRIMARY_PREDICTED
-                and
-                candidate[
-                    "prescreen_hook"
-                ] >= MIN_PRIMARY_HOOK
-                and
-                candidate[
-                    "prescreen_first_second_clarity"
-                ] >= MIN_PRIMARY_FIRST_SECOND_CLARITY
-                and
-                candidate[
-                    "prescreen_curiosity_gap"
-                ] >= MIN_PRIMARY_CURIOSITY
-                and
-                candidate[
-                    "prescreen_story_sustain"
-                ] >= MIN_PRIMARY_STORY
-                and
-                candidate[
-                    "prescreen_payoff"
-                ] >= MIN_PRIMARY_PAYOFF
-                and
-                candidate[
-                    "prescreen_ending_strength"
-                ] >= MIN_PRIMARY_ENDING
-                and
-                candidate[
-                    "prescreen_clarity"
-                ] >= MIN_PRIMARY_CLARITY
-            )
-
-            candidate[
-                "prescreen_fallback_pass"
-            ] = bool(
-                candidate[
-                    "prescreen_predicted_score"
-                ] >= MIN_FALLBACK_PREDICTED
-                and
-                candidate[
-                    "prescreen_hook"
-                ] >= MIN_FALLBACK_HOOK
-                and
-                candidate[
-                    "prescreen_story_sustain"
-                ] >= MIN_FALLBACK_STORY
-                and
-                candidate[
-                    "prescreen_payoff"
-                ] >= MIN_FALLBACK_PAYOFF
-                and
-                candidate[
-                    "prescreen_rank_score"
-                ] >= MIN_FALLBACK_RANK
-            )
+            # V12.11.3: no Phase-2 publish threshold here.
+            # Keep the candidate and let rank ordering choose which four
+            # windows reach the real viral-quality gate.
 
             final_rows.append(
                 candidate
             )
 
     print(
-        f"V12.11.2 TIMING | story_ai: "
+        f"V12.11.3 TIMING | story_ai: "
         f"{time.perf_counter() - story_ai_started:.1f}s"
     )
 
@@ -1697,97 +1654,43 @@ def main():
         best_by_clip.values()
     )
 
-    primary = [
-        row
-        for row in best_rows
-        if row.get(
-            "prescreen_primary_pass",
-            False,
-        )
-    ]
-
-    fallback = [
-        row
-        for row in best_rows
-        if (
-            not row.get(
-                "prescreen_primary_pass",
-                False,
-            )
-            and
-            row.get(
-                "prescreen_fallback_pass",
-                False,
-            )
-        )
-    ]
-
-    primary.sort(
-        key=lambda row: float(
-            row.get(
-                "prescreen_rank_score",
-                0,
-            )
-        ),
-        reverse=True,
-    )
-
-    fallback.sort(
-        key=lambda row: float(
-            row.get(
-                "prescreen_rank_score",
-                0,
-            )
-        ),
-        reverse=True,
-    )
-
-    promoted = (
-        primary
-        +
-        fallback
-    )[:PROMOTE_COUNT]
-
-    # Still allow a maximum of 2 near-miss windows if nothing formally
-    # qualifies. The full 72 gate remains unchanged.
-    if not promoted:
-        near = [
-            row
-            for row in best_rows
-            if (
-                row.get(
-                    "prescreen_hook",
-                    0,
-                ) >= 70
-                and
-                row.get(
-                    "prescreen_payoff",
-                    0,
-                ) >= 58
-                and
-                row.get(
-                    "prescreen_story_sustain",
-                    0,
-                ) >= 58
-                and
-                row.get(
-                    "prescreen_rank_score",
-                    0,
-                ) >= 65
-            )
-        ]
-
-        near.sort(
-            key=lambda row: float(
+    # V12.11.3:
+    # Phase 2 ranks all suitable completed stories. No hook/payoff/predicted
+    # score threshold is allowed to overrule the final viral gate.
+    best_rows.sort(
+        key=lambda row: (
+            float(
                 row.get(
                     "prescreen_rank_score",
                     0,
                 )
             ),
-            reverse=True,
-        )
+            float(
+                row.get(
+                    "prescreen_predicted_score",
+                    0,
+                )
+            ),
+            float(
+                row.get(
+                    "prescreen_payoff",
+                    0,
+                )
+            ),
+        ),
+        reverse=True,
+    )
 
-        promoted = near[:2]
+    promoted = best_rows[
+        :PROMOTE_COUNT
+    ]
+
+    print(
+        f"V12.11.3 PHASE 2 COMPLETE: "
+        f"{len(final_rows)} completed windows -> "
+        f"{len(best_rows)} best-per-clip -> "
+        f"top {len(promoted)} sent to final viral gate."
+    )
 
     OUT.parent.mkdir(
         parents=True,
@@ -1796,7 +1699,7 @@ def main():
 
     payload = {
         "version":
-            "12.11.2-top10-min40",
+            "12.11.3-top4-final-gate",
         "target_final_score":
             TARGET_FINAL_SCORE,
         "input_candidate_count":
@@ -1815,10 +1718,8 @@ def main():
             len(story_items),
         "best_clip_count":
             len(best_rows),
-        "primary_count":
-            len(primary),
-        "fallback_count":
-            len(fallback),
+        "promotion_policy":
+            "top_4_phase2_rank_no_publish_threshold",
         "promoted_count":
             len(promoted),
         "prescreen_seconds":
@@ -1843,7 +1744,7 @@ def main():
 
     print()
     print(
-        f"V12.11.2 TWO-PHASE PRESCREEN COMPLETE: "
+        f"V12.11.3 TWO-PHASE PRESCREEN COMPLETE: "
         f"{len(windows)} windows -> "
         f"{len(viable)} hook-pass -> "
         f"{len(story_items)} story-inspected -> "
@@ -1852,7 +1753,7 @@ def main():
     )
 
     print(
-        f"V12.11.2 PRESCREEN TOTAL: "
+        f"V12.11.3 PRESCREEN TOTAL: "
         f"{time.perf_counter() - started:.1f}s"
     )
 
@@ -1880,7 +1781,7 @@ if __name__ == "__main__":
         main()
     except Exception as exc:
         print(
-            "V12.11.2 TWO-PHASE PRESCREENER ERROR:",
+            "V12.11.3 TWO-PHASE PRESCREENER ERROR:",
             exc,
         )
         sys.exit(1)
