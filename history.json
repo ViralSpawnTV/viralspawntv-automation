@@ -727,6 +727,17 @@
       "youtube_video_id": "YG0fVWpAcs0",
       "privacy_status": "public",
       "processed_at_utc": "2026-09-27T14:06:13.713348+00:00"
+    },
+    {
+      "clip_id": "clip_01M1R2WW80EZX8CY771DJVFEBA",
+      "clip_url": "https://kick.com/zofr00/clips/clip_01M1R2WW80EZX8CY771DJVFEBA",
+      "source": "https://kick.com/zofr00/clips/clip_01M1R2WW80EZX8CY771DJVFEBA",
+      "creator": "zofr00",
+      "channel": "zofr00",
+      "game": "",
+      "youtube_video_id": "S2KWFMwA5rQ",
+      "privacy_status": "public",
+      "processed_at_utc": "2026-09-27T20:45:14.989283+00:00"
     }
   ]
 }
