@@ -61,8 +61,7 @@ def extract_frames():
     ):
         old.unlink()
 
-    # ~0,9,18,27,36,45,54 seconds: unlike the old 6-frame gate, this
-    # intentionally reaches the payoff/end of a 50-60 second Short.
+    # Sample through the entire 50-60 second selected window.
     run(
         [
             "ffmpeg",
@@ -114,7 +113,8 @@ def data_url(path):
     ).decode("ascii")
 
     return (
-        f"data:image/jpeg;base64,{encoded}"
+        f"data:image/jpeg;base64,"
+        f"{encoded}"
     )
 
 
@@ -128,8 +128,8 @@ def score(
 You are the FINAL viral-quality gate for ViralSpawnTV,
 an English-language gaming Shorts channel.
 
-The local video you are reviewing is ALREADY the specific 49-58 second
-window chosen by V12.9. Judge THIS WHOLE WINDOW.
+The local video is ALREADY the exact 49-58 second window selected by the
+V12.11 two-phase prescreener. Judge THIS WHOLE WINDOW independently.
 
 Publish threshold: {MIN_SCORE}/100.
 
@@ -357,12 +357,12 @@ def main():
 
     if not passed:
         print(
-            "V12.9 VIRAL QUALITY GATE: REJECTED"
+            "V12.11 VIRAL QUALITY GATE: REJECTED"
         )
         sys.exit(22)
 
     print(
-        "V12.9 VIRAL QUALITY GATE: PASSED"
+        "V12.11 VIRAL QUALITY GATE: PASSED"
     )
 
 
@@ -371,7 +371,7 @@ if __name__ == "__main__":
         main()
     except Exception as exc:
         print(
-            f"V12.9 VIRAL QUALITY GATE ERROR: "
+            f"V12.11 VIRAL QUALITY GATE ERROR: "
             f"{exc}"
         )
         sys.exit(1)
