@@ -705,6 +705,17 @@
       "youtube_video_id": "iKXfZMgm6UA",
       "privacy_status": "public",
       "processed_at_utc": "2026-09-27T10:26:46.369300+00:00"
+    },
+    {
+      "clip_id": "clip_01M2YER06XCGJ07RNQF0S2S3FB",
+      "clip_url": "https://kick.com/iabs/clips/clip_01M2YER06XCGJ07RNQF0S2S3FB",
+      "source": "https://kick.com/iabs/clips/clip_01M2YER06XCGJ07RNQF0S2S3FB",
+      "creator": "iabs",
+      "channel": "iabs",
+      "game": "",
+      "youtube_video_id": "sZ14aUq-Xjk",
+      "privacy_status": "public",
+      "processed_at_utc": "2026-09-27T12:29:08.838738+00:00"
     }
   ]
 }
