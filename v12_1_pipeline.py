@@ -39,7 +39,7 @@ def run_timed(
     )
 
     print(
-        f"V12.12 TIMING | "
+        f"V12.13 TIMING | "
         f"{label}: "
         f"{elapsed:.1f}s"
     )
@@ -200,7 +200,7 @@ def main():
         "kick_game_discovery.py"
     ) != 0:
         raise RuntimeError(
-            "V12.12 discovery failed"
+            "V12.13 discovery failed"
         )
 
     # ---------------------------------------------------------
@@ -212,7 +212,7 @@ def main():
         "candidate_ranker_v12_1.py"
     ) != 0:
         raise RuntimeError(
-            "V12.12 one-pass ranking failed"
+            "V12.13 one-pass ranking failed"
         )
 
     ranked = load_json(
@@ -224,7 +224,7 @@ def main():
     )
 
     print(
-        f"V12.12 one-pass stage supplied "
+        f"V12.13 one-pass stage supplied "
         f"{len(ranked)} duration-eligible candidates."
     )
 
@@ -237,7 +237,7 @@ def main():
         "viral_prescreener.py"
     ) != 0:
         raise RuntimeError(
-            "V12.12 window prescreen failed"
+            "V12.13 window prescreen failed"
         )
 
     prescreened = load_json(
@@ -250,7 +250,7 @@ def main():
 
     if not prescreened:
         raise RuntimeError(
-            "V12.12 prescreen shortlist empty"
+            "V12.13 prescreen shortlist empty"
         )
 
     actual_attempt_limit = min(
@@ -261,12 +261,12 @@ def main():
     )
 
     print(
-        f"V12.12 prescreen shortlist: "
+        f"V12.13 prescreen shortlist: "
         f"{len(prescreened)} candidates."
     )
 
     print(
-        f"V12.12 will inspect at most "
+        f"V12.13 will inspect at most "
         f"{actual_attempt_limit} expensive candidates."
     )
 
@@ -356,7 +356,7 @@ def main():
 
         print(
             "\n"
-            f"V12.12 full-gate attempt "
+            f"V12.13 full-gate attempt "
             f"{attempt_no}/"
             f"{actual_attempt_limit}: "
             f"{clip_id} | "
@@ -457,7 +457,7 @@ def main():
             )
 
             raise RuntimeError(
-                "V12.12 Short production failed"
+                "V12.13 Short production failed"
             )
 
         # -----------------------------------------------------
@@ -514,13 +514,13 @@ def main():
         )
 
         print(
-            f"V12.12 SUCCESS on attempt "
+            f"V12.13 SUCCESS on attempt "
             f"{attempt_no}: "
             f"{clip_id}"
         )
 
         print(
-            f"V12.12 TOTAL PIPELINE TIME: "
+            f"V12.13 TOTAL PIPELINE TIME: "
             f"{time.perf_counter() - pipeline_started:.1f}s"
         )
 
@@ -535,12 +535,12 @@ def main():
     )
 
     print(
-        f"V12.12 TOTAL PIPELINE TIME: "
+        f"V12.13 TOTAL PIPELINE TIME: "
         f"{time.perf_counter() - pipeline_started:.1f}s"
     )
 
     raise RuntimeError(
-        f"V12.12 found no publishable Short "
+        f"V12.13 found no publishable Short "
         f"after {len(attempts)} attempted "
         f"candidate(s)."
     )
@@ -551,7 +551,7 @@ if __name__ == "__main__":
         main()
     except Exception as exc:
         print(
-            "V12.12 PIPELINE FAILED:",
+            "V12.13 PIPELINE FAILED:",
             exc,
         )
         sys.exit(1)
