@@ -639,6 +639,17 @@
       "youtube_video_id": "QFEH0lAHrjI",
       "privacy_status": "public",
       "processed_at_utc": "2026-09-26T22:50:53.590386+00:00"
+    },
+    {
+      "clip_id": "clip_01M35T0832WX6NRDWDHV35ABR6",
+      "clip_url": "https://kick.com/xodalive/clips/clip_01M35T0832WX6NRDWDHV35ABR6",
+      "source": "https://kick.com/xodalive/clips/clip_01M35T0832WX6NRDWDHV35ABR6",
+      "creator": "xodalive",
+      "channel": "xodalive",
+      "game": "",
+      "youtube_video_id": "CSwzrxdJA9c",
+      "privacy_status": "public",
+      "processed_at_utc": "2026-09-27T00:28:04.552009+00:00"
     }
   ]
 }
