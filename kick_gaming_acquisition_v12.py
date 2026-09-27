@@ -6,19 +6,15 @@ from pathlib import Path
 from playwright.sync_api import sync_playwright
 
 
-# V12.4 now acquires from the visual-prescreen shortlist.
 RANKED = Path("work/v12_prescreened_candidates.json")
-
 REJECTED = Path("shorts_rejected_history.json")
 
 OUTDIR = Path("work/kick_gaming")
 OUT = OUTDIR / "selected_kick_gaming_source.mp4"
 RESULT = OUTDIR / "acquisition_result.json"
 
-# V12.6 / V5.8 duration strategy.
-# Production adds a 1-second outro, so we need at least
-# 49 seconds of source footage to create a 50+ second final Short.
-MIN_SOURCE_SECONDS = 49.0
+MIN_WINDOW_SECONDS = 49.0
+MAX_WINDOW_SECONDS = 58.5
 
 
 def load_json(path, default):
@@ -41,47 +37,37 @@ def load_rejected_ids():
         },
     )
 
-    if isinstance(data, list):
-        data = data
-
-    elif isinstance(data, dict):
+    if isinstance(data, dict):
         data = data.get(
             "clip_ids",
             [],
         )
 
-    else:
+    if not isinstance(
+        data,
+        list,
+    ):
         data = []
 
-    rejected = set()
-
-    for item in data:
-        clip_id = str(
-            item
-        ).strip()
-
-        if clip_id:
-            rejected.add(
-                clip_id
-            )
-
-    return rejected
+    return {
+        str(item).strip()
+        for item in data
+        if str(item).strip()
+    }
 
 
 def save_rejected_ids(rejected):
-    clean = sorted(
-        {
-            str(item).strip()
-            for item in rejected
-            if str(item).strip()
-        }
-    )
-
     REJECTED.write_text(
         json.dumps(
             {
                 "version": 1,
-                "clip_ids": clean,
+                "clip_ids": sorted(
+                    {
+                        str(x).strip()
+                        for x in rejected
+                        if str(x).strip()
+                    }
+                ),
             },
             indent=2,
             ensure_ascii=False,
@@ -92,16 +78,24 @@ def save_rejected_ids(rejected):
 
 def candidate_id(candidate):
     return str(
-        candidate.get("clip_id")
-        or candidate.get("id")
+        candidate.get(
+            "clip_id"
+        )
+        or candidate.get(
+            "id"
+        )
         or ""
     ).strip()
 
 
 def candidate_url(candidate):
     return str(
-        candidate.get("clip_url")
-        or candidate.get("url")
+        candidate.get(
+            "clip_url"
+        )
+        or candidate.get(
+            "url"
+        )
         or ""
     ).strip()
 
@@ -128,6 +122,163 @@ def probe_duration(path):
     )
 
 
+def recapture_playlist(
+    clip_url,
+    clip_id,
+):
+    urls = []
+
+    with sync_playwright() as p:
+        browser = p.chromium.launch(
+            headless=True
+        )
+
+        page = browser.new_page()
+
+        def capture(response):
+            if ".m3u8" in response.url:
+                urls.append(
+                    response.url
+                )
+
+        page.on(
+            "response",
+            capture,
+        )
+
+        page.goto(
+            clip_url,
+            wait_until="domcontentloaded",
+            timeout=35000,
+        )
+
+        page.wait_for_timeout(
+            600
+        )
+
+        try:
+            page.locator(
+                "video"
+            ).first.click(
+                timeout=1200
+            )
+
+            page.wait_for_timeout(
+                500
+            )
+
+        except Exception:
+            pass
+
+        browser.close()
+
+    for url in urls:
+        if clip_id.lower() in url.lower():
+            return url
+
+    return (
+        urls[-1]
+        if urls
+        else None
+    )
+
+
+def render_window(
+    playlist_url,
+    start,
+    length,
+):
+    if OUT.exists():
+        OUT.unlink()
+
+    # Fast path: reuse the cached HLS URL and stream-copy only the proposed
+    # 49-58 second window.
+    fast = [
+        "ffmpeg",
+        "-y",
+        "-loglevel",
+        "warning",
+        "-ss",
+        f"{start:.3f}",
+        "-i",
+        playlist_url,
+        "-t",
+        f"{length:.3f}",
+        "-c",
+        "copy",
+        "-movflags",
+        "+faststart",
+        str(OUT),
+    ]
+
+    proc = subprocess.run(
+        fast
+    )
+
+    if (
+        proc.returncode == 0
+        and OUT.exists()
+        and OUT.stat().st_size > 10000
+    ):
+        try:
+            seconds = probe_duration(
+                OUT
+            )
+
+            if (
+                seconds >= 48.5
+                and
+                seconds <= 60.0
+            ):
+                return seconds
+
+        except Exception:
+            pass
+
+    if OUT.exists():
+        OUT.unlink()
+
+    # Accurate fallback.
+    accurate = [
+        "ffmpeg",
+        "-y",
+        "-loglevel",
+        "warning",
+        "-ss",
+        f"{start:.3f}",
+        "-i",
+        playlist_url,
+        "-t",
+        f"{length:.3f}",
+        "-c:v",
+        "libx264",
+        "-preset",
+        "veryfast",
+        "-crf",
+        "21",
+        "-pix_fmt",
+        "yuv420p",
+        "-c:a",
+        "aac",
+        "-b:a",
+        "160k",
+        "-ar",
+        "48000",
+        "-movflags",
+        "+faststart",
+        str(OUT),
+    ]
+
+    subprocess.run(
+        accurate,
+        check=True,
+    )
+
+    return probe_duration(
+        OUT
+    )
+
+
 def acquire(candidate):
     clip_id = candidate_id(
         candidate
@@ -142,167 +293,123 @@ def acquire(candidate):
             "Candidate missing clip_id or clip_url."
         )
 
+    start = float(
+        candidate.get(
+            "proposed_window_start",
+            0.0,
+        )
+    )
+
+    end = float(
+        candidate.get(
+            "proposed_window_end",
+            0.0,
+        )
+    )
+
+    length = (
+        end - start
+    )
+
+    if not (
+        MIN_WINDOW_SECONDS
+        <= length
+        <= MAX_WINDOW_SECONDS
+    ):
+        raise RuntimeError(
+            f"Invalid V12.9 proposed window: "
+            f"{start:.2f}-{end:.2f}s "
+            f"({length:.2f}s)."
+        )
+
     OUTDIR.mkdir(
         parents=True,
         exist_ok=True,
     )
 
-    playlist_urls = []
-
-    with sync_playwright() as p:
-        browser = p.chromium.launch(
-            headless=True
+    playlist_url = str(
+        candidate.get(
+            "playlist_url",
+            "",
         )
+    ).strip()
 
-        page = browser.new_page()
-
-        def capture(response):
-            url = response.url
-
-            if ".m3u8" in url:
-                playlist_urls.append(
-                    url
-                )
-
-        page.on(
-            "response",
-            capture,
-        )
-
-        page.goto(
-            clip_url,
-            wait_until="domcontentloaded",
-            timeout=45000,
-        )
-
-        page.wait_for_timeout(
-            5000
-        )
-
-        try:
-            page.locator(
-                "video"
-            ).first.click(
-                timeout=3000
-            )
-
-            page.wait_for_timeout(
-                2500
-            )
-
-        except Exception:
-            pass
-
-        browser.close()
-
-    if not playlist_urls:
-        raise RuntimeError(
-            "No HLS playlist captured from clip page."
-        )
-
-    chosen = None
-
-    for url in playlist_urls:
-        if (
-            clip_id.lower()
-            in url.lower()
-        ):
-            chosen = url
-            break
-
-    if not chosen:
-        chosen = playlist_urls[-1]
-
-    if OUT.exists():
-        OUT.unlink()
-
-    cmd = [
-        "ffmpeg",
-        "-y",
-        "-loglevel",
-        "warning",
-        "-i",
-        chosen,
-        "-c",
-        "copy",
-        "-movflags",
-        "+faststart",
-        str(OUT),
-    ]
-
-    proc = subprocess.run(
-        cmd
+    cached_playlist_used = bool(
+        playlist_url
     )
 
-    if (
-        proc.returncode != 0
-        or not OUT.exists()
-        or OUT.stat().st_size < 10000
-    ):
-        if OUT.exists():
-            OUT.unlink()
+    errors = []
 
-        cmd = [
-            "ffmpeg",
-            "-y",
-            "-loglevel",
-            "warning",
-            "-i",
-            chosen,
-            "-c:v",
-            "libx264",
-            "-preset",
-            "veryfast",
-            "-pix_fmt",
-            "yuv420p",
-            "-c:a",
-            "aac",
-            "-ar",
-            "48000",
-            "-movflags",
-            "+faststart",
-            str(OUT),
-        ]
+    if playlist_url:
+        try:
+            local_seconds = (
+                render_window(
+                    playlist_url,
+                    start,
+                    length,
+                )
+            )
+        except Exception as exc:
+            errors.append(
+                f"cached HLS: {exc}"
+            )
+            local_seconds = None
+    else:
+        local_seconds = None
 
-        subprocess.run(
-            cmd,
-            check=True,
+    # Signed HLS URLs can occasionally expire. Only then pay for one page
+    # revisit instead of doing it for every candidate.
+    if local_seconds is None:
+        playlist_url = (
+            recapture_playlist(
+                clip_url,
+                clip_id,
+            )
+        )
+
+        if not playlist_url:
+            raise RuntimeError(
+                "No HLS playlist available; "
+                + "; ".join(errors)
+            )
+
+        cached_playlist_used = False
+
+        local_seconds = (
+            render_window(
+                playlist_url,
+                start,
+                length,
+            )
         )
 
     if (
         not OUT.exists()
-        or OUT.stat().st_size < 10000
+        or
+        OUT.stat().st_size < 10000
     ):
         raise RuntimeError(
-            "Acquired output file is missing or too small."
+            "Acquired window file is missing or too small."
         )
 
-    source_seconds = probe_duration(
-        OUT
-    )
+    if local_seconds < 48.5:
+        raise RuntimeError(
+            f"Selected local window too short: "
+            f"{local_seconds:.2f}s."
+        )
 
     print(
-        f"ACQUIRED SOURCE DURATION: "
-        f"{source_seconds:.2f}s"
+        f"ACQUIRED V12.9 WINDOW: "
+        f"original {start:.2f}-{end:.2f}s -> "
+        f"local {local_seconds:.2f}s | "
+        f"cached_hls={cached_playlist_used}"
     )
-
-    if source_seconds < MIN_SOURCE_SECONDS:
-        try:
-            OUT.unlink()
-        except Exception:
-            pass
-
-        raise RuntimeError(
-            f"Source too short for V5.8: "
-            f"{source_seconds:.2f}s < "
-            f"{MIN_SOURCE_SECONDS:.1f}s minimum."
-        )
 
     result = {
         "success":
             True,
         "version":
-            "12.6-duration-50-60",
+            "12.9-window-acquisition",
         "clip_id":
             clip_id,
         "clip_url":
@@ -323,6 +430,29 @@ def acquire(candidate):
             candidate.get(
                 "page_description"
             ),
+        "original_source_duration_seconds":
+            candidate.get(
+                "source_duration_seconds"
+            ),
+        "proposed_window_start_original":
+            start,
+        "proposed_window_end_original":
+            end,
+        "proposed_window_label":
+            candidate.get(
+                "proposed_window_label"
+            ),
+        "local_source_is_selected_window":
+            True,
+        "local_path":
+            str(OUT),
+        "source_duration_seconds":
+            round(
+                local_seconds,
+                3,
+            ),
+        "playlist_cache_reused":
+            cached_playlist_used,
         "v12_metadata_score":
             candidate.get(
                 "v12_metadata_score"
@@ -343,9 +473,17 @@ def acquire(candidate):
             candidate.get(
                 "prescreen_hook"
             ),
+        "prescreen_story_sustain":
+            candidate.get(
+                "prescreen_story_sustain"
+            ),
         "prescreen_payoff":
             candidate.get(
                 "prescreen_payoff"
+            ),
+        "prescreen_ending_strength":
+            candidate.get(
+                "prescreen_ending_strength"
             ),
         "prescreen_action":
             candidate.get(
@@ -355,14 +493,14 @@ def acquire(candidate):
             candidate.get(
                 "prescreen_clarity"
             ),
+        "prescreen_rank_score":
+            candidate.get(
+                "prescreen_rank_score"
+            ),
         "prescreen_reason":
             candidate.get(
                 "prescreen_reason"
             ),
-        "local_path":
-            str(OUT),
-        "source_duration_seconds":
-            round(source_seconds, 3),
         "rights_status":
             "unverified",
         "creator_permission_verified":
@@ -410,13 +548,8 @@ def main():
     )
 
     print(
-        f"Prescreened candidates available: "
+        f"V12.9 prescreened candidates available: "
         f"{len(candidates)}"
-    )
-
-    print(
-        f"Permanently rejected/previously "
-        f"attempted IDs: {len(rejected)}"
     )
 
     errors = []
@@ -429,26 +562,28 @@ def main():
             candidate
         )
 
-        if not clip_id:
-            continue
-
-        if clip_id in rejected:
-            print(
-                f"SKIP prescreen rank {rank}: "
-                f"permanently rejected "
-                f"{clip_id}"
-            )
+        if (
+            not clip_id
+            or
+            clip_id in rejected
+        ):
+            if clip_id:
+                print(
+                    f"SKIP rank {rank}: "
+                    f"rejected {clip_id}"
+                )
             continue
 
         print(
-            f"ACQUIRE prescreen rank {rank}: "
+            f"ACQUIRE V12.9 rank {rank}: "
             f"{candidate.get('game')} / "
             f"{candidate.get('channel')} / "
-            f"{clip_id} / "
-            f"predicted "
-            f"{candidate.get('prescreen_predicted_score')} / "
-            f"P72 "
-            f"{candidate.get('prescreen_probability_72_plus')}"
+            f"{clip_id} | "
+            f"window="
+            f"{candidate.get('proposed_window_start')}-"
+            f"{candidate.get('proposed_window_end')} | "
+            f"rank="
+            f"{candidate.get('prescreen_rank_score')}"
         )
 
         try:
@@ -466,7 +601,7 @@ def main():
 
         except Exception as exc:
             print(
-                f"ACQUISITION FAILED for "
+                f"ACQUISITION FAILED "
                 f"{clip_id}: {exc}"
             )
 
@@ -508,12 +643,8 @@ def main():
         encoding="utf-8",
     )
 
-    save_rejected_ids(
-        rejected
-    )
-
     raise RuntimeError(
-        "No remaining prescreened candidate could be acquired."
+        "No remaining V12.9 prescreened candidate."
     )
 
 
@@ -522,7 +653,7 @@ if __name__ == "__main__":
         main()
     except Exception as exc:
         print(
-            "KICK V12 ACQUISITION FAILED:",
+            "KICK V12.9 ACQUISITION FAILED:",
             exc,
         )
         sys.exit(1)
