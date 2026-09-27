@@ -17,6 +17,8 @@ AUDIO = WORK / "audio.wav"
 RESULT = WORK / "viral_gate_result.json"
 
 MIN_SCORE = 72
+MIN_HOOK = 65
+MIN_PAYOFF = 60
 
 
 def run(command):
@@ -31,6 +33,8 @@ def extract_audio():
         [
             "ffmpeg",
             "-y",
+            "-loglevel",
+            "error",
             "-i",
             str(SOURCE),
             "-vn",
@@ -57,16 +61,22 @@ def extract_frames():
     ):
         old.unlink()
 
+    # ~0,9,18,27,36,45,54 seconds: unlike the old 6-frame gate, this
+    # intentionally reaches the payoff/end of a 50-60 second Short.
     run(
         [
             "ffmpeg",
             "-y",
+            "-loglevel",
+            "error",
             "-i",
             str(SOURCE),
             "-vf",
-            "fps=1/7,scale=640:-2",
+            "fps=1/9,scale=640:-2",
             "-frames:v",
-            "6",
+            "7",
+            "-q:v",
+            "4",
             pattern,
         ]
     )
@@ -75,7 +85,7 @@ def extract_frames():
         WORK.glob(
             "frame_*.jpg"
         )
-    )[:6]
+    )[:7]
 
 
 def transcribe(client):
@@ -101,13 +111,10 @@ def transcribe(client):
 def data_url(path):
     encoded = base64.b64encode(
         path.read_bytes()
-    ).decode(
-        "ascii"
-    )
+    ).decode("ascii")
 
     return (
-        f"data:image/jpeg;base64,"
-        f"{encoded}"
+        f"data:image/jpeg;base64,{encoded}"
     )
 
 
@@ -121,102 +128,68 @@ def score(
 You are the FINAL viral-quality gate for ViralSpawnTV,
 an English-language gaming Shorts channel.
 
-The CURRENT publish threshold is {MIN_SCORE}/100.
+The local video you are reviewing is ALREADY the specific 49-58 second
+window chosen by V12.9. Judge THIS WHOLE WINDOW.
 
-A score of {MIN_SCORE} or higher means the clip can be recommended when
-there is a realistic path to a compelling 15-45 second Short.
+Publish threshold: {MIN_SCORE}/100.
 
-Do not use an old 80-point recommendation threshold.
-Judge against the CURRENT {MIN_SCORE}-point standard.
+The current ViralSpawnTV strategy is:
+- final Short around 50-60 seconds
+- strong first-second Big Hook
+- enough story/escalation to sustain the longer Short
+- clear payoff near the end
 
-============================================================
-VIRALSPAWNTV QUALITY STANDARD
-============================================================
+A clip with a strong beginning but 40 seconds of routine movement should
+NOT pass.
 
-Strong clips usually have:
-- an immediate hook or obvious strong-hook opportunity
-- interesting action/reaction in the first few usable seconds
-- clear stakes, danger, challenge, surprise, humor, or skill
-- a mini-story with escalation and payoff/reaction
-- enough context for a compelling 15-45 second Short
-- a payoff worth staying to watch
+A clip with good action but no understandable opening should NOT pass.
 
-============================================================
-OPENING-HOOK STANDARD
-============================================================
+A clip with no satisfying result/reaction/payoff should NOT pass.
 
-Reward:
-- immediate danger
-- impossible-looking situations
-- risky decisions
-- strange/unexpected visuals
-- tension
-- funny setups
-- challenges in progress
-- impressive plays developing
-- strong streamer reactions
+Hard reject:
+- gambling / casino
+- clearly non-gaming
+- commercial-music-dominated content
+- confusing or ordinary footage with no meaningful story
 
-Penalize:
-- dead air
-- menus/lobbies
-- waiting
-- greetings
-- low-action conversation
-- long context requirements
-- confusing footage
-- weak/ordinary outcomes
-- non-gaming
-- gambling/casino content
-- commercial-music-dominated footage
-
-============================================================
-SCORING GUIDE
-============================================================
-
-90-100:
-Exceptional viral potential.
-
-80-89:
-Very strong candidate.
-
-72-79:
-Good publishable candidate when the hook/story/payoff are clear enough.
-
-60-71:
-Some potential, but not strong enough for the current publish threshold.
-
-Below 60:
-Weak, ordinary, confusing, slow, or unsuitable.
-
-Do not inflate scores simply because gameplay exists.
+SCORING:
+90-100 exceptional
+80-89 very strong
+72-79 publishable if hook + story + payoff are genuinely adequate
+60-71 some potential but below current quality target
+below 60 weak/ordinary/unsuitable
 
 Return ONLY JSON:
-
 {{
   "score": 0-100,
   "hook": 0-100,
+  "story_sustain": 0-100,
   "payoff": 0-100,
+  "ending_strength": 0-100,
   "action": 0-100,
   "clarity": 0-100,
   "recommended": true or false,
-  "reason": "one short explanation",
+  "reason": "one concise evidence-based explanation",
   "moment_type": "clutch/fail/rage/funny/reaction/challenge/surprise/other"
 }}
 
-IMPORTANT:
-Set "recommended" to true when the overall score is {MIN_SCORE} or higher
-AND the footage has a realistic path to a compelling ViralSpawnTV Short.
+Set recommended=true only when the overall score is {MIN_SCORE}+ and the
+window is genuinely worth publishing as a 50-60 second ViralSpawnTV Short.
 
 SOURCE CHANNEL:
 {acquisition.get("channel", "")}
 
-PRESCREEN PREDICTION:
-score={acquisition.get("prescreen_predicted_score")}
-probability_72_plus={acquisition.get("prescreen_probability_72_plus")}
+PRESCREEN:
+pred={acquisition.get("prescreen_predicted_score")}
+P72={acquisition.get("prescreen_probability_72_plus")}
+hook={acquisition.get("prescreen_hook")}
+story={acquisition.get("prescreen_story_sustain")}
+payoff={acquisition.get("prescreen_payoff")}
+ending={acquisition.get("prescreen_ending_strength")}
 reason={acquisition.get("prescreen_reason", "")}
 
 TRANSCRIPT:
-{transcript[:9000]}
+{transcript[:12000]}
 """
 
     content = [
@@ -286,9 +259,7 @@ def main():
     client = OpenAI()
 
     extract_audio()
-
     frames = extract_frames()
-
     transcript = transcribe(
         client
     )
@@ -307,6 +278,20 @@ def main():
         )
     )
 
+    hook = int(
+        scored.get(
+            "hook",
+            0,
+        )
+    )
+
+    payoff = int(
+        scored.get(
+            "payoff",
+            0,
+        )
+    )
+
     recommended = bool(
         scored.get(
             "recommended",
@@ -314,10 +299,14 @@ def main():
         )
     )
 
-    passed = (
+    passed = bool(
         recommended
         and
         numeric_score >= MIN_SCORE
+        and
+        hook >= MIN_HOOK
+        and
+        payoff >= MIN_PAYOFF
     )
 
     result = {
@@ -325,6 +314,10 @@ def main():
             passed,
         "minimum_score":
             MIN_SCORE,
+        "minimum_hook":
+            MIN_HOOK,
+        "minimum_payoff":
+            MIN_PAYOFF,
         "clip_id":
             acquisition.get(
                 "clip_id"
@@ -333,6 +326,15 @@ def main():
             acquisition.get(
                 "channel"
             ),
+        "selected_window_original":
+            [
+                acquisition.get(
+                    "proposed_window_start_original"
+                ),
+                acquisition.get(
+                    "proposed_window_end_original"
+                ),
+            ],
         **scored,
     }
 
@@ -355,14 +357,12 @@ def main():
 
     if not passed:
         print(
-            "VIRAL QUALITY GATE: REJECTED"
+            "V12.9 VIRAL QUALITY GATE: REJECTED"
         )
-        sys.exit(
-            22
-        )
+        sys.exit(22)
 
     print(
-        "VIRAL QUALITY GATE: PASSED"
+        "V12.9 VIRAL QUALITY GATE: PASSED"
     )
 
 
@@ -371,9 +371,7 @@ if __name__ == "__main__":
         main()
     except Exception as exc:
         print(
-            f"VIRAL QUALITY GATE ERROR: "
+            f"V12.9 VIRAL QUALITY GATE ERROR: "
             f"{exc}"
         )
-        sys.exit(
-            1
-        )
+        sys.exit(1)
