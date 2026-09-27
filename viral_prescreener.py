@@ -28,19 +28,24 @@ MAX_HOOK_WINDOWS_PER_CLIP = 2
 STORY_BATCH_SIZE = 6
 STORY_FRAME_WORKERS = 4
 
+# V12.12 audio-context pass. Only Phase-2 survivors pay this cost.
+AUDIO_TRANSCRIBE_WORKERS = 4
+OPENING_AUDIO_SECONDS = 7.0
+ENDING_AUDIO_SECONDS = 7.0
+
 TARGET_FINAL_SCORE = 72
 
-# V12.11.3 duration strategy:
+# V12.12 duration strategy:
 # Shorts may now be as short as 40 seconds.
 MIN_SOURCE_SECONDS = 40.0
 TARGET_WINDOW_SECONDS = 55.0
 MIN_WINDOW_SECONDS = 40.0
 MAX_WINDOW_SECONDS = 58.0
 
-# V12.11.3 Phase-1 ranking funnel.
+# V12.12 Phase-1 ranking funnel.
 # Rank every non-hard-rejected opening and send the top 10 to Phase 2.
 
-# V12.11.3:
+# V12.12:
 # Phase 2 does not apply another publishability threshold.
 # It ranks the completed candidate windows and sends the top 4 to the
 # unchanged final 72 viral-quality gate.
@@ -284,7 +289,7 @@ def extract_hook_frames(item):
     """
     INPUT-SIDE SEEK:
     seek directly to this specific window start and decode only ~2.1 seconds.
-    This is the key V12.11.3 speed change.
+    This is the key V12.12 speed change.
     """
     candidate = item[
         "candidate"
@@ -381,9 +386,14 @@ def extract_hook_frames(item):
 
 def extract_story_frames(item):
     """
-    Phase 2 only:
-    input-side seek once near the middle and once near the ending.
-    We no longer decode through the whole remote source.
+    V12.12 Phase 2:
+    - input-side seek to the middle for visual story evidence
+    - input-side seek to the ending for payoff evidence
+    - extract a short opening audio sample
+    - extract a short ending audio sample
+
+    Audio extraction is best-effort. A clip with no usable audio still stays
+    in the visual ranking pool.
     """
     candidate = item[
         "candidate"
@@ -428,6 +438,13 @@ def extract_story_frames(item):
         end - 6.0,
     )
 
+    opening_audio_seek = start
+
+    ending_audio_seek = max(
+        start,
+        end - ENDING_AUDIO_SECONDS,
+    )
+
     clip_dir = (
         WORK
         /
@@ -443,15 +460,16 @@ def extract_story_frames(item):
         exist_ok=True,
     )
 
-    for old in clip_dir.glob(
-        "middle_*.jpg"
-    ):
-        old.unlink()
-
-    for old in clip_dir.glob(
-        "ending_*.jpg"
-    ):
-        old.unlink()
+    for pattern in [
+        "middle_*.jpg",
+        "ending_*.jpg",
+        "opening_audio.wav",
+        "ending_audio.wav",
+    ]:
+        for old in clip_dir.glob(
+            pattern
+        ):
+            old.unlink()
 
     middle_pattern = str(
         clip_dir
@@ -463,6 +481,18 @@ def extract_story_frames(item):
         clip_dir
         /
         "ending_%02d.jpg"
+    )
+
+    opening_audio = (
+        clip_dir
+        /
+        "opening_audio.wav"
+    )
+
+    ending_audio = (
+        clip_dir
+        /
+        "ending_audio.wav"
     )
 
     middle_cmd = [
@@ -511,6 +541,56 @@ def extract_story_frames(item):
         ending_pattern,
     ]
 
+    opening_audio_cmd = [
+        "ffmpeg",
+        "-y",
+        "-loglevel",
+        "error",
+        "-ss",
+        f"{opening_audio_seek:.3f}",
+        "-i",
+        item[
+            "media_url"
+        ],
+        "-t",
+        f"{OPENING_AUDIO_SECONDS:.2f}",
+        "-vn",
+        "-ac",
+        "1",
+        "-ar",
+        "16000",
+        "-c:a",
+        "pcm_s16le",
+        str(
+            opening_audio
+        ),
+    ]
+
+    ending_audio_cmd = [
+        "ffmpeg",
+        "-y",
+        "-loglevel",
+        "error",
+        "-ss",
+        f"{ending_audio_seek:.3f}",
+        "-i",
+        item[
+            "media_url"
+        ],
+        "-t",
+        f"{ENDING_AUDIO_SECONDS:.2f}",
+        "-vn",
+        "-ac",
+        "1",
+        "-ar",
+        "16000",
+        "-c:a",
+        "pcm_s16le",
+        str(
+            ending_audio
+        ),
+    ]
+
     subprocess.run(
         middle_cmd,
         check=True,
@@ -522,6 +602,32 @@ def extract_story_frames(item):
         check=True,
         timeout=45,
     )
+
+    # Audio is best-effort. Missing/unsupported audio must not destroy an
+    # otherwise usable gaming candidate.
+    try:
+        subprocess.run(
+            opening_audio_cmd,
+            check=True,
+            timeout=45,
+        )
+    except Exception:
+        try:
+            opening_audio.unlink()
+        except Exception:
+            pass
+
+    try:
+        subprocess.run(
+            ending_audio_cmd,
+            check=True,
+            timeout=45,
+        )
+    except Exception:
+        try:
+            ending_audio.unlink()
+        except Exception:
+            pass
 
     middle_frames = sorted(
         clip_dir.glob(
@@ -556,8 +662,145 @@ def extract_story_frames(item):
                     path.stat().st_size > 0
                 )
             ],
+        "opening_audio":
+            (
+                str(
+                    opening_audio
+                )
+                if (
+                    opening_audio.exists()
+                    and
+                    opening_audio.stat().st_size > 1000
+                )
+                else ""
+            ),
+        "ending_audio":
+            (
+                str(
+                    ending_audio
+                )
+                if (
+                    ending_audio.exists()
+                    and
+                    ending_audio.stat().st_size > 1000
+                )
+                else ""
+            ),
     }
 
+
+def transcribe_audio_file(path):
+    path = Path(
+        str(
+            path or ""
+        )
+    )
+
+    if (
+        not path.exists()
+        or
+        path.stat().st_size <= 1000
+    ):
+        return ""
+
+    try:
+        client = OpenAI()
+
+        with path.open(
+            "rb"
+        ) as file:
+            response = (
+                client
+                .audio
+                .transcriptions
+                .create(
+                    model="whisper-1",
+                    file=file,
+                    response_format="text",
+                )
+            )
+
+        return str(
+            response
+        ).strip()
+
+    except Exception as exc:
+        print(
+            f"AUDIO TRANSCRIBE FAILED "
+            f"{path.name}: {exc}"
+        )
+
+        return ""
+
+
+def transcribe_story_audio(item):
+    return {
+        "opening_transcript":
+            transcribe_audio_file(
+                item.get(
+                    "opening_audio",
+                    "",
+                )
+            ),
+        "ending_transcript":
+            transcribe_audio_file(
+                item.get(
+                    "ending_audio",
+                    "",
+                )
+            ),
+    }
+
+
+def transcribe_audio_parallel(
+    items,
+):
+    results = {}
+
+    with ThreadPoolExecutor(
+        max_workers=AUDIO_TRANSCRIBE_WORKERS
+    ) as executor:
+        future_map = {
+            executor.submit(
+                transcribe_story_audio,
+                item,
+            ): item
+            for item in items
+        }
+
+        for future in as_completed(
+            future_map
+        ):
+            item = future_map[
+                future
+            ]
+
+            item_id = item[
+                "window_item_id"
+            ]
+
+            try:
+                results[
+                    item_id
+                ] = future.result()
+
+            except Exception as exc:
+                print(
+                    f"AUDIO CONTEXT FAILED "
+                    f"{item['candidate'].get('clip_id')}: "
+                    f"{exc}"
+                )
+
+                results[
+                    item_id
+                ] = {
+                    "opening_transcript":
+                        "",
+                    "ending_transcript":
+                        "",
+                }
+
+    return results
 
 def extract_phase_parallel(
     items,
@@ -612,7 +855,7 @@ def score_hook_batch(
     batch,
 ):
     prompt = """
-You are PHASE 1 of ViralSpawnTV's V12.11.3 prescreener.
+You are PHASE 1 of ViralSpawnTV's V12.12 prescreener.
 
 Your ONLY job is to judge whether the FIRST ~2 SECONDS of each proposed
 40-60 second gaming Short are strong enough to stop a viewer from swiping.
@@ -778,7 +1021,7 @@ def score_story_batch(
     batch,
 ):
     prompt = f"""
-You are PHASE 2 of ViralSpawnTV's V12.11.3 prescreener.
+You are PHASE 2 of ViralSpawnTV's V12.12 prescreener.
 
 These windows already survived a dedicated first-2-second Big Hook test.
 Now judge whether the REST of the SAME 40-58 second window earns the
@@ -787,11 +1030,23 @@ viewer staying until the end.
 The final viral gate threshold is {TARGET_FINAL_SCORE}/100.
 
 For each candidate you will see:
-- its already-measured opening-hook scores
+- its already-measured VISUAL opening-hook scores
+- OPENING AUDIO TRANSCRIPT from roughly the first 7 seconds
 - 2 MIDDLE frames
 - up to 3 ENDING/PAYOFF frames
+- ENDING AUDIO TRANSCRIPT from roughly the final 7 seconds
+
+Use the transcripts to catch cases that screenshots cannot:
+- speech/commentary unrelated to the visible gameplay
+- confusing opening chatter
+- whether the spoken context explains the stakes
+- whether the ending audio supports a real payoff/reaction
+- whether the apparent story already happened before this window
 
 Judge:
+- opening_coherence: do opening audio + visuals describe one understandable moment?
+- audio_context: does the spoken context help or at least fit the gameplay story?
+- ending_audio_relevance: does ending speech/reaction support the visible payoff?
 - story_sustain: does the window keep progressing?
 - payoff: is the result/reaction worth waiting for?
 - ending_strength: is the outcome clear and satisfying?
@@ -802,6 +1057,13 @@ Judge:
 - hard_reject
 - content_type gaming/gambling/non_gaming/music_performance/unclear
 - reason
+- audio_reason: one short explanation of whether the speech helps, hurts,
+  or is unavailable
+
+If a transcript is empty, unusable, silent, or non-English, do NOT
+automatically punish the candidate. Use a neutral score around 50 for the
+audio-only metrics unless the available evidence clearly supports another
+score. ViralSpawnTV can translate foreign speech later.
 
 HARD-REJECT RULE:
 Set hard_reject=true ONLY for clearly unsuitable content:
@@ -824,6 +1086,9 @@ Return ONLY JSON:
       "id": 0,
       "predicted_score": 78,
       "probability_72_plus": 75,
+      "opening_coherence": 82,
+      "audio_context": 76,
+      "ending_audio_relevance": 79,
       "story_sustain": 72,
       "payoff": 78,
       "ending_strength": 75,
@@ -831,7 +1096,8 @@ Return ONLY JSON:
       "clarity": 72,
       "hard_reject": false,
       "content_type": "gaming",
-      "reason": "The middle escalates and the ending delivers a clear payoff."
+      "reason": "The middle escalates and the ending delivers a clear payoff.",
+      "audio_reason": "Opening speech matches the visible stakes and the ending reaction supports the payoff."
     }}
   ]
 }}
@@ -879,6 +1145,8 @@ Return ONLY JSON:
                         f"{candidate.get('kick_view_count', 0)}\n"
                         f"kick_likes="
                         f"{candidate.get('kick_like_count', 0)}\n"
+                        "OPENING AUDIO TRANSCRIPT:\n"
+                        f"{item.get('opening_transcript') or '(no usable transcript)'}\n"
                         "NEXT: MIDDLE FRAMES"
                     ),
             }
@@ -909,7 +1177,11 @@ Return ONLY JSON:
                 "type":
                     "input_text",
                 "text":
-                    "NEXT: ENDING / PAYOFF FRAMES",
+                    (
+                        "NEXT: ENDING / PAYOFF FRAMES\n"
+                        "ENDING AUDIO TRANSCRIPT:\n"
+                        f"{item.get('ending_transcript') or '(no usable transcript)'}"
+                    ),
             }
         )
 
@@ -974,6 +1246,20 @@ def final_rank(row):
         ] * 0.20
     )
 
+    audio_context_score = (
+        row[
+            "prescreen_opening_coherence"
+        ] * 0.50
+        +
+        row[
+            "prescreen_audio_context"
+        ] * 0.30
+        +
+        row[
+            "prescreen_ending_audio_relevance"
+        ] * 0.20
+    )
+
     clarity_action = (
         row[
             "prescreen_clarity"
@@ -984,19 +1270,26 @@ def final_rank(row):
         ] * 0.40
     )
 
+    # V12.12 weighting:
+    # 30% visual opening
+    # 30% story/payoff
+    # 20% audio/context coherence
+    # 10% clarity/action
+    # 10% predicted final-gate probability
     return round(
-        opening * 0.40
+        opening * 0.30
         +
-        story * 0.35
+        story * 0.30
         +
-        clarity_action * 0.15
+        audio_context_score * 0.20
+        +
+        clarity_action * 0.10
         +
         row[
             "prescreen_probability_72_plus"
         ] * 0.10,
         2,
     )
-
 
 def main():
     if not INPUT.exists():
@@ -1023,7 +1316,7 @@ def main():
         )
 
     print(
-        f"V12.11.3 TWO-PHASE PRESCREENER received "
+        f"V12.12 TWO-PHASE PRESCREENER received "
         f"{len(candidates)} candidates."
     )
 
@@ -1037,7 +1330,7 @@ def main():
         )
 
     print(
-        f"V12.11.3 PHASE 1: "
+        f"V12.12 PHASE 1: "
         f"{len(windows)} total windows -> "
         f"opening-only extraction with "
         f"{HOOK_FRAME_WORKERS} workers."
@@ -1057,7 +1350,7 @@ def main():
     )
 
     print(
-        f"V12.11.3 TIMING | hook_frame_extract: "
+        f"V12.12 TIMING | hook_frame_extract: "
         f"{time.perf_counter() - hook_extract_started:.1f}s"
     )
 
@@ -1158,7 +1451,7 @@ def main():
                 )
             ).strip().lower()
 
-            # V12.11.3: model scores cannot hard-reject weak gameplay.
+            # V12.12: model scores cannot hard-reject weak gameplay.
             # Only clearly unsuitable content categories are removed.
             hard_reject = content_type in {
                 "gambling",
@@ -1216,7 +1509,7 @@ def main():
                 row
             )
 
-            # V12.11.3: every non-hard-rejected opening is rankable.
+            # V12.12: every non-hard-rejected opening is rankable.
             row[
                 "prescreen_hook_phase_pass"
             ] = bool(
@@ -1228,12 +1521,12 @@ def main():
             )
 
     print(
-        f"V12.11.3 TIMING | hook_ai: "
+        f"V12.12 TIMING | hook_ai: "
         f"{time.perf_counter() - hook_ai_started:.1f}s"
     )
 
     # ---------------------------------------------------------
-    # V12.11.3 TOP-RANKED HOOK SURVIVORS
+    # V12.12 TOP-RANKED HOOK SURVIVORS
     # ---------------------------------------------------------
     # Phase 1 no longer uses arbitrary score floors.
     # Remove only hard-rejected content, rank everything else, and send
@@ -1307,7 +1600,7 @@ def main():
     viable = non_rejected
 
     print(
-        f"V12.11.3 PHASE 1 COMPLETE: "
+        f"V12.12 PHASE 1 COMPLETE: "
         f"{len(hook_items)} openings scored -> "
         f"{len(non_rejected)} non-hard-rejected -> "
         f"top {len(phase2_seed)} ranked windows advance."
@@ -1336,7 +1629,7 @@ def main():
 
     if not phase2_seed:
         raise RuntimeError(
-            "No non-hard-rejected opening was available for V12.11.3 Phase 2."
+            "No non-hard-rejected opening was available for V12.12 Phase 2."
         )
 
     story_extract_started = (
@@ -1353,7 +1646,7 @@ def main():
     )
 
     print(
-        f"V12.11.3 TIMING | story_frame_extract: "
+        f"V12.12 TIMING | story_frame_extract: "
         f"{time.perf_counter() - story_extract_started:.1f}s"
     )
 
@@ -1393,6 +1686,61 @@ def main():
         raise RuntimeError(
             "No Phase-2 story frames extracted."
         )
+
+    audio_context_started = (
+        time.perf_counter()
+    )
+
+    audio_context_results = (
+        transcribe_audio_parallel(
+            story_items
+        )
+    )
+
+    for item in story_items:
+        audio_data = (
+            audio_context_results.get(
+                item[
+                    "window_item_id"
+                ],
+                {},
+            )
+        )
+
+        item[
+            "opening_transcript"
+        ] = str(
+            audio_data.get(
+                "opening_transcript",
+                "",
+            )
+        ).strip()
+
+        item[
+            "ending_transcript"
+        ] = str(
+            audio_data.get(
+                "ending_transcript",
+                "",
+            )
+        ).strip()
+
+        print(
+            f"AUDIO CONTEXT: "
+            f"{item['candidate'].get('clip_id')} | "
+            f"window="
+            f"{item['window'].get('start'):.1f}-"
+            f"{item['window'].get('end'):.1f}s | "
+            f"opening_chars="
+            f"{len(item['opening_transcript'])} | "
+            f"ending_chars="
+            f"{len(item['ending_transcript'])}"
+        )
+
+    print(
+        f"V12.12 TIMING | audio_context: "
+        f"{time.perf_counter() - audio_context_started:.1f}s"
+    )
 
     story_ai_started = (
         time.perf_counter()
@@ -1475,6 +1823,9 @@ def main():
                 f"{item['window'].get('start'):.1f}-"
                 f"{item['window'].get('end'):.1f}s | "
                 f"pred={clamp(result.get('predicted_score'))} | "
+                f"coherence={clamp(result.get('opening_coherence', 50))} | "
+                f"audio={clamp(result.get('audio_context', 50))} | "
+                f"end_audio={clamp(result.get('ending_audio_relevance', 50))} | "
                 f"story={clamp(result.get('story_sustain'))} | "
                 f"payoff={clamp(result.get('payoff'))} | "
                 f"ending={clamp(result.get('ending_strength'))} | "
@@ -1553,6 +1904,27 @@ def main():
                                 "probability_72_plus"
                             )
                         ),
+                    "prescreen_opening_coherence":
+                        clamp(
+                            result.get(
+                                "opening_coherence",
+                                50,
+                            )
+                        ),
+                    "prescreen_audio_context":
+                        clamp(
+                            result.get(
+                                "audio_context",
+                                50,
+                            )
+                        ),
+                    "prescreen_ending_audio_relevance":
+                        clamp(
+                            result.get(
+                                "ending_audio_relevance",
+                                50,
+                            )
+                        ),
                     "prescreen_story_sustain":
                         clamp(
                             result.get(
@@ -1585,6 +1957,23 @@ def main():
                         ),
                     "prescreen_story_content_type":
                         story_content_type,
+                    "prescreen_opening_transcript":
+                        item.get(
+                            "opening_transcript",
+                            "",
+                        ),
+                    "prescreen_ending_transcript":
+                        item.get(
+                            "ending_transcript",
+                            "",
+                        ),
+                    "prescreen_audio_reason":
+                        str(
+                            result.get(
+                                "audio_reason",
+                                "",
+                            )
+                        ).strip(),
                     "prescreen_reason":
                         str(
                             result.get(
@@ -1601,7 +1990,7 @@ def main():
                 candidate
             )
 
-            # V12.11.3: no Phase-2 publish threshold here.
+            # V12.12: no Phase-2 publish threshold here.
             # Keep the candidate and let rank ordering choose which four
             # windows reach the real viral-quality gate.
 
@@ -1610,7 +1999,7 @@ def main():
             )
 
     print(
-        f"V12.11.3 TIMING | story_ai: "
+        f"V12.12 TIMING | story_ai: "
         f"{time.perf_counter() - story_ai_started:.1f}s"
     )
 
@@ -1654,7 +2043,7 @@ def main():
         best_by_clip.values()
     )
 
-    # V12.11.3:
+    # V12.12:
     # Phase 2 ranks all suitable completed stories. No hook/payoff/predicted
     # score threshold is allowed to overrule the final viral gate.
     best_rows.sort(
@@ -1686,7 +2075,7 @@ def main():
     ]
 
     print(
-        f"V12.11.3 PHASE 2 COMPLETE: "
+        f"V12.12 PHASE 2 COMPLETE: "
         f"{len(final_rows)} completed windows -> "
         f"{len(best_rows)} best-per-clip -> "
         f"top {len(promoted)} sent to final viral gate."
@@ -1699,7 +2088,7 @@ def main():
 
     payload = {
         "version":
-            "12.11.3-top4-final-gate",
+            "12.12-audio-aware-top4",
         "target_final_score":
             TARGET_FINAL_SCORE,
         "input_candidate_count":
@@ -1744,7 +2133,7 @@ def main():
 
     print()
     print(
-        f"V12.11.3 TWO-PHASE PRESCREEN COMPLETE: "
+        f"V12.12 TWO-PHASE PRESCREEN COMPLETE: "
         f"{len(windows)} windows -> "
         f"{len(viable)} hook-pass -> "
         f"{len(story_items)} story-inspected -> "
@@ -1753,7 +2142,7 @@ def main():
     )
 
     print(
-        f"V12.11.3 PRESCREEN TOTAL: "
+        f"V12.12 PRESCREEN TOTAL: "
         f"{time.perf_counter() - started:.1f}s"
     )
 
@@ -1769,6 +2158,8 @@ def main():
             f"{row.get('proposed_window_end'):.1f}s | "
             f"hook={row.get('prescreen_hook')} | "
             f"hookrank={row.get('prescreen_hook_rank')} | "
+            f"coherence={row.get('prescreen_opening_coherence')} | "
+            f"audio={row.get('prescreen_audio_context')} | "
             f"story={row.get('prescreen_story_sustain')} | "
             f"payoff={row.get('prescreen_payoff')} | "
             f"pred={row.get('prescreen_predicted_score')} | "
@@ -1781,7 +2172,7 @@ if __name__ == "__main__":
         main()
     except Exception as exc:
         print(
-            "V12.11.3 TWO-PHASE PRESCREENER ERROR:",
+            "V12.12 TWO-PHASE PRESCREENER ERROR:",
             exc,
         )
         sys.exit(1)
