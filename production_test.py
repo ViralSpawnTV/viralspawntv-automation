@@ -253,18 +253,69 @@ def extract_frames(video):
 
     seconds = duration(video)
 
+    # V5.9.4: keep broad story coverage, but deliberately reserve evidence
+    # near the END of the source. Earlier versions could miss the actual
+    # terminal result/ACE/ROUND WON/reaction because the last sampled frame
+    # landed several seconds too early.
     timestamps = []
 
-    t = 1.0
+    t = 0.8
 
     while t < seconds:
 
-        timestamps.append(t)
+        timestamps.append(
+            round(
+                t,
+                3,
+            )
+        )
 
-        # More visual context than V3.
-        t += 3.0
+        t += 2.75
 
-    timestamps = timestamps[:24]
+    for tail_offset in [
+        7.0,
+        5.0,
+        3.0,
+        1.5,
+        0.6,
+    ]:
+        timestamp = max(
+            0.2,
+            seconds - tail_offset,
+        )
+
+        timestamps.append(
+            round(
+                timestamp,
+                3,
+            )
+        )
+
+    timestamps = sorted(
+        {
+            value
+            for value in timestamps
+            if (
+                0.0
+                <
+                value
+                <
+                seconds
+            )
+        }
+    )
+
+    # Keep the request bounded but preserve the newest tail samples.
+    if len(timestamps) > 24:
+        head = timestamps[:19]
+        tail = timestamps[-5:]
+
+        timestamps = sorted(
+            {
+                *head,
+                *tail,
+            }
+        )
 
     frames = []
 
@@ -1181,6 +1232,738 @@ Return ONLY JSON:
 
 
 # ============================================================
+# V5.9.4 PRE-RENDER STORY / PAYOFF VALIDATOR
+# ============================================================
+
+def validate_and_repair_story_plan(
+    client,
+    plan,
+    seconds,
+    frames,
+    segments,
+):
+    """
+    Cheap validation BEFORE TTS/rendering.
+
+    Goals:
+    - verify the terminal payoff timestamp
+    - guarantee the selected segment actually contains it
+    - repair vague/unsupported narration
+    - make the payoff visually explicit when evidence supports a label
+    - reject an edit plan before a 6-8 minute render if the source cannot
+      produce a coherent finished Short
+    """
+
+    segment_start = float(
+        plan.get(
+            "segment_start",
+            0.0,
+        )
+    )
+
+    segment_end = float(
+        plan.get(
+            "segment_end",
+            seconds,
+        )
+    )
+
+    current_payoff = float(
+        plan.get(
+            "payoff_time",
+            segment_end,
+        )
+    )
+
+    selected_lines = []
+
+    for item in segments:
+        try:
+            start = float(
+                item.get(
+                    "start",
+                    0,
+                )
+            )
+
+            end = float(
+                item.get(
+                    "end",
+                    0,
+                )
+            )
+        except Exception:
+            continue
+
+        if end <= segment_start:
+            continue
+
+        if start >= seconds:
+            continue
+
+        selected_lines.append(
+            (
+                f"[{start:.2f}-{end:.2f}] "
+                f"{clean_text(item.get('text', ''))}"
+            )
+        )
+
+    selected_transcript = "\n".join(
+        selected_lines
+    )[:10000]
+
+    content = [
+        {
+            "type":
+                "input_text",
+            "text":
+                f"""
+You are the PRE-RENDER story validator for ViralSpawnTV V5.9.4.
+
+The source has already passed a strict source-quality gate.
+Your job is to make sure the EDIT PLAN preserves the source's real story
+and terminal payoff BEFORE we spend several minutes rendering.
+
+SOURCE LENGTH:
+{seconds:.2f}s
+
+CURRENT SEGMENT:
+{segment_start:.2f}-{segment_end:.2f}s
+
+CURRENT PAYOFF TIME:
+{current_payoff:.2f}s
+
+CURRENT HEADLINE:
+{plan.get("headline", "")}
+
+CURRENT COMMENTARY:
+{json.dumps(plan.get("commentary", []), ensure_ascii=False)}
+
+CURRENT IMPACTS:
+{json.dumps(plan.get("impacts", []), ensure_ascii=False)}
+
+TIMESTAMPED TRANSCRIPT:
+{selected_transcript}
+
+RULES:
+
+1. TERMINAL PAYOFF
+Find the LAST meaningful event that truly completes the story promised by
+the edit. Examples: ACE/ROUND WON, confirmed death, final survivor result,
+goal/result confirmation, visible fail, reveal, or decisive reaction.
+
+Do not choose an intermediate goal/kill if a later banner, result, reaction,
+or confirmation is the real payoff.
+
+2. PAYOFF COVERAGE
+The final segment MUST contain the terminal payoff plus enough time for the
+viewer to register it. Recommend an ending about 1.0-2.0 seconds after the
+verified payoff when source footage allows it.
+
+3. STORY PROGRESSION
+The finished narration must help a viewer unfamiliar with the game follow
+the progression. The hook can stay short, but later narration should explain
+what materially changes.
+
+4. CLAIM SUPPORT
+Do not say everyone died, an ACE happened, a plant was stopped, a round was
+won, a score changed, etc. unless the transcript/frames actually support it.
+
+5. PAYOFF LABEL
+If the final evidence visibly or verbally supports a concise payoff label
+such as "ACE", "ROUND WON", "FINAL SURVIVOR", "GOAL", "CLUTCH", or
+"HE'S OUT", return it. Otherwise return an empty string.
+Never invent a label.
+
+6. DEAD MIDDLE
+If the source contains unavoidable static/holding footage, narration should
+use that time to explain the stakes/progression rather than repeating hype.
+
+Return ONLY JSON:
+{{
+  "verified_payoff_time": 0.0,
+  "recommended_segment_end": 0.0,
+  "payoff_label": "",
+  "payoff_style": "celebration/shock/tension/funny",
+  "payoff_coverage": 0-100,
+  "progression_clarity": 0-100,
+  "claim_support": 0-100,
+  "dead_middle_risk": 0-100,
+  "predicted_finished_score": 0-100,
+  "repairable": true,
+  "reason": "short explanation",
+  "commentary": [
+    {{
+      "time": 0.15,
+      "text": "short factual line",
+      "delivery": "normal/excited/hype/amused/serious"
+    }}
+  ]
+}}
+
+COMMENTARY RULES:
+- Preserve the existing first hook idea unless it is unsupported.
+- Return 3-5 total lines when the footage supports them.
+- Use relative times from the selected segment start.
+- Every later line must add NEW context/progression/reaction.
+- No player names/handles.
+- No unsupported numbers.
+- Do not narrate the payoff before it becomes visible.
+""",
+        }
+    ]
+
+    # Give the validator broad visual coverage, especially the tail.
+    relevant_frames = []
+
+    for timestamp, path in frames:
+        try:
+            timestamp = float(
+                timestamp
+            )
+        except Exception:
+            continue
+
+        if timestamp < segment_start - 0.25:
+            continue
+
+        relevant_frames.append(
+            (
+                timestamp,
+                path,
+            )
+        )
+
+    if len(relevant_frames) > 12:
+        # First 7 story frames + last 5 payoff frames.
+        relevant_frames = (
+            relevant_frames[:7]
+            +
+            relevant_frames[-5:]
+        )
+
+    for timestamp, path in relevant_frames:
+        content.append(
+            {
+                "type":
+                    "input_text",
+                "text":
+                    (
+                        f"SOURCE FRAME around "
+                        f"{timestamp:.2f}s:"
+                    ),
+            }
+        )
+
+        content.append(
+            {
+                "type":
+                    "input_image",
+                "image_url":
+                    (
+                        "data:image/jpeg;base64,"
+                        +
+                        encode_image(
+                            path
+                        )
+                    ),
+            }
+        )
+
+    response = client.responses.create(
+        model=os.getenv(
+            "OPENAI_MODEL",
+            "gpt-5.6",
+        ),
+        input=[
+            {
+                "role":
+                    "user",
+                "content":
+                    content,
+            }
+        ],
+    )
+
+    raw = response.output_text.strip()
+
+    if raw.startswith("```"):
+        raw = (
+            raw
+            .split("\n", 1)[1]
+            .rsplit("```", 1)[0]
+        )
+
+    result = json.loads(
+        raw
+    )
+
+    def bounded_score(name):
+        try:
+            return max(
+                0,
+                min(
+                    100,
+                    int(
+                        round(
+                            float(
+                                result.get(
+                                    name,
+                                    0,
+                                )
+                            )
+                        )
+                    ),
+                ),
+            )
+        except Exception:
+            return 0
+
+    try:
+        verified_payoff = float(
+            result.get(
+                "verified_payoff_time",
+                current_payoff,
+            )
+        )
+    except Exception:
+        verified_payoff = current_payoff
+
+    verified_payoff = max(
+        segment_start,
+        min(
+            verified_payoff,
+            seconds,
+        )
+    )
+
+    try:
+        recommended_end = float(
+            result.get(
+                "recommended_segment_end",
+                verified_payoff + 1.75,
+            )
+        )
+    except Exception:
+        recommended_end = (
+            verified_payoff
+            +
+            1.75
+        )
+
+    # Never allow the validator to trim BEFORE the verified payoff.
+    recommended_end = max(
+        recommended_end,
+        verified_payoff + 1.0,
+    )
+
+    recommended_end = min(
+        seconds,
+        recommended_end,
+    )
+
+    # Extend the current edit when needed so the actual terminal payoff is
+    # guaranteed to survive production.
+    segment_end = max(
+        segment_end,
+        recommended_end,
+    )
+
+    # Keep the hard Shorts ceiling by moving the start forward only if the
+    # source is long enough to require it.
+    if (
+        segment_end
+        -
+        segment_start
+        >
+        CORE_MAX_SECONDS
+    ):
+        segment_start = max(
+            0.0,
+            segment_end
+            -
+            CORE_MAX_SECONDS,
+        )
+
+    # Preserve minimum duration.
+    if (
+        segment_end
+        -
+        segment_start
+        <
+        CORE_MIN_SECONDS
+    ):
+        segment_start = max(
+            0.0,
+            segment_end
+            -
+            CORE_MIN_SECONDS,
+        )
+
+    segment_end = min(
+        seconds,
+        segment_end,
+        segment_start
+        +
+        CORE_MAX_SECONDS,
+    )
+
+    plan[
+        "segment_start"
+    ] = segment_start
+
+    plan[
+        "segment_end"
+    ] = segment_end
+
+    plan[
+        "payoff_time"
+    ] = verified_payoff
+
+    # Replace post-hook commentary with validator-repaired progression beats.
+    repaired_commentary = []
+
+    valid_delivery = {
+        "normal",
+        "excited",
+        "hype",
+        "amused",
+        "serious",
+    }
+
+    for beat in result.get(
+        "commentary",
+        [],
+    )[:5]:
+        try:
+            beat_time = float(
+                beat.get(
+                    "time",
+                    0,
+                )
+            )
+        except Exception:
+            continue
+
+        beat_text = clean_text(
+            beat.get(
+                "text",
+                "",
+            )
+        )
+
+        delivery = str(
+            beat.get(
+                "delivery",
+                "normal",
+            )
+        ).lower()
+
+        if delivery not in valid_delivery:
+            delivery = "normal"
+
+        if (
+            beat_text
+            and
+            0.0
+            <=
+            beat_time
+            <
+            (
+                segment_end
+                -
+                segment_start
+                -
+                0.25
+            )
+        ):
+            repaired_commentary.append(
+                {
+                    "time":
+                        beat_time,
+                    "text":
+                        beat_text,
+                    "delivery":
+                        delivery,
+                }
+            )
+
+    # Keep the factual Big Hook line if the validator forgot to return one.
+    existing_commentary = (
+        plan.get(
+            "commentary",
+            [],
+        )
+        if isinstance(
+            plan.get(
+                "commentary",
+                [],
+            ),
+            list,
+        )
+        else []
+    )
+
+    if existing_commentary:
+        existing_hook = dict(
+            existing_commentary[
+                0
+            ]
+        )
+
+        existing_hook[
+            "time"
+        ] = 0.15
+
+        if not repaired_commentary:
+            repaired_commentary = [
+                existing_hook
+            ]
+
+        else:
+            repaired_commentary[
+                0
+            ] = existing_hook
+
+    repaired_commentary = sanitize_commentary(
+        client,
+        repaired_commentary,
+        segments,
+        segment_start,
+        segment_end,
+    )
+
+    plan[
+        "commentary"
+    ] = repaired_commentary
+
+    payoff_label = clean_text(
+        result.get(
+            "payoff_label",
+            "",
+        )
+    ).upper()[:32]
+
+    payoff_style = str(
+        result.get(
+            "payoff_style",
+            "celebration",
+        )
+    ).lower()
+
+    if payoff_style not in {
+        "celebration",
+        "shock",
+        "tension",
+        "funny",
+    }:
+        payoff_style = "celebration"
+
+    # Guarantee one visually explicit payoff marker when supported.
+    if payoff_label:
+        payoff_relative = max(
+            0.0,
+            verified_payoff
+            -
+            segment_start,
+        )
+
+        impacts = [
+            item
+            for item in (
+                plan.get(
+                    "impacts",
+                    [],
+                )
+                if isinstance(
+                    plan.get(
+                        "impacts",
+                        [],
+                    ),
+                    list,
+                )
+                else []
+            )
+            if (
+                abs(
+                    float(
+                        item.get(
+                            "time",
+                            -999,
+                        )
+                    )
+                    -
+                    payoff_relative
+                )
+                >
+                1.25
+            )
+        ]
+
+        impacts.append(
+            {
+                "time":
+                    min(
+                        payoff_relative,
+                        max(
+                            0.0,
+                            (
+                                segment_end
+                                -
+                                segment_start
+                                -
+                                0.6
+                            ),
+                        ),
+                    ),
+                "text":
+                    payoff_label,
+                "style":
+                    payoff_style,
+                "intensity":
+                    2,
+            }
+        )
+
+        impacts.sort(
+            key=lambda item: float(
+                item.get(
+                    "time",
+                    0,
+                )
+            )
+        )
+
+        plan[
+            "impacts"
+        ] = impacts[
+            -2:
+        ]
+
+    validation = {
+        "passed":
+            bool(
+                bool(
+                    result.get(
+                        "repairable",
+                        True,
+                    )
+                )
+                and
+                bounded_score(
+                    "payoff_coverage"
+                )
+                >=
+                68
+                and
+                bounded_score(
+                    "claim_support"
+                )
+                >=
+                70
+                and
+                bounded_score(
+                    "progression_clarity"
+                )
+                >=
+                60
+                and
+                bounded_score(
+                    "predicted_finished_score"
+                )
+                >=
+                64
+            ),
+        "verified_payoff_time":
+            verified_payoff,
+        "segment_start":
+            segment_start,
+        "segment_end":
+            segment_end,
+        "payoff_label":
+            payoff_label,
+        "payoff_coverage":
+            bounded_score(
+                "payoff_coverage"
+            ),
+        "progression_clarity":
+            bounded_score(
+                "progression_clarity"
+            ),
+        "claim_support":
+            bounded_score(
+                "claim_support"
+            ),
+        "dead_middle_risk":
+            bounded_score(
+                "dead_middle_risk"
+            ),
+        "predicted_finished_score":
+            bounded_score(
+                "predicted_finished_score"
+            ),
+        "repairable":
+            bool(
+                result.get(
+                    "repairable",
+                    True,
+                )
+            ),
+        "reason":
+            clean_text(
+                result.get(
+                    "reason",
+                    "",
+                )
+            ),
+    }
+
+    plan[
+        "pre_render_validation"
+    ] = validation
+
+    (
+        WORK
+        /
+        "pre_render_plan_gate.json"
+    ).write_text(
+        json.dumps(
+            validation,
+            indent=2,
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+
+    (
+        WORK
+        /
+        "v4_edit_plan.json"
+    ).write_text(
+        json.dumps(
+            plan,
+            indent=2,
+            ensure_ascii=False,
+        ),
+        encoding="utf-8",
+    )
+
+    print(
+        "V5.9.4 PRE-RENDER PLAN GATE: "
+        f"payoff={validation['payoff_coverage']} | "
+        f"progression={validation['progression_clarity']} | "
+        f"claims={validation['claim_support']} | "
+        f"pred={validation['predicted_finished_score']} | "
+        f"end={segment_end:.2f}s"
+    )
+
+    return (
+        plan,
+        validation,
+    )
+
+
+# ============================================================
 # AI EDIT PLAN
 # ============================================================
 
@@ -1194,7 +1977,7 @@ def create_plan(
 ):
 
     print("\n" + "=" * 65)
-    print("VIRALSPAWNTV V5.9.3 ACCURACY EDITOR")
+    print("VIRALSPAWNTV V5.9.4 VERIFIED STORY EDITOR")
     print("=" * 65)
 
     transcript_with_times = "\n".join(
@@ -1275,12 +2058,20 @@ SELECT THE CLIP
 Choose ONE continuous CORE segment.
 
 PAYOFF-FIRST ENDING:
-Also identify the exact source timestamp where the meaningful payoff/result
-occurs. Return it as "payoff_time" using seconds from the start of THIS
-source file.
+Also identify the exact source timestamp where the TERMINAL meaningful
+payoff/result occurs. Return it as "payoff_time" using seconds from the
+start of THIS source file.
 
-The finished core should normally end about 0.5-1.5 seconds AFTER that
-payoff/reaction.
+TERMINAL means the latest moment that actually completes the story:
+- confirmed ROUND WON / ACE / victory / death / goal / save / result
+- the reaction that proves the result landed
+- a scoreboard/banner/replay that is necessary to confirm the outcome
+
+Do NOT choose an earlier intermediate success if a later moment is the
+real confirmation of the promised outcome.
+
+The finished core must include that terminal payoff and should normally
+end about 1.0-2.0 seconds AFTER the confirmation/reaction.
 
 Do NOT keep post-payoff filler such as:
 - developer consoles
@@ -1355,6 +2146,19 @@ story, point out a meaningful gameplay decision, react to a specific moment,
 or connect setup to payoff. Do not merely restate what the viewer can already
 see. Make every line specific to THIS clip so the narration would not make
 sense pasted onto a different gaming clip.
+
+PROGRESSION CLARITY:
+At least ONE non-hook narration beat should help a viewer unfamiliar with
+the game understand how the situation is progressing toward the payoff.
+Use only facts supported by the transcript or visible evidence.
+Examples of useful progression information:
+- what objective is being defended/attempted
+- what changed after an elimination/goal/failure
+- why the current position matters
+- what still has to happen before the result is secure
+
+Avoid vague narration that merely says the action is "crazy", "close",
+"intense", or "not over yet" without explaining what actually changed.
 
 The FIRST commentary beat is the BIG HOOK voice line.
 
@@ -1762,7 +2566,7 @@ Return ONLY valid JSON:
     ):
         payoff_end = min(
             seconds,
-            payoff_time + 1.25,
+            payoff_time + 1.75,
         )
 
         end = min(
@@ -3706,13 +4510,20 @@ def save_metadata(
         "segment_end": plan[
             "segment_end"
         ],
+        "payoff_time": plan.get(
+            "payoff_time"
+        ),
+        "pre_render_validation": plan.get(
+            "pre_render_validation",
+            {},
+        ),
         "commentary": plan[
             "commentary"
         ],
         "impacts": plan[
             "impacts"
         ],
-        "shorts_branding_version": "5.9.3-factual-hook-payoff-trim",
+        "shorts_branding_version": "5.9.4-verified-payoff-story-clarity",
         "branding_intro": str(INTRO_IMAGE),
         "branding_outro": str(OUTRO_IMAGE),
         "branding_intro_seconds": INTRO_SECONDS,
@@ -3803,6 +4614,36 @@ def main():
         frames,
         transcript,
         segments
+    )
+
+    # --------------------------------------------------------
+    # 5A. V5.9.4 pre-render story/payoff verification
+    # --------------------------------------------------------
+
+    plan, pre_render_validation = (
+        validate_and_repair_story_plan(
+            client,
+            plan,
+            seconds,
+            frames,
+            segments,
+        )
+    )
+
+    if not pre_render_validation.get(
+        "passed",
+        False,
+    ):
+        print(
+            "V5.9.4 PRE-RENDER PLAN GATE: REJECTED | "
+            f"{pre_render_validation.get('reason', '')}"
+        )
+
+        # Exit 24 is a normal candidate rejection, not a software failure.
+        raise SystemExit(24)
+
+    print(
+        "V5.9.4 PRE-RENDER PLAN GATE: PASSED"
     )
 
     # --------------------------------------------------------
