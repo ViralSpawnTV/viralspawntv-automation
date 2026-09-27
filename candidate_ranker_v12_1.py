@@ -1,5 +1,6 @@
 import json
 import re
+import subprocess
 import sys
 from pathlib import Path
 from urllib.parse import urlsplit, urlunsplit
@@ -13,10 +14,12 @@ OUT = Path("work/v12_ranked_candidates.json")
 SHORTS_HISTORY = Path("history.json")
 SHORTS_REJECTED_HISTORY = Path("shorts_rejected_history.json")
 
-# V12.8: send a deeper bench to duration + hook/story prescreening.
+# V12.9 FAST PASS:
+# One page visit now collects metadata + HLS playlist + duration.
 MAX_INSPECT = 100
-MAX_RANKED = 100
+MAX_RANKED = 40
 MIN_SCORE = 0
+MIN_SOURCE_SECONDS = 49.0
 
 BLOCKED = {
     "casino", "gambling", "roulette", "blackjack", "sportsbook",
@@ -195,62 +198,223 @@ def hits(text, words):
     )
 
 
+
+def probe_stream_duration(playlist_url):
+    if not playlist_url:
+        return None
+
+    try:
+        result = subprocess.run(
+            [
+                "ffprobe",
+                "-v",
+                "error",
+                "-show_entries",
+                "format=duration",
+                "-of",
+                "default=noprint_wrappers=1:nokey=1",
+                playlist_url,
+            ],
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=20,
+        )
+
+        value = result.stdout.strip()
+
+        if not value:
+            return None
+
+        seconds = float(value)
+
+        if seconds <= 0:
+            return None
+
+        return seconds
+
+    except Exception:
+        return None
+
+
 def inspect_metadata(page, candidate):
-    page.goto(
-        candidate["clip_url"],
-        wait_until="domcontentloaded",
-        timeout=30000,
-    )
+    """
+    V12.9 uses ONE Kick-page visit for:
+    - title / description
+    - HLS playlist capture
+    - source duration
 
-    page.wait_for_timeout(250)
+    The visual prescreener reuses the captured HLS URL instead of opening
+    the same page again.
+    """
+    playlist_urls = []
 
-    title = norm(page.title())
-    desc = ""
+    def capture(response):
+        url = response.url
 
-    for selector in [
-        'meta[name="description"]',
-        'meta[property="og:description"]',
-        'meta[name="twitter:description"]',
-    ]:
-        try:
-            value = (
-                page.locator(selector)
-                .first
-                .get_attribute("content")
+        if ".m3u8" in url:
+            playlist_urls.append(
+                url
             )
 
-            if value:
-                desc = norm(value)
-                break
+    page.on(
+        "response",
+        capture,
+    )
+
+    try:
+        page.goto(
+            candidate["clip_url"],
+            wait_until="domcontentloaded",
+            timeout=30000,
+        )
+
+        # Short wait only; this replaces the second page visit that the
+        # old visual prescreener used to perform.
+        page.wait_for_timeout(
+            450
+        )
+
+        try:
+            page.locator(
+                "video"
+            ).first.click(
+                timeout=1000
+            )
+
+            page.wait_for_timeout(
+                350
+            )
 
         except Exception:
             pass
+
+        # Give slow HLS responses one small extra chance.
+        if not playlist_urls:
+            page.wait_for_timeout(
+                450
+            )
+
+        title = norm(
+            page.title()
+        )
+
+        desc = ""
+
+        for selector in [
+            'meta[name="description"]',
+            'meta[property="og:description"]',
+            'meta[name="twitter:description"]',
+        ]:
+            try:
+                value = (
+                    page.locator(
+                        selector
+                    )
+                    .first
+                    .get_attribute(
+                        "content"
+                    )
+                )
+
+                if value:
+                    desc = norm(
+                        value
+                    )
+                    break
+
+            except Exception:
+                pass
+
+    finally:
+        try:
+            page.remove_listener(
+                "response",
+                capture,
+            )
+        except Exception:
+            pass
+
+    chosen_playlist = None
+
+    clip_id = str(
+        candidate.get(
+            "clip_id",
+            "",
+        )
+    ).lower()
+
+    for url in playlist_urls:
+        if (
+            clip_id
+            and clip_id in url.lower()
+        ):
+            chosen_playlist = url
+            break
+
+    if (
+        not chosen_playlist
+        and playlist_urls
+    ):
+        chosen_playlist = (
+            playlist_urls[-1]
+        )
+
+    source_seconds = (
+        probe_stream_duration(
+            chosen_playlist
+        )
+        if chosen_playlist
+        else None
+    )
 
     text = norm(
         f"{title} {desc}"
     )
 
-    row = dict(candidate)
+    row = dict(
+        candidate
+    )
 
     row.update(
         {
-            "page_title": title,
-            "page_description": desc,
-            "metadata_text": text,
-            "bad_hits": hits(text, BLOCKED),
-            "music_hits": hits(
+            "page_title":
+                title,
+            "page_description":
+                desc,
+            "metadata_text":
                 text,
-                MUSIC_BLOCKED,
-            ),
-            "action_hits": hits(
-                text,
-                ACTION,
-            ),
+            "bad_hits":
+                hits(
+                    text,
+                    BLOCKED,
+                ),
+            "music_hits":
+                hits(
+                    text,
+                    MUSIC_BLOCKED,
+                ),
+            "action_hits":
+                hits(
+                    text,
+                    ACTION,
+                ),
+            "playlist_url":
+                chosen_playlist,
+            "source_duration_seconds":
+                (
+                    round(
+                        source_seconds,
+                        3,
+                    )
+                    if source_seconds
+                    is not None
+                    else None
+                ),
         }
     )
 
     return row
-
 
 def main():
     if not MANIFEST.exists():
@@ -323,7 +487,7 @@ def main():
     ]
 
     print(
-        f"V12.8 freshness filter: "
+        f"V12.9 freshness filter: "
         f"{len(all_candidates)} discovered -> "
         f"{len(fresh_candidates)} fresh -> "
         f"{len(candidates)} metadata-inspected."
@@ -368,6 +532,43 @@ def main():
                         f"HARD REJECT music metadata: "
                         f"{candidate.get('clip_id')} "
                         f"{row['music_hits']}"
+                    )
+                    continue
+
+                if not row.get(
+                    "playlist_url"
+                ):
+                    print(
+                        f"[{i}/{len(candidates)}] "
+                        f"SKIP no HLS captured: "
+                        f"{candidate.get('clip_id')}"
+                    )
+                    continue
+
+                source_seconds = row.get(
+                    "source_duration_seconds"
+                )
+
+                if source_seconds is None:
+                    print(
+                        f"[{i}/{len(candidates)}] "
+                        f"SKIP unknown duration: "
+                        f"{candidate.get('clip_id')}"
+                    )
+                    continue
+
+                if (
+                    float(
+                        source_seconds
+                    )
+                    <
+                    MIN_SOURCE_SECONDS
+                ):
+                    print(
+                        f"[{i}/{len(candidates)}] "
+                        f"SKIP too short "
+                        f"({source_seconds:.2f}s): "
+                        f"{candidate.get('clip_id')}"
                     )
                     continue
 
@@ -419,6 +620,9 @@ def main():
                     "action_hits",
                     [],
                 ),
+                "duration_seconds": row.get(
+                    "source_duration_seconds",
+                ),
             }
         )
 
@@ -427,7 +631,7 @@ def main():
     prompt = f"""
 You are the CHEAP metadata ordering stage for ViralSpawnTV.
 
-A later VISUAL prescreener will inspect actual frames from these clips,
+A later WINDOW-AWARE visual prescreener will inspect actual frames from these clips,
 so do not reject merely because metadata is sparse.
 
 Rank ALL surviving gaming candidates from most promising to least
@@ -570,7 +774,7 @@ CANDIDATES:
 
     payload = {
         "version":
-            "12.8-hook-story-prescreen-input",
+            "12.9-fast-window-aware-input",
         "source_candidate_count":
             len(all_candidates),
         "fresh_candidate_count":
@@ -597,7 +801,7 @@ CANDIDATES:
     )
 
     print(
-        f"V12.8 metadata stage: "
+        f"V12.9 one-pass metadata/duration stage: "
         f"{len(all_candidates)} discovered -> "
         f"{len(inspected)} deterministic survivors -> "
         f"{len(ranked)} sent to visual prescreen."
@@ -609,7 +813,7 @@ if __name__ == "__main__":
         main()
     except Exception as exc:
         print(
-            "V12.8 RANKER FAILED:",
+            "V12.9 RANKER FAILED:",
             exc,
         )
         sys.exit(1)
