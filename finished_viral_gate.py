@@ -23,6 +23,14 @@ MIN_SCORE = 72
 MIN_HOOK = 65
 MIN_PAYOFF = 60
 
+# V12.14.4 reliability tier.
+# 72/65/60 remains the VIRAL TARGET.
+# A finished Short that is still decent can pass as a fallback instead of
+# killing the entire workflow.
+DECENT_MIN_SCORE = 64
+DECENT_MIN_HOOK = 60
+DECENT_MIN_PAYOFF = 55
+
 
 def run(command):
     subprocess.run(
@@ -239,7 +247,7 @@ def score(
     metadata,
 ):
     prompt = f"""
-You are the FINAL V12.14 viral-quality gate for ViralSpawnTV.
+You are the FINAL V12.14.4 quality gate for ViralSpawnTV.
 
 You are judging the ACTUAL FINISHED SHORT after production has added:
 - its Big Hook
@@ -426,7 +434,7 @@ def main():
         )
     )
 
-    passed = bool(
+    viral_passed = bool(
         recommended
         and
         numeric_score >= MIN_SCORE
@@ -436,15 +444,49 @@ def main():
         payoff >= MIN_PAYOFF
     )
 
+    decent_passed = bool(
+        numeric_score >= DECENT_MIN_SCORE
+        and
+        hook >= DECENT_MIN_HOOK
+        and
+        payoff >= DECENT_MIN_PAYOFF
+    )
+
+    passed = bool(
+        viral_passed
+        or
+        decent_passed
+    )
+
+    quality_tier = (
+        "viral"
+        if viral_passed
+        else
+        (
+            "decent"
+            if decent_passed
+            else
+            "below_decent"
+        )
+    )
+
     result = {
         "passed":
             passed,
+        "quality_tier":
+            quality_tier,
         "minimum_score":
             MIN_SCORE,
         "minimum_hook":
             MIN_HOOK,
         "minimum_payoff":
             MIN_PAYOFF,
+        "decent_minimum_score":
+            DECENT_MIN_SCORE,
+        "decent_minimum_hook":
+            DECENT_MIN_HOOK,
+        "decent_minimum_payoff":
+            DECENT_MIN_PAYOFF,
         "duration_seconds":
             round(
                 seconds,
@@ -476,12 +518,13 @@ def main():
 
     if not passed:
         print(
-            "V12.14 FINISHED VIRAL GATE: REJECTED"
+            "V12.14.4 FINISHED QUALITY GATE: BELOW DECENT"
         )
         sys.exit(23)
 
     print(
-        "V12.14 FINISHED VIRAL GATE: PASSED"
+        f"V12.14.4 FINISHED QUALITY GATE: PASSED | "
+        f"tier={quality_tier}"
     )
 
 
