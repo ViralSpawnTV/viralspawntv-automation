@@ -6,6 +6,7 @@ import pathlib
 import re
 import subprocess
 import textwrap
+from difflib import SequenceMatcher
 
 from openai import OpenAI
 from playwright.sync_api import sync_playwright
@@ -459,17 +460,29 @@ def refine_big_hook(
     client,
     plan,
     segments,
+    frames,
     segment_start,
     segment_end,
 ):
     """
-    Give the opening its own fast text-only retention pass.
+    V5.9.3 factual Big Hook pass.
 
-    This does NOT invent a new story. It can only sharpen the hook using
-    facts/dialogue already supported by the selected segment.
+    The prior refiner could borrow facts from later in the clip and present
+    them as if they were visible at frame 1. This version judges the opening
+    using ONLY:
+    - transcript from roughly the first 3 seconds of the selected segment
+    - the first available analysis frames near that opening
+
+    The result may frame an unresolved problem, but it may not import later
+    HP values, enemy counts, scores, names, or outcomes into the opening.
     """
 
-    selected_lines = []
+    opening_end = min(
+        segment_end,
+        segment_start + 3.0,
+    )
+
+    opening_lines = []
 
     for item in segments:
         try:
@@ -481,17 +494,51 @@ def refine_big_hook(
         if end <= segment_start:
             continue
 
-        if start >= segment_end:
+        if start >= opening_end:
             continue
 
-        selected_lines.append(
+        opening_lines.append(
             f"[{start:.2f}-{end:.2f}] "
             f"{clean_text(item.get('text', ''))}"
         )
 
-    selected_transcript = "\n".join(
-        selected_lines
-    )[:7000]
+    opening_transcript = "\n".join(
+        opening_lines
+    )[:2500]
+
+    opening_frames = []
+
+    for timestamp, path in frames:
+        try:
+            timestamp = float(timestamp)
+        except Exception:
+            continue
+
+        if (
+            segment_start - 0.05
+            <= timestamp
+            <= segment_start + 4.0
+        ):
+            opening_frames.append(
+                (
+                    timestamp,
+                    path,
+                )
+            )
+
+    if not opening_frames:
+        future_frames = [
+            (
+                float(timestamp),
+                path,
+            )
+            for timestamp, path in frames
+            if float(timestamp) >= segment_start
+        ]
+
+        opening_frames = future_frames[:2]
+
+    opening_frames = opening_frames[:2]
 
     draft_commentary = (
         plan.get("commentary")
@@ -513,49 +560,46 @@ def refine_big_hook(
         )
 
     prompt = f"""
-You are the final retention editor for ViralSpawnTV Shorts.
+You are the final factual-retention editor for ViralSpawnTV Shorts.
 
-Your ONLY job is to improve the first 1-2 seconds of this already-selected
+Your ONLY job is to create the first 1-2 second Big Hook for the selected
 gaming Short.
 
-Create a BIG HOOK that makes a viewer need to see the outcome.
+CRITICAL FACTUALITY RULE:
+You may use ONLY facts that are visible in the supplied OPENING FRAMES or
+spoken in the OPENING TRANSCRIPT below.
 
-RULES:
-- Use ONLY facts supported by the selected transcript and the existing plan.
-- Do not invent stakes, quotes, wins, losses, weapons, enemies, or outcomes.
+Do NOT borrow facts from later in the clip.
+
+Specifically:
+- Do not state an HP value, score, enemy count, weapon count, round count,
+  location, or other number unless it is explicitly supported in the
+  opening evidence.
+- Do not use ANY player name, streamer name, handle, HUD name, chat name,
+  or inferred identity in the hook. Use "he", "they", or "the player"
+  when a subject is needed.
 - Do not reveal the final payoff.
+- Do not invent stakes, quotes, wins, losses, weapons, enemies, or outcomes.
 - On-screen hook: 3-8 words.
 - Spoken hook: 5-14 words.
-- Specific beats generic.
-- The hook must communicate danger, challenge, surprise, contradiction,
-  comedy, clutch pressure, or another unresolved problem.
-- When truthful, prefer an unresolved outcome/question over a plain summary.
-  Example: "SQUAD DOWN. CAN HE CLUTCH?" is stronger than
-  "SQUAD DOWN. ONE IN THE ELEVATOR."
-- Avoid generic phrases such as NO WAY, WATCH THIS, INSANE, CRAZY,
+- Prefer an unresolved question/problem when truthful.
+- Avoid generic hooks like NO WAY, WATCH THIS, INSANE, CRAZY,
   WHAT HAPPENS NEXT, or YOU WON'T BELIEVE THIS.
-- A new viewer should understand the reason to keep watching immediately.
-- Rate hook_strength honestly. 80+ means it is genuinely compelling.
+- A safe truthful hook is better than a specific but unsupported hook.
 
-CURRENT HEADLINE:
+CURRENT DRAFT HEADLINE:
 {plan.get("headline", "")}
 
-CURRENT FIRST COMMENTARY:
+CURRENT DRAFT FIRST COMMENTARY:
 {draft_first_line}
 
-TITLE:
-{plan.get("title", "")}
-
-DESCRIPTION:
-{plan.get("description", "")}
-
-SELECTED SEGMENT TRANSCRIPT:
-{selected_transcript}
+OPENING TRANSCRIPT:
+{opening_transcript or "(no usable opening speech)"}
 
 Return ONLY JSON:
 {{
-  "headline": "3-8 word on-screen hook",
-  "voice_line": "5-14 word spoken opening hook",
+  "headline": "3-8 word truthful opening hook",
+  "voice_line": "5-14 word truthful spoken opening hook",
   "delivery": "normal/excited/hype/amused/serious",
   "hook_strength": 0-100,
   "hook_type": "danger/challenge/impossible/surprise/comedy/clutch/other",
@@ -563,12 +607,57 @@ Return ONLY JSON:
 }}
 """
 
+    content = [
+        {
+            "type":
+                "input_text",
+            "text":
+                prompt,
+        }
+    ]
+
+    for timestamp, path in opening_frames:
+        content.append(
+            {
+                "type":
+                    "input_text",
+                "text":
+                    (
+                        f"OPENING FRAME around "
+                        f"{timestamp - segment_start:.2f}s "
+                        f"after selected start:"
+                    ),
+            }
+        )
+
+        content.append(
+            {
+                "type":
+                    "input_image",
+                "image_url":
+                    (
+                        "data:image/jpeg;base64,"
+                        +
+                        encode_image(
+                            path
+                        )
+                    ),
+            }
+        )
+
     response = client.responses.create(
         model=os.getenv(
             "OPENAI_MODEL",
             "gpt-5.6",
         ),
-        input=prompt,
+        input=[
+            {
+                "role":
+                    "user",
+                "content":
+                    content,
+            }
+        ],
     )
 
     raw = response.output_text.strip()
@@ -583,30 +672,74 @@ Return ONLY JSON:
     try:
         hook = json.loads(raw)
     except Exception:
-        return {
-            "headline": clean_text(
-                plan.get(
-                    "headline",
-                    "",
-                )
+        hook = {}
+
+    hook_type = str(
+        hook.get(
+            "hook_type",
+            plan.get(
+                "hook_type",
+                "other",
             ),
-            "voice_line": draft_first_line,
-            "delivery": "serious",
-            "hook_strength": int(
-                plan.get(
-                    "hook_strength",
-                    0,
-                )
-                or 0
+        )
+    ).lower()
+
+    valid_types = {
+        "danger",
+        "challenge",
+        "impossible",
+        "surprise",
+        "comedy",
+        "clutch",
+        "other",
+    }
+
+    if hook_type not in valid_types:
+        hook_type = "other"
+
+    safe_fallbacks = {
+        "danger":
+            (
+                "CAN HE GET OUT?",
+                "Can he get out of this?",
             ),
-            "hook_type": str(
-                plan.get(
-                    "hook_type",
-                    "other",
-                )
+        "challenge":
+            (
+                "CAN HE PULL THIS OFF?",
+                "Can he actually pull this off?",
             ),
-            "reason": "Hook refinement JSON parse failed; using planner hook.",
-        }
+        "impossible":
+            (
+                "THIS SHOULD NOT WORK",
+                "This really should not work.",
+            ),
+        "surprise":
+            (
+                "SOMETHING IS OFF HERE",
+                "Something is definitely off here.",
+            ),
+        "comedy":
+            (
+                "THIS GOES WRONG FAST",
+                "This goes wrong really fast.",
+            ),
+        "clutch":
+            (
+                "CAN HE PULL THIS OFF?",
+                "Can he actually pull this off?",
+            ),
+        "other":
+            (
+                "HOW DOES THIS END?",
+                "How does this actually end?",
+            ),
+    }
+
+    fallback_headline, fallback_voice = (
+        safe_fallbacks[
+            hook_type
+        ]
+    )
 
     headline = clean_text(
         hook.get(
@@ -615,7 +748,15 @@ Return ONLY JSON:
         )
     ).upper()
 
+    voice_line = clean_text(
+        hook.get(
+            "voice_line",
+            "",
+        )
+    )
+
     headline_words = headline.split()
+    voice_words = voice_line.split()
 
     generic_exact = {
         "NO WAY",
@@ -628,46 +769,49 @@ Return ONLY JSON:
         "YOU WON'T BELIEVE THIS",
     }
 
-    # If the refiner returns something too short/generic, preserve the
-    # original planner headline instead of rendering a weak one-word hook.
-    if (
-        len(headline_words) < 3
-        or len(headline_words) > 8
-        or headline in generic_exact
-    ):
-        fallback = clean_text(
-            plan.get(
-                "headline",
-                "",
-            )
-        ).upper()
-
-        fallback_words = fallback.split()
-
-        if 3 <= len(fallback_words) <= 8:
-            headline = fallback
-        elif len(headline_words) > 8:
-            headline = " ".join(
-                headline_words[:8]
-            )
-
-    voice_line = clean_text(
-        hook.get(
-            "voice_line",
-            "",
+    # Deterministic numeric guard:
+    # if the generated hook contains a numeral not spoken in the first
+    # ~3 seconds, discard the claim. Visual-only numeric claims are
+    # intentionally not trusted because that was the exact V12.14 failure.
+    opening_numbers = set(
+        re.findall(
+            r"\b\d+\b",
+            opening_transcript,
         )
     )
 
-    if not voice_line:
-        voice_line = draft_first_line
-
-    # Keep the spoken hook short enough to land immediately.
-    voice_words = voice_line.split()
-
-    if len(voice_words) > 14:
-        voice_line = " ".join(
-            voice_words[:14]
+    generated_numbers = set(
+        re.findall(
+            r"\b\d+\b",
+            f"{headline} {voice_line}",
         )
+    )
+
+    unsupported_numbers = (
+        generated_numbers
+        -
+        opening_numbers
+    )
+
+    if (
+        len(headline_words) < 3
+        or
+        len(headline_words) > 8
+        or
+        headline in generic_exact
+        or
+        unsupported_numbers
+    ):
+        headline = fallback_headline
+
+    if (
+        len(voice_words) < 5
+        or
+        len(voice_words) > 14
+        or
+        unsupported_numbers
+    ):
+        voice_line = fallback_voice
 
     valid_delivery = {
         "normal",
@@ -709,39 +853,331 @@ Return ONLY JSON:
         ),
     )
 
-    hook_type = str(
-        hook.get(
-            "hook_type",
-            "other",
+    if unsupported_numbers:
+        strength = min(
+            strength,
+            65,
         )
-    ).lower()
-
-    valid_types = {
-        "danger",
-        "challenge",
-        "impossible",
-        "surprise",
-        "comedy",
-        "clutch",
-        "other",
-    }
-
-    if hook_type not in valid_types:
-        hook_type = "other"
 
     return {
-        "headline": headline,
-        "voice_line": voice_line,
-        "delivery": delivery,
-        "hook_strength": strength,
-        "hook_type": hook_type,
-        "reason": clean_text(
-            hook.get(
-                "reason",
+        "headline":
+            headline,
+        "voice_line":
+            voice_line,
+        "delivery":
+            delivery,
+        "hook_strength":
+            strength,
+        "hook_type":
+            hook_type,
+        "reason":
+            clean_text(
+                hook.get(
+                    "reason",
+                    "",
+                )
+            )
+            or
+            "Factual opening-only hook pass.",
+    }
+
+
+def commentary_similarity(
+    left,
+    right,
+):
+    left = clean_text(
+        left
+    ).lower()
+
+    right = clean_text(
+        right
+    ).lower()
+
+    if (
+        not left
+        or
+        not right
+    ):
+        return 0.0
+
+    sequence = SequenceMatcher(
+        None,
+        left,
+        right,
+    ).ratio()
+
+    left_words = set(
+        re.findall(
+            r"[a-z0-9]+",
+            left,
+        )
+    )
+
+    right_words = set(
+        re.findall(
+            r"[a-z0-9]+",
+            right,
+        )
+    )
+
+    union = (
+        left_words
+        |
+        right_words
+    )
+
+    jaccard = (
+        len(
+            left_words
+            &
+            right_words
+        )
+        /
+        max(
+            1,
+            len(
+                union
+            ),
+        )
+    )
+
+    return max(
+        sequence,
+        jaccard,
+    )
+
+
+def sanitize_commentary(
+    client,
+    commentary,
+    segments,
+    segment_start,
+    segment_end,
+):
+    """
+    V5.9.3 identity + repetition repair.
+
+    The first hook line is already handled by refine_big_hook. This pass
+    rewrites only the remaining narration so it:
+    - uses no player/streamer names or handles
+    - does not introduce unsupported numbers/facts
+    - does not repeat the same idea in slightly different words
+    """
+
+    if len(commentary) <= 1:
+        return commentary
+
+    selected_lines = []
+
+    for item in segments:
+        try:
+            start = float(
+                item[
+                    "start"
+                ]
+            )
+            end = float(
+                item[
+                    "end"
+                ]
+            )
+        except Exception:
+            continue
+
+        if end <= segment_start:
+            continue
+
+        if start >= segment_end:
+            continue
+
+        selected_lines.append(
+            f"[{start:.2f}-{end:.2f}] "
+            f"{clean_text(item.get('text', ''))}"
+        )
+
+    selected_transcript = "\n".join(
+        selected_lines
+    )[:7000]
+
+    editable = [
+        {
+            "id":
+                i,
+            "time":
+                round(
+                    float(
+                        beat.get(
+                            "time",
+                            0,
+                        )
+                    ),
+                    2,
+                ),
+            "text":
+                clean_text(
+                    beat.get(
+                        "text",
+                        "",
+                    )
+                ),
+        }
+        for i, beat in enumerate(
+            commentary[
+                1:
+            ],
+            start=1,
+        )
+    ]
+
+    prompt = f"""
+You are repairing ViralSpawnTV narration for factual accuracy and variety.
+
+The FIRST hook line is already locked and is not included below.
+
+Rewrite the remaining lines using ONLY the supplied transcript.
+
+STRICT RULES:
+- Do not use ANY player name, streamer name, HUD name, chat name, handle,
+  nickname, or inferred identity. Refer to people as "he", "they",
+  "the player", "the opponent", etc.
+- Do not state a number unless the transcript clearly supports it.
+- Do not repeat the same idea, setup, or phrase in multiple lines.
+- Each line should add NEW information, strategy, tension, or reaction.
+- Keep each line concise and natural for gaming Shorts.
+- Do not invent outcomes or facts.
+- Keep the same IDs. Return one rewritten text for each ID.
+
+TRANSCRIPT:
+{selected_transcript}
+
+LINES TO REPAIR:
+{json.dumps(editable, ensure_ascii=False)}
+
+Return ONLY JSON:
+{{
+  "lines": [
+    {{"id": 1, "text": "rewritten narration"}}
+  ]
+}}
+"""
+
+    try:
+        response = client.responses.create(
+            model=os.getenv(
+                "OPENAI_MODEL",
+                "gpt-5.6",
+            ),
+            input=prompt,
+        )
+
+        raw = response.output_text.strip()
+
+        if raw.startswith("```"):
+            raw = (
+                raw
+                .split("\n", 1)[1]
+                .rsplit("```", 1)[0]
+            )
+
+        repaired = json.loads(
+            raw
+        )
+
+        by_id = {}
+
+        for item in repaired.get(
+            "lines",
+            [],
+        ):
+            try:
+                idx = int(
+                    item.get(
+                        "id"
+                    )
+                )
+            except Exception:
+                continue
+
+            value = clean_text(
+                item.get(
+                    "text",
+                    "",
+                )
+            )
+
+            if value:
+                by_id[
+                    idx
+                ] = value
+
+        for idx in range(
+            1,
+            len(
+                commentary
+            ),
+        ):
+            if idx in by_id:
+                commentary[
+                    idx
+                ][
+                    "text"
+                ] = by_id[
+                    idx
+                ]
+
+    except Exception as exc:
+        print(
+            "Narration repair failed; "
+            f"using deterministic dedupe only: {exc}"
+        )
+
+    deduped = []
+
+    for beat in commentary:
+        text = clean_text(
+            beat.get(
+                "text",
                 "",
             )
-        ),
-    }
+        )
+
+        if not text:
+            continue
+
+        duplicate = any(
+            commentary_similarity(
+                text,
+                previous.get(
+                    "text",
+                    "",
+                ),
+            )
+            >=
+            0.70
+            for previous in deduped
+        )
+
+        if duplicate:
+            print(
+                "Dropping repetitive narration: "
+                f"{text}"
+            )
+            continue
+
+        new_beat = dict(
+            beat
+        )
+
+        new_beat[
+            "text"
+        ] = text
+
+        deduped.append(
+            new_beat
+        )
+
+    return deduped
 
 
 # ============================================================
@@ -758,7 +1194,7 @@ def create_plan(
 ):
 
     print("\n" + "=" * 65)
-    print("VIRALSPAWNTV V5.9.2 AI EDITOR")
+    print("VIRALSPAWNTV V5.9.3 ACCURACY EDITOR")
     print("=" * 65)
 
     transcript_with_times = "\n".join(
@@ -825,11 +1261,36 @@ Do not invent dollar amounts.
 Do not claim something happened unless the transcript
 or visible video supports it.
 
+IDENTITY LOCK:
+- Do not use player names, HUD names, chat names, nicknames, or handles in
+  generated narration/headlines.
+- Even if a name appears visually, refer to the subject as "he", "they",
+  "the player", or "the opponent".
+- The permanent creator credit is handled separately by the renderer.
+
 ============================================================
 SELECT THE CLIP
 ============================================================
 
 Choose ONE continuous CORE segment.
+
+PAYOFF-FIRST ENDING:
+Also identify the exact source timestamp where the meaningful payoff/result
+occurs. Return it as "payoff_time" using seconds from the start of THIS
+source file.
+
+The finished core should normally end about 0.5-1.5 seconds AFTER that
+payoff/reaction.
+
+Do NOT keep post-payoff filler such as:
+- developer consoles
+- menus
+- loadout/inventory screens
+- scoreboards with no reaction
+- dead movement after the result
+
+If a 39-second minimum core requires a little extra footage, preserve the
+minimum runtime but still cut as much post-payoff filler as possible.
 
 DURATION REQUIREMENT:
 - Absolute minimum CORE length: 39 seconds.
@@ -896,6 +1357,11 @@ see. Make every line specific to THIS clip so the narration would not make
 sense pasted onto a different gaming clip.
 
 The FIRST commentary beat is the BIG HOOK voice line.
+
+FACTUAL OPENING RULE:
+The hook may not use a later HP value, enemy count, score, player name,
+location label, or outcome as though it is already true at frame 1.
+Only describe facts supported at the actual opening moment.
 
 It must occur 0.10-0.55 seconds after the selected segment begins.
 
@@ -1141,6 +1607,7 @@ Return ONLY valid JSON:
 {{
   "segment_start": 0,
   "segment_end": 0,
+  "payoff_time": 0,
 
   "headline": "BIG HOOK TEXT",
   "hook_strength": 0,
@@ -1224,18 +1691,31 @@ Return ONLY valid JSON:
         plan["segment_end"]
     )
 
-    # V5.8 duration enforcement.
+    try:
+        payoff_time = float(
+            plan.get(
+                "payoff_time",
+                end,
+            )
+        )
+    except Exception:
+        payoff_time = end
+
+    # V5.9.3 duration enforcement.
     if seconds < CORE_MIN_SECONDS:
         raise RuntimeError(
             f"Source clip is only {seconds:.2f}s; "
             f"need at least {CORE_MIN_SECONDS:.1f}s "
-            "for the 50-60 second Shorts strategy."
+            "for the 40-60 second Shorts strategy."
         )
 
-    # Prefer at least 52 seconds when the source is long enough.
-    preferred_min = min(
-        CORE_IDEAL_MIN_SECONDS,
-        seconds,
+    # Long sources still prefer a 52s+ story when available.
+    # Short 40-51s sources are no longer forced to use the ENTIRE file,
+    # because doing so kept post-payoff console/menu footage.
+    preferred_min = (
+        CORE_IDEAL_MIN_SECONDS
+        if seconds >= CORE_IDEAL_MIN_SECONDS
+        else CORE_MIN_SECONDS
     )
 
     max_start = max(
@@ -1251,40 +1731,72 @@ Return ONLY valid JSON:
         )
     )
 
-    # Force the AI-selected segment to be long enough even if
-    # the model proposes a shorter cut.
     end = max(
         end,
         start + preferred_min,
     )
 
-    # Never exceed the source or our core-duration ceiling.
     end = min(
         seconds,
         end,
         start + CORE_MAX_SECONDS,
     )
 
-    # Final safety: guarantee at least the absolute 49-second core.
-    if end - start < CORE_MIN_SECONDS:
-        start = max(
-            0.0,
-            min(
-                start,
-                seconds - CORE_MIN_SECONDS,
-            )
+    # Payoff-aware trim:
+    # end soon after the decisive result/reaction instead of drifting into
+    # developer consoles, menus, inventory, or dead post-round footage.
+    payoff_time = max(
+        start,
+        min(
+            payoff_time,
+            seconds,
+        )
+    )
+
+    if (
+        start
+        <
+        payoff_time
+        <=
+        end
+    ):
+        payoff_end = min(
+            seconds,
+            payoff_time + 1.25,
         )
 
         end = min(
-            seconds,
-            start + max(
-                CORE_MIN_SECONDS,
-                preferred_min,
-            )
+            end,
+            max(
+                start + CORE_MIN_SECONDS,
+                payoff_end,
+            ),
         )
+
+    # Final safety: guarantee the absolute 39-second core.
+    if end - start < CORE_MIN_SECONDS:
+        if end >= CORE_MIN_SECONDS:
+            start = max(
+                0.0,
+                end - CORE_MIN_SECONDS,
+            )
+        else:
+            start = 0.0
+            end = min(
+                seconds,
+                CORE_MIN_SECONDS,
+            )
+
+    # Re-apply hard ceiling after any start adjustment.
+    end = min(
+        seconds,
+        end,
+        start + CORE_MAX_SECONDS,
+    )
 
     plan["segment_start"] = start
     plan["segment_end"] = end
+    plan["payoff_time"] = payoff_time
 
     clip_length = end - start
 
@@ -1294,10 +1806,17 @@ Return ONLY valid JSON:
         <= CORE_MAX_SECONDS + 0.05
     ):
         raise RuntimeError(
-            f"V5.8 core duration invalid: {clip_length:.2f}s. "
+            f"V5.9.3 core duration invalid: {clip_length:.2f}s. "
             f"Expected {CORE_MIN_SECONDS:.1f}-"
             f"{CORE_MAX_SECONDS:.1f}s."
         )
+
+    print(
+        "V5.9.3 payoff trim: "
+        f"start={start:.2f}s | "
+        f"payoff={payoff_time:.2f}s | "
+        f"end={end:.2f}s"
+    )
 
     # ---------------------------------------------
     # V5.9 Big Hook second pass
@@ -1307,6 +1826,7 @@ Return ONLY valid JSON:
         client,
         plan,
         segments,
+        frames,
         start,
         end,
     )
@@ -1444,6 +1964,15 @@ Return ONLY valid JSON:
                 0.55,
             ),
         )
+
+    # V5.9.3: remove identity drift and near-duplicate narration.
+    commentary = sanitize_commentary(
+        client,
+        commentary,
+        segments,
+        start,
+        end,
+    )
 
     plan["commentary"] = commentary
 
@@ -3183,7 +3712,7 @@ def save_metadata(
         "impacts": plan[
             "impacts"
         ],
-        "shorts_branding_version": "5.9.2-min40-big-hook",
+        "shorts_branding_version": "5.9.3-factual-hook-payoff-trim",
         "branding_intro": str(INTRO_IMAGE),
         "branding_outro": str(OUTRO_IMAGE),
         "branding_intro_seconds": INTRO_SECONDS,
