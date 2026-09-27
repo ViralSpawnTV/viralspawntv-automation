@@ -451,6 +451,296 @@ def transcribe_timestamped(
 
 
 # ============================================================
+# V5.9 BIG HOOK REFINER
+# ============================================================
+
+def refine_big_hook(
+    client,
+    plan,
+    segments,
+    segment_start,
+    segment_end,
+):
+    """
+    Give the opening its own fast text-only retention pass.
+
+    This does NOT invent a new story. It can only sharpen the hook using
+    facts/dialogue already supported by the selected segment.
+    """
+
+    selected_lines = []
+
+    for item in segments:
+        try:
+            start = float(item["start"])
+            end = float(item["end"])
+        except Exception:
+            continue
+
+        if end <= segment_start:
+            continue
+
+        if start >= segment_end:
+            continue
+
+        selected_lines.append(
+            f"[{start:.2f}-{end:.2f}] "
+            f"{clean_text(item.get('text', ''))}"
+        )
+
+    selected_transcript = "\n".join(
+        selected_lines
+    )[:7000]
+
+    draft_commentary = (
+        plan.get("commentary")
+        if isinstance(
+            plan.get("commentary"),
+            list,
+        )
+        else []
+    )
+
+    draft_first_line = ""
+
+    if draft_commentary:
+        draft_first_line = clean_text(
+            draft_commentary[0].get(
+                "text",
+                "",
+            )
+        )
+
+    prompt = f"""
+You are the final retention editor for ViralSpawnTV Shorts.
+
+Your ONLY job is to improve the first 1-2 seconds of this already-selected
+gaming Short.
+
+Create a BIG HOOK that makes a viewer need to see the outcome.
+
+RULES:
+- Use ONLY facts supported by the selected transcript and the existing plan.
+- Do not invent stakes, quotes, wins, losses, weapons, enemies, or outcomes.
+- Do not reveal the final payoff.
+- On-screen hook: 3-8 words.
+- Spoken hook: 5-14 words.
+- Specific beats generic.
+- The hook must communicate danger, challenge, surprise, contradiction,
+  comedy, clutch pressure, or another unresolved problem.
+- Avoid generic phrases such as NO WAY, WATCH THIS, INSANE, CRAZY,
+  WHAT HAPPENS NEXT, or YOU WON'T BELIEVE THIS.
+- A new viewer should understand the reason to keep watching immediately.
+- Rate hook_strength honestly. 80+ means it is genuinely compelling.
+
+CURRENT HEADLINE:
+{plan.get("headline", "")}
+
+CURRENT FIRST COMMENTARY:
+{draft_first_line}
+
+TITLE:
+{plan.get("title", "")}
+
+DESCRIPTION:
+{plan.get("description", "")}
+
+SELECTED SEGMENT TRANSCRIPT:
+{selected_transcript}
+
+Return ONLY JSON:
+{{
+  "headline": "3-8 word on-screen hook",
+  "voice_line": "5-14 word spoken opening hook",
+  "delivery": "normal/excited/hype/amused/serious",
+  "hook_strength": 0-100,
+  "hook_type": "danger/challenge/impossible/surprise/comedy/clutch/other",
+  "reason": "one short explanation"
+}}
+"""
+
+    response = client.responses.create(
+        model=os.getenv(
+            "OPENAI_MODEL",
+            "gpt-5.6",
+        ),
+        input=prompt,
+    )
+
+    raw = response.output_text.strip()
+
+    if raw.startswith("```"):
+        raw = (
+            raw
+            .split("\n", 1)[1]
+            .rsplit("```", 1)[0]
+        )
+
+    try:
+        hook = json.loads(raw)
+    except Exception:
+        return {
+            "headline": clean_text(
+                plan.get(
+                    "headline",
+                    "",
+                )
+            ),
+            "voice_line": draft_first_line,
+            "delivery": "serious",
+            "hook_strength": int(
+                plan.get(
+                    "hook_strength",
+                    0,
+                )
+                or 0
+            ),
+            "hook_type": str(
+                plan.get(
+                    "hook_type",
+                    "other",
+                )
+            ),
+            "reason": "Hook refinement JSON parse failed; using planner hook.",
+        }
+
+    headline = clean_text(
+        hook.get(
+            "headline",
+            "",
+        )
+    ).upper()
+
+    headline_words = headline.split()
+
+    generic_exact = {
+        "NO WAY",
+        "WATCH THIS",
+        "INSANE",
+        "CRAZY",
+        "CRAZY MOMENT",
+        "WHAT HAPPENS NEXT",
+        "YOU WONT BELIEVE THIS",
+        "YOU WON'T BELIEVE THIS",
+    }
+
+    # If the refiner returns something too short/generic, preserve the
+    # original planner headline instead of rendering a weak one-word hook.
+    if (
+        len(headline_words) < 3
+        or len(headline_words) > 8
+        or headline in generic_exact
+    ):
+        fallback = clean_text(
+            plan.get(
+                "headline",
+                "",
+            )
+        ).upper()
+
+        fallback_words = fallback.split()
+
+        if 3 <= len(fallback_words) <= 8:
+            headline = fallback
+        elif len(headline_words) > 8:
+            headline = " ".join(
+                headline_words[:8]
+            )
+
+    voice_line = clean_text(
+        hook.get(
+            "voice_line",
+            "",
+        )
+    )
+
+    if not voice_line:
+        voice_line = draft_first_line
+
+    # Keep the spoken hook short enough to land immediately.
+    voice_words = voice_line.split()
+
+    if len(voice_words) > 14:
+        voice_line = " ".join(
+            voice_words[:14]
+        )
+
+    valid_delivery = {
+        "normal",
+        "excited",
+        "hype",
+        "amused",
+        "serious",
+    }
+
+    delivery = str(
+        hook.get(
+            "delivery",
+            "serious",
+        )
+    ).lower()
+
+    if delivery not in valid_delivery:
+        delivery = "serious"
+
+    try:
+        strength = int(
+            round(
+                float(
+                    hook.get(
+                        "hook_strength",
+                        0,
+                    )
+                )
+            )
+        )
+    except Exception:
+        strength = 0
+
+    strength = max(
+        0,
+        min(
+            100,
+            strength,
+        ),
+    )
+
+    hook_type = str(
+        hook.get(
+            "hook_type",
+            "other",
+        )
+    ).lower()
+
+    valid_types = {
+        "danger",
+        "challenge",
+        "impossible",
+        "surprise",
+        "comedy",
+        "clutch",
+        "other",
+    }
+
+    if hook_type not in valid_types:
+        hook_type = "other"
+
+    return {
+        "headline": headline,
+        "voice_line": voice_line,
+        "delivery": delivery,
+        "hook_strength": strength,
+        "hook_type": hook_type,
+        "reason": clean_text(
+            hook.get(
+                "reason",
+                "",
+            )
+        ),
+    }
+
+
+# ============================================================
 # AI EDIT PLAN
 # ============================================================
 
@@ -464,7 +754,7 @@ def create_plan(
 ):
 
     print("\n" + "=" * 65)
-    print("VIRALSPAWNTV V4 AI EDITOR")
+    print("VIRALSPAWNTV V5.9 AI EDITOR")
     print("=" * 65)
 
     transcript_with_times = "\n".join(
@@ -549,28 +839,48 @@ DURATION REQUIREMENT:
 If the source is only slightly longer than 49 seconds, use nearly the
 entire usable source rather than shortening it.
 
-OPENING-HOOK PRIORITY:
-The first 1-2 seconds are the most important part of the Short.
-Start the selected segment at the earliest moment that creates immediate
-curiosity, tension, surprise, danger, comedy, or visible action.
+BIG HOOK OPENING — HIGHEST PRIORITY:
+The first 1-2 seconds are the most important part of the entire Short.
+The opening must create an immediate CURIOSITY GAP that makes the viewer
+need to see the outcome.
 
-Do NOT spend the opening on dead air, menus, walking, waiting, greetings,
-slow setup, or context that can be understood later.
+Start the selected segment at the earliest moment that contains one or more
+of these:
+- imminent danger or failure
+- a difficult challenge already in progress
+- an impossible-looking situation
+- a surprising visual or decision
+- a funny problem that obviously needs a resolution
+- a clutch attempt with clear stakes
+- a moment where the viewer naturally asks "does this work?"
 
-The viewer should have a clear reason to keep watching before second 1 ends.
+The opening must be understandable even if the viewer has never seen this
+creator before.
 
-Do not reveal the full payoff immediately unless the payoff itself is the
-hook and the remaining clip still has a compelling escalation or reaction.
+Do NOT spend the opening on:
+- menus or lobbies
+- walking/travel with no immediate threat
+- greetings
+- explanations that can come later
+- dead air
+- ordinary gameplay
+- generic streamer chatter
+
+By 0.5 seconds, the viewer should see something interesting.
+By 1.0 second, the viewer should understand WHY they should keep watching.
+
+Do NOT reveal the final payoff in the hook unless the aftermath/reaction
+creates a second compelling question.
 
 Choose the portion with the strongest story arc that ALSO supports this
 immediate cold open.
 
 The selected segment should ideally contain:
 
-instant hook
-setup or context
-tension/escalation
-payoff or reaction
+BIG HOOK
+fast context
+rising tension/escalation
+clear payoff or reaction
 
 ============================================================
 VIRALSPAWNTV COMMENTARY
@@ -584,12 +894,16 @@ or connect setup to payoff. Do not merely restate what the viewer can already
 see. Make every line specific to THIS clip so the narration would not make
 sense pasted onto a different gaming clip.
 
-The FIRST commentary beat is the opening hook.
+The FIRST commentary beat is the BIG HOOK voice line.
 
-It must occur 0.10-0.75 seconds after the selected segment begins.
+It must occur 0.10-0.55 seconds after the selected segment begins.
 
-It should be one short, natural sentence or fragment that creates curiosity
-or establishes stakes based ONLY on what the real clip supports.
+It should be a short, natural 5-14 word sentence or fragment that creates
+a curiosity gap or establishes the stakes based ONLY on what the real clip
+supports.
+
+It should NOT summarize the ending.
+It should make the viewer want the answer.
 
 Good hook approaches include:
 - point out the impossible-looking situation
@@ -759,28 +1073,41 @@ headline
 title
 description
 
-HEADLINE:
-2-6 words.
-This is the on-screen opening hook, not a generic label or summary.
-It MUST communicate a specific stake, danger, challenge, decision, or
-unresolved question that a viewer can understand immediately.
+HEADLINE / BIG HOOK TEXT:
+3-8 words.
+This is the LARGE on-screen opening hook.
+It must be understandable instantly and create an unresolved question,
+danger, challenge, contradiction, or funny problem.
 
-Do NOT use vague one-word hooks such as:
+The text should make sense with the FIRST visible action.
+It should tease the payoff without revealing it.
+
+BAD:
 "SAVE?"
 "CLUTCH?"
 "WHAT?"
 "WHY?"
 "INSANE"
+"NO WAY"
+"WATCH THIS"
+"CRAZY MOMENT"
 
-Prefer specific, truthful hooks such as:
-"CAN HE SAVE THIS?"
-"ONE SHOT TO SURVIVE"
-"THIS SHOULD BE OVER"
+BETTER:
+"CAN HE ACTUALLY SAVE THIS?"
+"ONE SHOT LEFT TO SURVIVE"
+"THIS HIDING SPOT SHOULD NOT WORK"
 "HE HAS NO WAY OUT"
-"THEY THINK HE'S DONE"
+"THEY THINK THIS FIGHT IS OVER"
+"HE SHOULD NOT WIN THIS"
 
 Never invent stakes that the footage does not support.
-Avoid generic phrases such as "NO WAY", "INSANE CLIP", or "WATCH THIS".
+
+Also return:
+hook_strength: 0-100
+hook_type: one of danger/challenge/impossible/surprise/comedy/clutch/other
+
+Use 80+ only when the opening creates a genuinely strong reason to keep
+watching. Do not inflate this score.
 
 TITLE:
 interesting but truthful.
@@ -798,7 +1125,9 @@ Return ONLY valid JSON:
   "segment_start": 0,
   "segment_end": 0,
 
-  "headline": "HEADLINE",
+  "headline": "BIG HOOK TEXT",
+  "hook_strength": 0,
+  "hook_type": "danger/challenge/impossible/surprise/comedy/clutch/other",
 
   "title": "YouTube title",
 
@@ -954,6 +1283,34 @@ Return ONLY valid JSON:
         )
 
     # ---------------------------------------------
+    # V5.9 Big Hook second pass
+    # ---------------------------------------------
+
+    hook_plan = refine_big_hook(
+        client,
+        plan,
+        segments,
+        start,
+        end,
+    )
+
+    plan["headline"] = hook_plan[
+        "headline"
+    ]
+
+    plan["hook_strength"] = hook_plan[
+        "hook_strength"
+    ]
+
+    plan["hook_type"] = hook_plan[
+        "hook_type"
+    ]
+
+    plan["hook_reason"] = hook_plan[
+        "reason"
+    ]
+
+    # ---------------------------------------------
     # Commentary validation
     # ---------------------------------------------
 
@@ -1018,9 +1375,48 @@ Return ONLY valid JSON:
         )
     )
 
-    # The first narration line is the cold-open hook.
-    # Keep it inside the first 0.10-0.75 seconds even if
-    # the planner returns a slightly later timestamp.
+    # V5.9: the hook refiner owns the first spoken line.
+    refined_voice_line = clean_text(
+        hook_plan.get(
+            "voice_line",
+            "",
+        )
+    )
+
+    refined_delivery = str(
+        hook_plan.get(
+            "delivery",
+            "serious",
+        )
+    ).lower()
+
+    if refined_delivery not in valid_delivery:
+        refined_delivery = "serious"
+
+    if refined_voice_line:
+        if commentary:
+            commentary[0][
+                "text"
+            ] = refined_voice_line
+
+            commentary[0][
+                "delivery"
+            ] = refined_delivery
+
+            commentary[0][
+                "time"
+            ] = 0.15
+        else:
+            commentary.insert(
+                0,
+                {
+                    "time": 0.15,
+                    "text": refined_voice_line,
+                    "delivery": refined_delivery,
+                },
+            )
+
+    # The first narration line must land almost immediately.
     if commentary:
         commentary[0]["time"] = max(
             0.10,
@@ -1028,7 +1424,7 @@ Return ONLY valid JSON:
                 float(
                     commentary[0]["time"]
                 ),
-                0.75,
+                0.55,
             ),
         )
 
@@ -1678,11 +2074,11 @@ def build_video_filter(
 ):
 
     headline_file = make_text_file(
-        "v4_headline",
+        "v5_9_big_hook",
         str(
             plan["headline"]
         ).upper(),
-        width=18,
+        width=21,
     )
 
     credit_file = make_text_file(
@@ -1728,7 +2124,27 @@ def build_video_filter(
         "[composite]"
     )
 
-    current = "composite"
+    # V5.9 BIG HOOK visual punch-in.
+    # For the first 1.35 seconds, show the same gameplay slightly larger.
+    # This creates immediate movement/visual emphasis without adding an
+    # intro card or delaying the actual clip.
+    filters.append(
+        "[0:v]"
+        "scale=-2:900,"
+        "crop=1080:900"
+        "[hookforeground]"
+    )
+
+    filters.append(
+        "[composite][hookforeground]"
+        "overlay="
+        "x=(W-w)/2:"
+        "y=(H-h)/2:"
+        "enable='between(t,0,1.35)'"
+        "[hookzoom]"
+    )
+
+    current = "hookzoom"
 
     # ========================================================
     # PUNCH ZOOM EFFECT
@@ -1809,25 +2225,28 @@ def build_video_filter(
     filters.append(
         f"[{current}]"
         "drawbox="
-        "x=0:"
-        "y=0:"
-        "w=iw:"
-        "h=245:"
-        "color=black@0.48:"
+        "x=55:"
+        "y=180:"
+        "w=970:"
+        "h=255:"
+        "color=black@0.66:"
         "t=fill:"
-        "enable='between(t,0,4.5)',"
+        "enable='between(t,0,2.80)',"
 
         "drawtext="
         f"fontfile={FONT}:"
         f"textfile={headline_file}:"
         "fontcolor=white:"
-        "fontsize=64:"
-        "line_spacing=8:"
+        "fontsize=82:"
+        "line_spacing=10:"
         "x=(w-text_w)/2:"
-        "y=58:"
-        "borderw=5:"
+        "y=225:"
+        "borderw=7:"
         "bordercolor=black:"
-        "enable='between(t,0,4.5)'"
+        "shadowx=4:"
+        "shadowy=4:"
+        "shadowcolor=black@0.85:"
+        "enable='between(t,0,2.80)'"
         "[headline]"
     )
 
@@ -2717,6 +3136,18 @@ def save_metadata(
         "headline": plan[
             "headline"
         ],
+        "hook_strength": plan.get(
+            "hook_strength",
+            0
+        ),
+        "hook_type": plan.get(
+            "hook_type",
+            "other"
+        ),
+        "hook_reason": plan.get(
+            "hook_reason",
+            ""
+        ),
         "segment_start": plan[
             "segment_start"
         ],
@@ -2729,7 +3160,7 @@ def save_metadata(
         "impacts": plan[
             "impacts"
         ],
-        "shorts_branding_version": "5.8-duration-50-60",
+        "shorts_branding_version": "5.9-big-hook-opening",
         "branding_intro": str(INTRO_IMAGE),
         "branding_outro": str(OUTRO_IMAGE),
         "branding_intro_seconds": INTRO_SECONDS,
