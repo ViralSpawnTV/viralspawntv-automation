@@ -528,6 +528,9 @@ RULES:
 - Specific beats generic.
 - The hook must communicate danger, challenge, surprise, contradiction,
   comedy, clutch pressure, or another unresolved problem.
+- When truthful, prefer an unresolved outcome/question over a plain summary.
+  Example: "SQUAD DOWN. CAN HE CLUTCH?" is stronger than
+  "SQUAD DOWN. ONE IN THE ELEVATOR."
 - Avoid generic phrases such as NO WAY, WATCH THIS, INSANE, CRAZY,
   WHAT HAPPENS NEXT, or YOU WON'T BELIEVE THIS.
 - A new viewer should understand the reason to keep watching immediately.
@@ -754,7 +757,7 @@ def create_plan(
 ):
 
     print("\n" + "=" * 65)
-    print("VIRALSPAWNTV V5.9 AI EDITOR")
+    print("VIRALSPAWNTV V5.9.1 AI EDITOR")
     print("=" * 65)
 
     transcript_with_times = "\n".join(
@@ -902,7 +905,16 @@ It should be a short, natural 5-14 word sentence or fragment that creates
 a curiosity gap or establishes the stakes based ONLY on what the real clip
 supports.
 
-It should NOT summarize the ending.
+Whenever truthful and natural, phrase the hook around an UNRESOLVED OUTCOME:
+- "CAN HE CLUTCH THIS?"
+- "DOES THIS ACTUALLY WORK?"
+- "CAN HE GET OUT?"
+- "IS THIS ENOUGH TO SURVIVE?"
+
+Do not force a question when a stronger truthful statement creates more
+tension, but the viewer should still feel that the outcome is unresolved.
+
+It should NOT summarize or reveal the ending.
 It should make the viewer want the answer.
 
 Good hook approaches include:
@@ -1081,6 +1093,13 @@ danger, challenge, contradiction, or funny problem.
 
 The text should make sense with the FIRST visible action.
 It should tease the payoff without revealing it.
+
+Prefer an unresolved outcome/question when the footage supports it.
+Examples:
+"SQUAD DOWN. CAN HE CLUTCH?"
+"ONE SHOT. DOES HE SURVIVE?"
+"TRAPPED HERE. CAN HE ESCAPE?"
+"THIS SHOULD FAIL... DOES IT?"
 
 BAD:
 "SAVE?"
@@ -2074,11 +2093,13 @@ def build_video_filter(
 ):
 
     headline_file = make_text_file(
-        "v5_9_big_hook",
+        "v5_9_1_big_hook",
         str(
             plan["headline"]
         ).upper(),
-        width=21,
+        # V5.9.1: wrap earlier so even wide letters remain inside
+        # the mobile-safe area. Three short lines are allowed.
+        width=15,
     )
 
     credit_file = make_text_file(
@@ -2225,11 +2246,13 @@ def build_video_filter(
     filters.append(
         f"[{current}]"
         "drawbox="
-        "x=55:"
-        "y=180:"
-        "w=970:"
-        "h=255:"
-        "color=black@0.66:"
+        # V5.9.1 mobile-safe Big Hook panel:
+        # 80px side margins and enough height for up to 3 wrapped lines.
+        "x=80:"
+        "y=150:"
+        "w=920:"
+        "h=350:"
+        "color=black@0.68:"
         "t=fill:"
         "enable='between(t,0,2.80)',"
 
@@ -2237,14 +2260,16 @@ def build_video_filter(
         f"fontfile={FONT}:"
         f"textfile={headline_file}:"
         "fontcolor=white:"
-        "fontsize=82:"
-        "line_spacing=10:"
-        "x=(w-text_w)/2:"
-        "y=225:"
-        "borderw=7:"
+        "fontsize=68:"
+        "line_spacing=8:"
+        "x=max(95,(w-text_w)/2):"
+        # Keep text safely below the top UI area and centered vertically
+        # inside the panel for 1-3 lines.
+        "y=205:"
+        "borderw=6:"
         "bordercolor=black:"
-        "shadowx=4:"
-        "shadowy=4:"
+        "shadowx=3:"
+        "shadowy=3:"
         "shadowcolor=black@0.85:"
         "enable='between(t,0,2.80)'"
         "[headline]"
@@ -3160,7 +3185,7 @@ def save_metadata(
         "impacts": plan[
             "impacts"
         ],
-        "shorts_branding_version": "5.9-big-hook-opening",
+        "shorts_branding_version": "5.9.1-big-hook-safearea",
         "branding_intro": str(INTRO_IMAGE),
         "branding_outro": str(OUTRO_IMAGE),
         "branding_intro_seconds": INTRO_SECONDS,
