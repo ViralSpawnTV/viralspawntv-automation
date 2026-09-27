@@ -34,6 +34,15 @@ MAX_WINDOW_SECONDS = 58.0
 OPENING_AUDIO_SECONDS = 7.0
 ENDING_AUDIO_SECONDS = 7.0
 
+# V12.14.2: expensive source-gate attempts should only be spent on clips
+# that already show BOTH a worthwhile payoff and enough visible story.
+# These remain looser than the real source gate (65 source / 60 payoff).
+MIN_PROMOTE_PAYOFF = 55
+MIN_PROMOTE_ENDING = 50
+MIN_PROMOTE_SOURCE = 55
+MIN_PROMOTE_STORY = 50
+MIN_PROMOTE_EDITABILITY = 55
+
 
 def safe_name(value):
     return re.sub(
@@ -78,7 +87,7 @@ def make_windows(source_seconds):
     """
     Build up to three 40-58 second windows.
 
-    V12.14 judges the ENDING/PAYOFF first. The window itself is still
+    V12.14.2 judges the ENDING/PAYOFF first. The window itself is still
     continuous, but later ranking starts from "is the ending worth waiting
     for?" rather than "does the raw source already have a viral first second?"
     """
@@ -671,14 +680,19 @@ def extract_parallel(
 
 
 def transcribe_file(path):
+    raw_path = str(
+        path or ""
+    ).strip()
+
+    if not raw_path:
+        return ""
+
     path = Path(
-        str(
-            path or ""
-        )
+        raw_path
     )
 
     if (
-        not path.exists()
+        not path.is_file()
         or
         path.stat().st_size <= 1000
     ):
@@ -762,7 +776,7 @@ def score_payoff_batch(
     batch,
 ):
     prompt = """
-You are Phase 1 of ViralSpawnTV V12.14.
+You are Phase 1 of ViralSpawnTV V12.14.2.
 
 This is PAYOFF-FIRST source selection.
 
@@ -912,7 +926,7 @@ def score_story_batch(
     batch,
 ):
     prompt = """
-You are Phase 2 of ViralSpawnTV V12.14.
+You are Phase 2 of ViralSpawnTV V12.14.2.
 
 These gaming windows already have the strongest available endings/payoffs.
 Now decide whether the footage BEFORE that payoff contains enough material
@@ -1132,7 +1146,7 @@ def main():
         )
 
     print(
-        f"V12.14 PAYOFF-FIRST: "
+        f"V12.14.2 PAYOFF-FIRST: "
         f"{len(candidates)} ranked sources -> "
         f"{len(windows)} candidate windows."
     )
@@ -1363,7 +1377,7 @@ def main():
             break
 
     print(
-        f"V12.14 PAYOFF PHASE: "
+        f"V12.14.2 PAYOFF PHASE: "
         f"{len(payoff_items)} endings inspected -> "
         f"{len(payoff_scored)} usable -> "
         f"{len(phase2_seed)} strongest payoffs advance | "
@@ -1661,7 +1675,7 @@ def main():
             )
 
     print(
-        f"V12.14 STORY PHASE: "
+        f"V12.14.2 STORY PHASE: "
         f"{len(story_items)} windows -> "
         f"{len(final_rows)} scored | "
         f"{time.perf_counter() - story_started:.1f}s"
@@ -1730,13 +1744,65 @@ def main():
         reverse=True,
     )
 
-    promoted = best_rows[
+    # V12.14.2: do not spend one of the four expensive source-gate
+    # attempts on a clip that has only an isolated reaction/payoff or only
+    # general editability. It must show BOTH a worthwhile ending AND enough
+    # visible story substance.
+    promotion_ready = [
+        row
+        for row in best_rows
+        if (
+            row.get(
+                "prescreen_payoff",
+                0,
+            )
+            >=
+            MIN_PROMOTE_PAYOFF
+            and
+            row.get(
+                "prescreen_ending_strength",
+                0,
+            )
+            >=
+            MIN_PROMOTE_ENDING
+            and
+            row.get(
+                "prescreen_source_score",
+                0,
+            )
+            >=
+            MIN_PROMOTE_SOURCE
+            and
+            row.get(
+                "prescreen_story_sustain",
+                0,
+            )
+            >=
+            MIN_PROMOTE_STORY
+            and
+            row.get(
+                "prescreen_editability",
+                0,
+            )
+            >=
+            MIN_PROMOTE_EDITABILITY
+        )
+    ]
+
+    promoted = promotion_ready[
         :PROMOTE_COUNT
     ]
 
+    print(
+        f"V12.14.2 PROMOTION FILTER: "
+        f"{len(best_rows)} best-per-clip -> "
+        f"{len(promotion_ready)} payoff+story qualified -> "
+        f"{len(promoted)} expensive-gate candidates."
+    )
+
     payload = {
         "version":
-            "12.14-payoff-first-source-quality",
+            "12.14.2-payoff-plus-story-substance",
         "strategy":
             "payoff_first_then_story_editability",
         "input_candidate_count":
@@ -1749,6 +1815,21 @@ def main():
             len(story_items),
         "best_clip_count":
             len(best_rows),
+        "promotion_ready_count":
+            len(promotion_ready),
+        "promotion_thresholds":
+            {
+                "payoff":
+                    MIN_PROMOTE_PAYOFF,
+                "ending":
+                    MIN_PROMOTE_ENDING,
+                "source":
+                    MIN_PROMOTE_SOURCE,
+                "story":
+                    MIN_PROMOTE_STORY,
+                "editability":
+                    MIN_PROMOTE_EDITABILITY,
+            },
         "promoted_count":
             len(promoted),
         "prescreen_seconds":
@@ -1778,7 +1859,7 @@ def main():
 
     print()
     print(
-        f"V12.14 PRESCREEN COMPLETE: "
+        f"V12.14.2 PRESCREEN COMPLETE: "
         f"{len(windows)} windows -> "
         f"{len(best_rows)} source clips -> "
         f"{len(promoted)} promoted."
@@ -1807,7 +1888,7 @@ if __name__ == "__main__":
         main()
     except Exception as exc:
         print(
-            "V12.14 PRESCREENER ERROR:",
+            "V12.14.2 PRESCREENER ERROR:",
             exc,
         )
         sys.exit(1)
