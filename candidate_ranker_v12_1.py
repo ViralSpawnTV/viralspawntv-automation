@@ -2,6 +2,10 @@ import json
 import re
 import subprocess
 import sys
+import time
+import urllib.error
+import urllib.request
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 from urllib.parse import urlsplit, urlunsplit
 
@@ -14,12 +18,35 @@ OUT = Path("work/v12_ranked_candidates.json")
 SHORTS_HISTORY = Path("history.json")
 SHORTS_REJECTED_HISTORY = Path("shorts_rejected_history.json")
 
-# V12.9 FAST PASS:
-# One page visit now collects metadata + HLS playlist + duration.
+# V12.10 DIRECT-API PASS:
+# Normal path: no individual Kick clip page loads at all.
 MAX_INSPECT = 100
 MAX_RANKED = 40
 MIN_SCORE = 0
 MIN_SOURCE_SECONDS = 49.0
+
+API_WORKERS = 12
+API_TIMEOUT_SECONDS = 10
+API_RETRIES = 2
+
+# If direct API access is temporarily blocked, fall back to Playwright for
+# only a small number of clips instead of loading all 100 pages.
+MIN_DIRECT_SURVIVORS_BEFORE_SKIP_BROWSER = 6
+MAX_BROWSER_FALLBACKS = 16
+
+KICK_API_TEMPLATE = "https://kick.com/api/v2/clips/{clip_id}/play"
+
+API_HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/130.0.0.0 Safari/537.36"
+    ),
+    "Accept": "application/json, text/plain, */*",
+    "Referer": "https://kick.com/",
+    "Origin": "https://kick.com",
+    "X-Requested-With": "XMLHttpRequest",
+}
 
 BLOCKED = {
     "casino", "gambling", "roulette", "blackjack", "sportsbook",
@@ -199,6 +226,373 @@ def hits(text, words):
 
 
 
+
+def _json_via_urllib(url):
+    request = urllib.request.Request(
+        url,
+        headers=API_HEADERS,
+        method="GET",
+    )
+
+    with urllib.request.urlopen(
+        request,
+        timeout=API_TIMEOUT_SECONDS,
+    ) as response:
+        raw = response.read()
+
+    return json.loads(
+        raw.decode(
+            "utf-8",
+            errors="replace",
+        )
+    )
+
+
+def _json_via_curl(url):
+    """
+    Second direct-HTTP route. This is still dramatically cheaper than
+    launching a browser and lets the runner survive occasional urllib/TLS
+    differences.
+    """
+    command = [
+        "curl",
+        "--fail",
+        "--silent",
+        "--show-error",
+        "--location",
+        "--max-time",
+        str(
+            API_TIMEOUT_SECONDS
+        ),
+        "-H",
+        f"User-Agent: {API_HEADERS['User-Agent']}",
+        "-H",
+        f"Accept: {API_HEADERS['Accept']}",
+        "-H",
+        f"Referer: {API_HEADERS['Referer']}",
+        "-H",
+        f"Origin: {API_HEADERS['Origin']}",
+        "-H",
+        "X-Requested-With: XMLHttpRequest",
+        url,
+    ]
+
+    result = subprocess.run(
+        command,
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+    return json.loads(
+        result.stdout
+    )
+
+
+def fetch_kick_clip_api(candidate):
+    """
+    Fetch the same public clip payload used by Kick's clip player and by
+    current yt-dlp Kick extraction.
+
+    Expected response:
+        {"clip": {
+            "clip_url": ...,
+            "duration": ...,
+            "title": ...,
+            "views": ...,
+            "likes": ...,
+            "channel": {"slug": ...},
+            "category": {"name": ...},
+            ...
+        }}
+    """
+    clip_id = str(
+        candidate.get(
+            "clip_id",
+            "",
+        )
+    ).strip()
+
+    if not clip_id:
+        raise RuntimeError(
+            "candidate missing clip_id"
+        )
+
+    url = KICK_API_TEMPLATE.format(
+        clip_id=clip_id
+    )
+
+    errors = []
+
+    for attempt in range(
+        1,
+        API_RETRIES + 1,
+    ):
+        try:
+            payload = _json_via_urllib(
+                url
+            )
+            return payload
+
+        except Exception as exc:
+            errors.append(
+                f"urllib#{attempt}: {exc}"
+            )
+
+        try:
+            payload = _json_via_curl(
+                url
+            )
+            return payload
+
+        except Exception as exc:
+            errors.append(
+                f"curl#{attempt}: {exc}"
+            )
+
+        if attempt < API_RETRIES:
+            time.sleep(
+                0.35 * attempt
+            )
+
+    raise RuntimeError(
+        " | ".join(
+            errors[-4:]
+        )
+    )
+
+
+def to_float(value):
+    try:
+        return float(
+            value
+        )
+    except Exception:
+        return None
+
+
+def to_int(value):
+    try:
+        return int(
+            value
+        )
+    except Exception:
+        return 0
+
+
+def inspect_metadata_api(candidate):
+    payload = fetch_kick_clip_api(
+        candidate
+    )
+
+    clip = payload.get(
+        "clip"
+    )
+
+    if not isinstance(
+        clip,
+        dict,
+    ):
+        raise RuntimeError(
+            "Kick API response missing clip object"
+        )
+
+    media_url = str(
+        clip.get(
+            "clip_url",
+            "",
+        )
+    ).strip()
+
+    duration_seconds = to_float(
+        clip.get(
+            "duration"
+        )
+    )
+
+    title = norm(
+        clip.get(
+            "title",
+            "",
+        )
+    )
+
+    channel_obj = clip.get(
+        "channel"
+    )
+
+    if not isinstance(
+        channel_obj,
+        dict,
+    ):
+        channel_obj = {}
+
+    category_obj = clip.get(
+        "category"
+    )
+
+    if not isinstance(
+        category_obj,
+        dict,
+    ):
+        category_obj = {}
+
+    creator_obj = clip.get(
+        "creator"
+    )
+
+    if not isinstance(
+        creator_obj,
+        dict,
+    ):
+        creator_obj = {}
+
+    api_channel = norm(
+        channel_obj.get(
+            "slug",
+            "",
+        )
+    )
+
+    api_category = norm(
+        category_obj.get(
+            "name",
+            "",
+        )
+    )
+
+    creator_username = norm(
+        creator_obj.get(
+            "username",
+            "",
+        )
+    )
+
+    views = to_int(
+        clip.get(
+            "views"
+        )
+    )
+
+    likes = to_int(
+        clip.get(
+            "likes"
+        )
+    )
+
+    like_rate_pct = (
+        round(
+            likes
+            /
+            max(
+                1,
+                views,
+            )
+            *
+            100,
+            3,
+        )
+        if views > 0
+        else 0.0
+    )
+
+    metadata_text = norm(
+        " ".join(
+            [
+                title,
+                api_category,
+                api_channel,
+                creator_username,
+            ]
+        )
+    )
+
+    row = dict(
+        candidate
+    )
+
+    # Keep original discovery game for diversity bookkeeping, but attach
+    # Kick's current category separately for quality/content checks.
+    row.update(
+        {
+            "metadata_source":
+                "playwright_fallback",
+            "page_title":
+                title,
+            "page_description":
+                "",
+            "metadata_text":
+                metadata_text,
+            "bad_hits":
+                hits(
+                    metadata_text,
+                    BLOCKED,
+                ),
+            "music_hits":
+                hits(
+                    metadata_text,
+                    MUSIC_BLOCKED,
+                ),
+            "action_hits":
+                hits(
+                    metadata_text,
+                    ACTION,
+                ),
+            "media_url":
+                media_url,
+            # Backward-compatible alias for V12.9 consumers.
+            "playlist_url":
+                media_url,
+            "source_duration_seconds":
+                (
+                    round(
+                        duration_seconds,
+                        3,
+                    )
+                    if duration_seconds
+                    is not None
+                    else None
+                ),
+            "kick_api_category":
+                api_category,
+            "kick_api_channel":
+                api_channel,
+            "kick_creator_username":
+                creator_username,
+            "kick_view_count":
+                views,
+            "kick_like_count":
+                likes,
+            "kick_like_rate_pct":
+                like_rate_pct,
+            "kick_created_at":
+                clip.get(
+                    "created_at"
+                ),
+            "kick_thumbnail_url":
+                clip.get(
+                    "thumbnail_url"
+                ),
+            "kick_is_mature":
+                bool(
+                    clip.get(
+                        "is_mature",
+                        False,
+                    )
+                ),
+            "metadata_source":
+                "kick_direct_api",
+        }
+    )
+
+    if api_channel:
+        row[
+            "channel"
+        ] = api_channel
+
+    return row
+
+
 def probe_stream_duration(playlist_url):
     if not playlist_url:
         return None
@@ -237,15 +631,10 @@ def probe_stream_duration(playlist_url):
         return None
 
 
-def inspect_metadata(page, candidate):
+def inspect_metadata_browser_fallback(page, candidate):
     """
-    V12.9 uses ONE Kick-page visit for:
-    - title / description
-    - HLS playlist capture
-    - source duration
-
-    The visual prescreener reuses the captured HLS URL instead of opening
-    the same page again.
+    Emergency fallback only. V12.10 normally uses the direct Kick clip
+    API and never opens individual clip pages.
     """
     playlist_urls = []
 
@@ -487,7 +876,7 @@ def main():
     ]
 
     print(
-        f"V12.9 freshness filter: "
+        f"V12.10 freshness filter: "
         f"{len(all_candidates)} discovered -> "
         f"{len(fresh_candidates)} fresh -> "
         f"{len(candidates)} metadata-inspected."
@@ -499,92 +888,268 @@ def main():
     )
 
     inspected = []
+    api_failures = []
+    api_successes = 0
+    too_short_count = 0
+    blocked_count = 0
+    music_count = 0
+    no_media_count = 0
+    unknown_duration_count = 0
 
-    with sync_playwright() as p:
-        browser = p.chromium.launch(
-            headless=True
-        )
+    print(
+        f"V12.10 DIRECT API: querying "
+        f"{len(candidates)} clips with "
+        f"{API_WORKERS} workers."
+    )
 
-        page = browser.new_page()
+    rows_by_index = {}
 
-        for i, candidate in enumerate(
-            candidates,
-            1,
+    with ThreadPoolExecutor(
+        max_workers=API_WORKERS
+    ) as executor:
+        future_map = {
+            executor.submit(
+                inspect_metadata_api,
+                candidate,
+            ): (
+                index,
+                candidate,
+            )
+            for index, candidate in enumerate(
+                candidates,
+                1,
+            )
+        }
+
+        for future in as_completed(
+            future_map
         ):
+            index, candidate = (
+                future_map[
+                    future
+                ]
+            )
+
             try:
-                row = inspect_metadata(
-                    page,
-                    candidate,
-                )
-
-                if row["bad_hits"]:
-                    print(
-                        f"[{i}/{len(candidates)}] "
-                        f"HARD REJECT blocked metadata: "
-                        f"{candidate.get('clip_id')} "
-                        f"{row['bad_hits']}"
-                    )
-                    continue
-
-                if row["music_hits"]:
-                    print(
-                        f"[{i}/{len(candidates)}] "
-                        f"HARD REJECT music metadata: "
-                        f"{candidate.get('clip_id')} "
-                        f"{row['music_hits']}"
-                    )
-                    continue
-
-                if not row.get(
-                    "playlist_url"
-                ):
-                    print(
-                        f"[{i}/{len(candidates)}] "
-                        f"SKIP no HLS captured: "
-                        f"{candidate.get('clip_id')}"
-                    )
-                    continue
-
-                source_seconds = row.get(
-                    "source_duration_seconds"
-                )
-
-                if source_seconds is None:
-                    print(
-                        f"[{i}/{len(candidates)}] "
-                        f"SKIP unknown duration: "
-                        f"{candidate.get('clip_id')}"
-                    )
-                    continue
-
-                if (
-                    float(
-                        source_seconds
-                    )
-                    <
-                    MIN_SOURCE_SECONDS
-                ):
-                    print(
-                        f"[{i}/{len(candidates)}] "
-                        f"SKIP too short "
-                        f"({source_seconds:.2f}s): "
-                        f"{candidate.get('clip_id')}"
-                    )
-                    continue
-
-                inspected.append(
-                    row
-                )
+                row = future.result()
+                rows_by_index[
+                    index
+                ] = row
+                api_successes += 1
 
             except Exception as exc:
-                print(
-                    f"[{i}/{len(candidates)}] "
-                    f"metadata inspect failed: "
-                    f"{candidate.get('clip_id')} "
-                    f"{exc}"
+                api_failures.append(
+                    (
+                        index,
+                        candidate,
+                        str(exc),
+                    )
                 )
 
-        browser.close()
+    # Preserve discovery order after concurrent lookups.
+    for index in sorted(
+        rows_by_index
+    ):
+        row = rows_by_index[
+            index
+        ]
+
+        candidate = candidates[
+            index - 1
+        ]
+
+        if row["bad_hits"]:
+            blocked_count += 1
+            print(
+                f"[{index}/{len(candidates)}] "
+                f"HARD REJECT blocked API metadata: "
+                f"{candidate.get('clip_id')} "
+                f"{row['bad_hits']}"
+            )
+            continue
+
+        if row["music_hits"]:
+            music_count += 1
+            print(
+                f"[{index}/{len(candidates)}] "
+                f"HARD REJECT music API metadata: "
+                f"{candidate.get('clip_id')} "
+                f"{row['music_hits']}"
+            )
+            continue
+
+        if not row.get(
+            "media_url"
+        ):
+            no_media_count += 1
+            print(
+                f"[{index}/{len(candidates)}] "
+                f"SKIP API has no clip media URL: "
+                f"{candidate.get('clip_id')}"
+            )
+            continue
+
+        source_seconds = row.get(
+            "source_duration_seconds"
+        )
+
+        if source_seconds is None:
+            unknown_duration_count += 1
+            print(
+                f"[{index}/{len(candidates)}] "
+                f"SKIP API missing duration: "
+                f"{candidate.get('clip_id')}"
+            )
+            continue
+
+        if (
+            float(
+                source_seconds
+            )
+            <
+            MIN_SOURCE_SECONDS
+        ):
+            too_short_count += 1
+            print(
+                f"[{index}/{len(candidates)}] "
+                f"SKIP too short "
+                f"({source_seconds:.2f}s): "
+                f"{candidate.get('clip_id')}"
+            )
+            continue
+
+        inspected.append(
+            row
+        )
+
+    # Direct API should be the normal path. If it is temporarily blocked,
+    # do a limited browser fallback rather than repeating V12.9's 100-page
+    # serial crawl.
+    browser_fallback_used = 0
+
+    if (
+        len(inspected)
+        <
+        MIN_DIRECT_SURVIVORS_BEFORE_SKIP_BROWSER
+        and
+        api_failures
+    ):
+        fallback_targets = (
+            sorted(
+                api_failures,
+                key=lambda item: item[0],
+            )[
+                :MAX_BROWSER_FALLBACKS
+            ]
+        )
+
+        print(
+            f"V12.10 API fallback: only "
+            f"{len(inspected)} eligible direct survivors; "
+            f"trying up to "
+            f"{len(fallback_targets)} clip pages."
+        )
+
+        with sync_playwright() as p:
+            browser = p.chromium.launch(
+                headless=True
+            )
+
+            page = browser.new_page()
+
+            for index, candidate, api_error in fallback_targets:
+                try:
+                    row = (
+                        inspect_metadata_browser_fallback(
+                            page,
+                            candidate,
+                        )
+                    )
+
+                    source_seconds = row.get(
+                        "source_duration_seconds"
+                    )
+
+                    if (
+                        row.get(
+                            "bad_hits"
+                        )
+                        or
+                        row.get(
+                            "music_hits"
+                        )
+                        or
+                        not row.get(
+                            "playlist_url"
+                        )
+                        or
+                        source_seconds is None
+                        or
+                        float(
+                            source_seconds
+                        )
+                        <
+                        MIN_SOURCE_SECONDS
+                    ):
+                        continue
+
+                    # Keep consumers on the unified V12.10 field name.
+                    row[
+                        "media_url"
+                    ] = row.get(
+                        "playlist_url"
+                    )
+
+                    row.setdefault(
+                        "kick_view_count",
+                        0,
+                    )
+
+                    row.setdefault(
+                        "kick_like_count",
+                        0,
+                    )
+
+                    row.setdefault(
+                        "kick_like_rate_pct",
+                        0.0,
+                    )
+
+                    row.setdefault(
+                        "kick_api_category",
+                        row.get(
+                            "game",
+                            "",
+                        ),
+                    )
+
+                    inspected.append(
+                        row
+                    )
+
+                    browser_fallback_used += 1
+
+                except Exception as exc:
+                    print(
+                        f"[{index}/{len(candidates)}] "
+                        f"fallback failed "
+                        f"{candidate.get('clip_id')}: "
+                        f"{exc}"
+                    )
+
+            browser.close()
+
+    print(
+        "V12.10 API STATS: "
+        f"{api_successes} direct API responses, "
+        f"{len(api_failures)} direct failures, "
+        f"{too_short_count} under {MIN_SOURCE_SECONDS:.0f}s, "
+        f"{blocked_count} blocked, "
+        f"{music_count} music, "
+        f"{no_media_count} no-media, "
+        f"{unknown_duration_count} unknown-duration, "
+        f"{browser_fallback_used} browser fallbacks accepted."
+    )
 
     if not inspected:
         raise RuntimeError(
@@ -623,6 +1188,22 @@ def main():
                 "duration_seconds": row.get(
                     "source_duration_seconds",
                 ),
+                "kick_category": row.get(
+                    "kick_api_category",
+                    "",
+                ),
+                "views": row.get(
+                    "kick_view_count",
+                    0,
+                ),
+                "likes": row.get(
+                    "kick_like_count",
+                    0,
+                ),
+                "like_rate_pct": row.get(
+                    "kick_like_rate_pct",
+                    0.0,
+                ),
             }
         )
 
@@ -643,6 +1224,10 @@ Prefer:
 - clear stakes or challenge
 - obvious payoff language
 - something likely to create a strong first-second hook
+- real Kick views/likes as a SECONDARY traction signal
+
+Popularity is only a tie-breaker. A high-view clip with weak gaming
+story/hook language should not outrank a clearly stronger story candidate.
 
 Do not invent events that are not supported by metadata.
 
@@ -774,7 +1359,7 @@ CANDIDATES:
 
     payload = {
         "version":
-            "12.9-fast-window-aware-input",
+            "12.10-direct-api-window-input",
         "source_candidate_count":
             len(all_candidates),
         "fresh_candidate_count":
@@ -783,6 +1368,12 @@ CANDIDATES:
             len(candidates),
         "survived_deterministic_screen":
             len(inspected),
+        "direct_api_success_count":
+            api_successes,
+        "direct_api_failure_count":
+            len(api_failures),
+        "browser_fallback_accepted_count":
+            browser_fallback_used,
         "ranked_count":
             len(ranked),
         "min_metadata_score":
@@ -801,7 +1392,7 @@ CANDIDATES:
     )
 
     print(
-        f"V12.9 one-pass metadata/duration stage: "
+        f"V12.10 direct-API metadata/duration stage: "
         f"{len(all_candidates)} discovered -> "
         f"{len(inspected)} deterministic survivors -> "
         f"{len(ranked)} sent to visual prescreen."
@@ -813,7 +1404,7 @@ if __name__ == "__main__":
         main()
     except Exception as exc:
         print(
-            "V12.9 RANKER FAILED:",
+            "V12.10 RANKER FAILED:",
             exc,
         )
         sys.exit(1)
