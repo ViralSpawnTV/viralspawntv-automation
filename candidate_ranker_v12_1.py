@@ -1,16 +1,15 @@
+import bisect
 import json
+import math
 import re
 import subprocess
 import sys
 import time
-import urllib.error
 import urllib.request
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import urlsplit, urlunsplit
-
-from openai import OpenAI
-from playwright.sync_api import sync_playwright
 
 
 MANIFEST = Path("work/v11_candidate_manifest.json")
@@ -18,23 +17,19 @@ OUT = Path("work/v12_ranked_candidates.json")
 SHORTS_HISTORY = Path("history.json")
 SHORTS_REJECTED_HISTORY = Path("shorts_rejected_history.json")
 
-# V12.11.2 DIRECT-API PASS:
-# Normal path: no individual Kick clip page loads at all.
-MAX_INSPECT = 100
-MAX_RANKED = 40
-MIN_SCORE = 0
+# V12.13 QUALITY-FIRST TRACTION RANKER
+MAX_INSPECT = 320
+MAX_RANKED = 48
 MIN_SOURCE_SECONDS = 40.0
 
-API_WORKERS = 12
+API_WORKERS = 16
 API_TIMEOUT_SECONDS = 10
 API_RETRIES = 2
 
-# If direct API access is temporarily blocked, fall back to Playwright for
-# only a small number of clips instead of loading all 100 pages.
-MIN_DIRECT_SURVIVORS_BEFORE_SKIP_BROWSER = 6
-MAX_BROWSER_FALLBACKS = 16
-
-KICK_API_TEMPLATE = "https://kick.com/api/v2/clips/{clip_id}/play"
+KICK_API_TEMPLATE = (
+    "https://kick.com/api/v2/"
+    "clips/{clip_id}/play"
+)
 
 API_HEADERS = {
     "User-Agent": (
@@ -42,192 +37,402 @@ API_HEADERS = {
         "AppleWebKit/537.36 (KHTML, like Gecko) "
         "Chrome/130.0.0.0 Safari/537.36"
     ),
-    "Accept": "application/json, text/plain, */*",
-    "Referer": "https://kick.com/",
-    "Origin": "https://kick.com",
-    "X-Requested-With": "XMLHttpRequest",
+    "Accept":
+        "application/json, text/plain, */*",
+    "Referer":
+        "https://kick.com/",
+    "Origin":
+        "https://kick.com",
+    "X-Requested-With":
+        "XMLHttpRequest",
 }
 
 BLOCKED = {
-    "casino", "gambling", "roulette", "blackjack", "sportsbook",
-    "betting", "slots", "slot machine", "stake", "crypto",
+    "casino",
+    "gambling",
+    "roulette",
+    "blackjack",
+    "sportsbook",
+    "betting",
+    "slots",
+    "slot machine",
+    "stake",
+    "crypto casino",
     "prediction market",
 }
 
 MUSIC_BLOCKED = {
-    "song", "music", "remix", "lyrics", "singing", "karaoke",
-    "official audio", "music video", "soundtrack",
+    "music video",
+    "official audio",
+    "karaoke",
+    "lyrics",
+    "singing",
+    "remix",
+    "soundtrack",
 }
 
-ACTION = {
-    "clutch", "1v", "kill", "kills", "win", "ace", "rage",
-    "insane", "crazy", "sniper", "headshot", "fight", "final",
-    "boss", "record", "speedrun", "comeback", "fail", "funny",
-    "reaction", "elim", "wiped", "squad", "ranked", "overtime",
-    "last second", "1 hp", "quad", "triple", "double", "ambush",
-    "rocket", "movement",
+ACTION_TERMS = {
+    "clutch",
+    "1v1",
+    "1v2",
+    "1v3",
+    "1v4",
+    "1v5",
+    "ace",
+    "kill",
+    "kills",
+    "elimination",
+    "elim",
+    "knock",
+    "down",
+    "wipe",
+    "wiped",
+    "squad wipe",
+    "last alive",
+    "solo",
+    "win",
+    "victory",
+    "champion",
+    "comeback",
+    "overtime",
+    "last second",
+    "final circle",
+    "endgame",
+    "headshot",
+    "sniper",
+    "noscope",
+    "no scope",
+    "360",
+    "air dribble",
+    "goal",
+    "rage",
+    "scream",
+    "reaction",
+    "funny",
+    "hilarious",
+    "fail",
+    "failed",
+    "jumpscare",
+    "jump scare",
+    "chase",
+    "escape",
+    "save",
+    "rescue",
+    "ambush",
+    "boss",
+    "record",
+    "speedrun",
+    "1 hp",
+    "one hp",
+    "quad",
+    "triple",
+    "double",
+    "crazy",
+    "insane",
 }
 
+STAKE_TERMS = {
+    "last",
+    "final",
+    "overtime",
+    "match point",
+    "game point",
+    "ranked",
+    "1 hp",
+    "one hp",
+    "solo",
+    "last alive",
+    "final circle",
+    "endgame",
+    "comeback",
+    "record",
+    "boss",
+}
 
-def norm(s):
-    return re.sub(r"\s+", " ", (s or "")).strip()
+# Small category prior only. Real audience traction dominates.
+GAME_PRIOR = {
+    "call of duty: warzone": 100,
+    "valorant": 96,
+    "counter-strike 2": 96,
+    "fortnite": 93,
+    "apex legends": 93,
+    "marvel rivals": 92,
+    "rocket league": 92,
+    "overwatch 2": 88,
+    "call of duty: black ops 7": 92,
+    "dead by daylight": 84,
+    "escape from tarkov": 84,
+    "rust": 82,
+    "grand theft auto v (gta)": 80,
+    "league of legends": 82,
+    "minecraft": 72,
+    "roblox": 70,
+}
+
+MAX_PER_CREATOR_IN_RANKED = 5
+MAX_PER_GAME_IN_RANKED = 12
+
+
+def norm(value):
+    return re.sub(
+        r"\s+",
+        " ",
+        str(
+            value or ""
+        ),
+    ).strip()
 
 
 def normalize_clip_id(value):
-    return str(value or "").strip().casefold()
+    return str(
+        value or ""
+    ).strip().casefold()
 
 
 def normalize_clip_url(value):
-    raw = str(value or "").strip()
+    raw = str(
+        value or ""
+    ).strip()
+
     if not raw:
         return ""
+
     try:
-        parts = urlsplit(raw)
-        netloc = parts.netloc.lower()
-        if netloc.startswith("www."):
-            netloc = netloc[4:]
-        path = re.sub(r"/+", "/", parts.path).rstrip("/").casefold()
+        parts = urlsplit(
+            raw
+        )
+
+        netloc = (
+            parts.netloc.lower()
+        )
+
+        if netloc.startswith(
+            "www."
+        ):
+            netloc = netloc[
+                4:
+            ]
+
+        path = re.sub(
+            r"/+",
+            "/",
+            parts.path,
+        ).rstrip("/").casefold()
+
         return urlunsplit(
             (
-                (parts.scheme or "https").lower(),
+                (
+                    parts.scheme
+                    or
+                    "https"
+                ).lower(),
                 netloc,
                 path,
                 "",
                 "",
             )
         )
+
     except Exception:
-        return raw.rstrip("/").casefold()
+        return (
+            raw
+            .rstrip("/")
+            .casefold()
+        )
 
 
 def load_json(path):
     if not path.exists():
         return {}
+
     try:
-        return json.loads(path.read_text(encoding="utf-8"))
+        return json.loads(
+            path.read_text(
+                encoding="utf-8"
+            )
+        )
+
     except Exception as exc:
-        print(f"WARNING: could not parse {path}: {exc}")
+        print(
+            f"WARNING: could not parse "
+            f"{path}: {exc}"
+        )
+
         return {}
 
 
-def extract_identity_sets(data, keys):
-    ids, urls = set(), set()
+def extract_identity_sets(
+    data,
+    keys,
+):
+    ids = set()
+    urls = set()
 
-    if isinstance(data, list):
+    if isinstance(
+        data,
+        list,
+    ):
         rows = data
-    elif isinstance(data, dict):
+
+    elif isinstance(
+        data,
+        dict,
+    ):
         rows = []
+
         for key in keys:
-            value = data.get(key)
-            if isinstance(value, list):
-                rows.extend(value)
+            value = data.get(
+                key
+            )
+
+            if isinstance(
+                value,
+                list,
+            ):
+                rows.extend(
+                    value
+                )
+
     else:
         rows = []
 
     for item in rows:
-        if isinstance(item, str):
-            if item.strip().lower().startswith(("http://", "https://")):
-                curl = normalize_clip_url(item)
-                if curl:
-                    urls.add(curl)
+        if isinstance(
+            item,
+            str,
+        ):
+            raw = item.strip()
+
+            if raw.lower().startswith(
+                (
+                    "http://",
+                    "https://",
+                )
+            ):
+                urls.add(
+                    normalize_clip_url(
+                        raw
+                    )
+                )
+
             else:
-                cid = normalize_clip_id(item)
-                if cid:
-                    ids.add(cid)
+                ids.add(
+                    normalize_clip_id(
+                        raw
+                    )
+                )
+
             continue
 
-        if not isinstance(item, dict):
+        if not isinstance(
+            item,
+            dict,
+        ):
             continue
 
         cid = normalize_clip_id(
-            item.get("clip_id")
-            or item.get("id")
+            item.get(
+                "clip_id"
+            )
+            or
+            item.get(
+                "id"
+            )
         )
 
         curl = normalize_clip_url(
-            item.get("clip_url")
-            or item.get("source_url")
-            or item.get("url")
-            or item.get("source")
+            item.get(
+                "clip_url"
+            )
+            or
+            item.get(
+                "source_url"
+            )
+            or
+            item.get(
+                "url"
+            )
+            or
+            item.get(
+                "source"
+            )
         )
 
         if cid:
-            ids.add(cid)
+            ids.add(
+                cid
+            )
 
         if curl:
-            urls.add(curl)
-
-    return ids, urls
-
-
-def load_blocked_short_identities():
-    used_ids, used_urls = extract_identity_sets(
-        load_json(SHORTS_HISTORY),
-        ["used_clips", "clips", "history"],
-    )
-
-    rejected_ids, rejected_urls = extract_identity_sets(
-        load_json(SHORTS_REJECTED_HISTORY),
-        [
-            "clip_ids",
-            "rejected_clips",
-            "rejected",
-            "clips",
-            "used_clips",
-        ],
-    )
-
-    print(
-        f"Previously published Shorts IDs loaded: "
-        f"{len(used_ids)}"
-    )
-
-    print(
-        f"Permanently rejected Shorts IDs loaded: "
-        f"{len(rejected_ids)}"
-    )
+            urls.add(
+                curl
+            )
 
     return (
-        used_ids | rejected_ids,
-        used_urls | rejected_urls,
+        ids,
+        urls,
     )
 
 
-def candidate_is_blocked(
-    candidate,
-    blocked_ids,
-    blocked_urls,
+def terms_found(
+    text,
+    terms,
 ):
-    cid = normalize_clip_id(
-        candidate.get("clip_id")
-    )
+    lowered = str(
+        text or ""
+    ).casefold()
 
-    curl = normalize_clip_url(
-        candidate.get("clip_url")
-        or candidate.get("source_url")
-        or candidate.get("url")
-        or candidate.get("source")
-    )
-
-    return (
-        (cid and cid in blocked_ids)
-        or
-        (curl and curl in blocked_urls)
-    )
-
-
-def hits(text, words):
-    lowered = text.lower()
     return sorted(
-        word
-        for word in words
-        if word in lowered
+        term
+        for term in terms
+        if term in lowered
     )
 
 
+def to_int(value):
+    try:
+        return max(
+            0,
+            int(
+                value
+            ),
+        )
+
+    except Exception:
+        return 0
 
 
-def _json_via_urllib(url):
+def to_float(value):
+    try:
+        return float(
+            value
+        )
+
+    except Exception:
+        return None
+
+
+def parse_datetime(value):
+    if not value:
+        return None
+
+    try:
+        return datetime.fromisoformat(
+            str(
+                value
+            ).replace(
+                "Z",
+                "+00:00",
+            )
+        ).astimezone(
+            timezone.utc
+        )
+
+    except Exception:
+        return None
+
+
+def fetch_json_urllib(url):
     request = urllib.request.Request(
         url,
         headers=API_HEADERS,
@@ -238,22 +443,17 @@ def _json_via_urllib(url):
         request,
         timeout=API_TIMEOUT_SECONDS,
     ) as response:
-        raw = response.read()
-
-    return json.loads(
-        raw.decode(
-            "utf-8",
-            errors="replace",
+        return json.loads(
+            response
+            .read()
+            .decode(
+                "utf-8",
+                errors="replace",
+            )
         )
-    )
 
 
-def _json_via_curl(url):
-    """
-    Second direct-HTTP route. This is still dramatically cheaper than
-    launching a browser and lets the runner survive occasional urllib/TLS
-    differences.
-    """
+def fetch_json_curl(url):
     command = [
         "curl",
         "--fail",
@@ -265,13 +465,17 @@ def _json_via_curl(url):
             API_TIMEOUT_SECONDS
         ),
         "-H",
-        f"User-Agent: {API_HEADERS['User-Agent']}",
+        f"User-Agent: "
+        f"{API_HEADERS['User-Agent']}",
         "-H",
-        f"Accept: {API_HEADERS['Accept']}",
+        f"Accept: "
+        f"{API_HEADERS['Accept']}",
         "-H",
-        f"Referer: {API_HEADERS['Referer']}",
+        f"Referer: "
+        f"{API_HEADERS['Referer']}",
         "-H",
-        f"Origin: {API_HEADERS['Origin']}",
+        f"Origin: "
+        f"{API_HEADERS['Origin']}",
         "-H",
         "X-Requested-With: XMLHttpRequest",
         url,
@@ -290,22 +494,6 @@ def _json_via_curl(url):
 
 
 def fetch_kick_clip_api(candidate):
-    """
-    Fetch the same public clip payload used by Kick's clip player and by
-    current yt-dlp Kick extraction.
-
-    Expected response:
-        {"clip": {
-            "clip_url": ...,
-            "duration": ...,
-            "title": ...,
-            "views": ...,
-            "likes": ...,
-            "channel": {"slug": ...},
-            "category": {"name": ...},
-            ...
-        }}
-    """
     clip_id = str(
         candidate.get(
             "clip_id",
@@ -315,7 +503,7 @@ def fetch_kick_clip_api(candidate):
 
     if not clip_id:
         raise RuntimeError(
-            "candidate missing clip_id"
+            "missing clip_id"
         )
 
     url = KICK_API_TEMPLATE.format(
@@ -329,10 +517,9 @@ def fetch_kick_clip_api(candidate):
         API_RETRIES + 1,
     ):
         try:
-            payload = _json_via_urllib(
+            return fetch_json_urllib(
                 url
             )
-            return payload
 
         except Exception as exc:
             errors.append(
@@ -340,10 +527,9 @@ def fetch_kick_clip_api(candidate):
             )
 
         try:
-            payload = _json_via_curl(
+            return fetch_json_curl(
                 url
             )
-            return payload
 
         except Exception as exc:
             errors.append(
@@ -352,35 +538,21 @@ def fetch_kick_clip_api(candidate):
 
         if attempt < API_RETRIES:
             time.sleep(
-                0.35 * attempt
+                0.25
+                *
+                attempt
             )
 
     raise RuntimeError(
         " | ".join(
-            errors[-4:]
+            errors[
+                -4:
+            ]
         )
     )
 
 
-def to_float(value):
-    try:
-        return float(
-            value
-        )
-    except Exception:
-        return None
-
-
-def to_int(value):
-    try:
-        return int(
-            value
-        )
-    except Exception:
-        return 0
-
-
-def inspect_metadata_api(candidate):
+def inspect_candidate(candidate):
     payload = fetch_kick_clip_api(
         candidate
     )
@@ -394,7 +566,7 @@ def inspect_metadata_api(candidate):
         dict,
     ):
         raise RuntimeError(
-            "Kick API response missing clip object"
+            "Kick response missing clip object"
         )
 
     media_url = str(
@@ -404,7 +576,7 @@ def inspect_metadata_api(candidate):
         )
     ).strip()
 
-    duration_seconds = to_float(
+    duration = to_float(
         clip.get(
             "duration"
         )
@@ -452,7 +624,7 @@ def inspect_metadata_api(candidate):
             "slug",
             "",
         )
-    )
+    ).lower()
 
     api_category = norm(
         category_obj.get(
@@ -481,20 +653,51 @@ def inspect_metadata_api(candidate):
     )
 
     like_rate_pct = (
-        round(
+        (
             likes
             /
             max(
                 1,
                 views,
             )
-            *
-            100,
-            3,
         )
+        *
+        100.0
         if views > 0
         else 0.0
     )
+
+    created_at_raw = clip.get(
+        "created_at"
+    )
+
+    created_at = parse_datetime(
+        created_at_raw
+    )
+
+    if created_at is None:
+        age_hours = None
+        views_per_hour = 0.0
+
+    else:
+        age_hours = max(
+            0.25,
+            (
+                datetime.now(
+                    timezone.utc
+                )
+                -
+                created_at
+            ).total_seconds()
+            /
+            3600.0,
+        )
+
+        views_per_hour = (
+            views
+            /
+            age_hours
+        )
 
     metadata_text = norm(
         " ".join(
@@ -511,12 +714,8 @@ def inspect_metadata_api(candidate):
         candidate
     )
 
-    # Keep original discovery game for diversity bookkeeping, but attach
-    # Kick's current category separately for quality/content checks.
     row.update(
         {
-            "metadata_source":
-                "playwright_fallback",
             "page_title":
                 title,
             "page_description":
@@ -524,33 +723,36 @@ def inspect_metadata_api(candidate):
             "metadata_text":
                 metadata_text,
             "bad_hits":
-                hits(
+                terms_found(
                     metadata_text,
                     BLOCKED,
                 ),
             "music_hits":
-                hits(
+                terms_found(
                     metadata_text,
                     MUSIC_BLOCKED,
                 ),
             "action_hits":
-                hits(
+                terms_found(
                     metadata_text,
-                    ACTION,
+                    ACTION_TERMS,
+                ),
+            "stake_hits":
+                terms_found(
+                    metadata_text,
+                    STAKE_TERMS,
                 ),
             "media_url":
                 media_url,
-            # Backward-compatible alias for V12.9 consumers.
             "playlist_url":
                 media_url,
             "source_duration_seconds":
                 (
                     round(
-                        duration_seconds,
+                        duration,
                         3,
                     )
-                    if duration_seconds
-                    is not None
+                    if duration is not None
                     else None
                 ),
             "kick_api_category":
@@ -564,10 +766,25 @@ def inspect_metadata_api(candidate):
             "kick_like_count":
                 likes,
             "kick_like_rate_pct":
-                like_rate_pct,
+                round(
+                    like_rate_pct,
+                    4,
+                ),
             "kick_created_at":
-                clip.get(
-                    "created_at"
+                created_at_raw,
+            "kick_age_hours":
+                (
+                    round(
+                        age_hours,
+                        3,
+                    )
+                    if age_hours is not None
+                    else None
+                ),
+            "kick_views_per_hour":
+                round(
+                    views_per_hour,
+                    4,
                 ),
             "kick_thumbnail_url":
                 clip.get(
@@ -593,323 +810,737 @@ def inspect_metadata_api(candidate):
     return row
 
 
-def probe_stream_duration(playlist_url):
-    if not playlist_url:
-        return None
-
-    try:
-        result = subprocess.run(
-            [
-                "ffprobe",
-                "-v",
-                "error",
-                "-show_entries",
-                "format=duration",
-                "-of",
-                "default=noprint_wrappers=1:nokey=1",
-                playlist_url,
-            ],
-            check=True,
-            capture_output=True,
-            text=True,
-            timeout=20,
-        )
-
-        value = result.stdout.strip()
-
-        if not value:
-            return None
-
-        seconds = float(value)
-
-        if seconds <= 0:
-            return None
-
-        return seconds
-
-    except Exception:
-        return None
-
-
-def inspect_metadata_browser_fallback(page, candidate):
-    """
-    Emergency fallback only. V12.11.2 normally uses the direct Kick clip
-    API and never opens individual clip pages.
-    """
-    playlist_urls = []
-
-    def capture(response):
-        url = response.url
-
-        if ".m3u8" in url:
-            playlist_urls.append(
-                url
+def percentile_scores(
+    rows,
+    key,
+):
+    values = sorted(
+        float(
+            row.get(
+                key,
+                0,
             )
-
-    page.on(
-        "response",
-        capture,
+            or
+            0
+        )
+        for row in rows
     )
 
-    try:
-        page.goto(
-            candidate["clip_url"],
-            wait_until="domcontentloaded",
-            timeout=30000,
+    if not values:
+        return {}
+
+    if len(
+        values
+    ) == 1:
+        return {
+            id(
+                rows[
+                    0
+                ]
+            ):
+                100.0
+        }
+
+    result = {}
+
+    denominator = max(
+        1,
+        len(
+            values
+        )
+        -
+        1,
+    )
+
+    for row in rows:
+        value = float(
+            row.get(
+                key,
+                0,
+            )
+            or
+            0
         )
 
-        # Short wait only; this replaces the second page visit that the
-        # old visual prescreener used to perform.
-        page.wait_for_timeout(
-            450
+        rank = (
+            bisect.bisect_right(
+                values,
+                value,
+            )
+            -
+            1
         )
 
-        try:
-            page.locator(
-                "video"
-            ).first.click(
-                timeout=1000
+        result[
+            id(
+                row
             )
-
-            page.wait_for_timeout(
-                350
-            )
-
-        except Exception:
-            pass
-
-        # Give slow HLS responses one small extra chance.
-        if not playlist_urls:
-            page.wait_for_timeout(
-                450
-            )
-
-        title = norm(
-            page.title()
+        ] = (
+            rank
+            /
+            denominator
+            *
+            100.0
         )
 
-        desc = ""
+    return result
 
-        for selector in [
-            'meta[name="description"]',
-            'meta[property="og:description"]',
-            'meta[name="twitter:description"]',
-        ]:
-            try:
-                value = (
-                    page.locator(
-                        selector
-                    )
-                    .first
-                    .get_attribute(
-                        "content"
-                    )
-                )
 
-                if value:
-                    desc = norm(
-                        value
-                    )
-                    break
+def freshness_score(
+    age_hours,
+):
+    if age_hours is None:
+        return 45.0
 
-            except Exception:
-                pass
+    if age_hours <= 6:
+        return 100.0
 
-    finally:
-        try:
-            page.remove_listener(
-                "response",
-                capture,
-            )
-        except Exception:
-            pass
+    if age_hours <= 24:
+        return 92.0
 
-    chosen_playlist = None
+    if age_hours <= 72:
+        return 78.0
 
-    clip_id = str(
-        candidate.get(
-            "clip_id",
+    if age_hours <= 168:
+        return 62.0
+
+    if age_hours <= 720:
+        return 40.0
+
+    return 20.0
+
+
+def duration_score(
+    seconds,
+):
+    seconds = float(
+        seconds
+    )
+
+    if 40 <= seconds <= 60:
+        return 100.0
+
+    if seconds <= 90:
+        return 96.0
+
+    if seconds <= 150:
+        return 90.0
+
+    if seconds <= 240:
+        return 82.0
+
+    return 68.0
+
+
+def title_signal_score(row):
+    action_count = len(
+        row.get(
+            "action_hits",
+            [],
+        )
+    )
+
+    stake_count = len(
+        row.get(
+            "stake_hits",
+            [],
+        )
+    )
+
+    score = (
+        action_count
+        *
+        20.0
+        +
+        stake_count
+        *
+        10.0
+    )
+
+    if norm(
+        row.get(
+            "page_title",
             "",
         )
-    ).lower()
+    ):
+        score += 5.0
 
-    for url in playlist_urls:
+    return min(
+        100.0,
+        score,
+    )
+
+
+def engagement_score(row):
+    views = int(
+        row.get(
+            "kick_view_count",
+            0,
+        )
+        or
+        0
+    )
+
+    rate = float(
+        row.get(
+            "kick_like_rate_pct",
+            0,
+        )
+        or
+        0
+    )
+
+    # 5%+ like rate is excellent, but tiny-view clips should not get a huge
+    # bonus based on one or two likes.
+    raw = min(
+        100.0,
+        (
+            rate
+            /
+            5.0
+        )
+        *
+        100.0,
+    )
+
+    reliability = min(
+        1.0,
+        views
+        /
+        250.0,
+    )
+
+    return (
+        raw
+        *
+        reliability
+    )
+
+
+def score_rows(rows):
+    views_pct = percentile_scores(
+        rows,
+        "kick_view_count",
+    )
+
+    likes_pct = percentile_scores(
+        rows,
+        "kick_like_count",
+    )
+
+    vph_pct = percentile_scores(
+        rows,
+        "kick_views_per_hour",
+    )
+
+    for row in rows:
+        key = id(
+            row
+        )
+
+        traction = (
+            vph_pct.get(
+                key,
+                0.0,
+            )
+            *
+            0.45
+            +
+            views_pct.get(
+                key,
+                0.0,
+            )
+            *
+            0.35
+            +
+            likes_pct.get(
+                key,
+                0.0,
+            )
+            *
+            0.20
+        )
+
+        engagement = (
+            engagement_score(
+                row
+            )
+        )
+
+        title_signal = (
+            title_signal_score(
+                row
+            )
+        )
+
+        freshness = (
+            freshness_score(
+                row.get(
+                    "kick_age_hours"
+                )
+            )
+        )
+
+        duration = (
+            duration_score(
+                row.get(
+                    "source_duration_seconds",
+                    0,
+                )
+            )
+        )
+
+        game_name = str(
+            row.get(
+                "game",
+                "",
+            )
+        ).strip().lower()
+
+        game_prior = GAME_PRIOR.get(
+            game_name,
+            75.0,
+        )
+
+        # Audience evidence deliberately dominates:
+        # 50% traction percentile + 15% engagement = 65%.
+        score = (
+            traction
+            *
+            0.50
+            +
+            engagement
+            *
+            0.15
+            +
+            title_signal
+            *
+            0.16
+            +
+            freshness
+            *
+            0.08
+            +
+            duration
+            *
+            0.06
+            +
+            game_prior
+            *
+            0.05
+        )
+
+        # Small evidence boosts only.
         if (
-            clip_id
-            and clip_id in url.lower()
+            vph_pct.get(
+                key,
+                0.0,
+            )
+            >=
+            90
         ):
-            chosen_playlist = url
+            score += 4.0
+
+        if (
+            views_pct.get(
+                key,
+                0.0,
+            )
+            >=
+            90
+        ):
+            score += 3.0
+
+        if (
+            row.get(
+                "kick_view_count",
+                0,
+            )
+            >=
+            500
+            and
+            row.get(
+                "kick_like_rate_pct",
+                0,
+            )
+            >=
+            3.0
+        ):
+            score += 4.0
+
+        if len(
+            row.get(
+                "action_hits",
+                [],
+            )
+        ) >= 2:
+            score += 3.0
+
+        score = max(
+            0.0,
+            min(
+                100.0,
+                score,
+            ),
+        )
+
+        row[
+            "v12_metadata_score"
+        ] = round(
+            score,
+            2,
+        )
+
+        row[
+            "v12_metadata_reason"
+        ] = (
+            "quality-first traction rank: "
+            f"views={row.get('kick_view_count', 0)}, "
+            f"vph={row.get('kick_views_per_hour', 0):.1f}, "
+            f"likes={row.get('kick_like_count', 0)}, "
+            f"like_rate={row.get('kick_like_rate_pct', 0):.2f}%, "
+            f"action_hits={len(row.get('action_hits', []))}"
+        )
+
+        row[
+            "v13_traction_score"
+        ] = round(
+            traction,
+            2,
+        )
+
+        row[
+            "v13_engagement_score"
+        ] = round(
+            engagement,
+            2,
+        )
+
+        row[
+            "v13_title_signal_score"
+        ] = round(
+            title_signal,
+            2,
+        )
+
+        row[
+            "v13_freshness_score"
+        ] = round(
+            freshness,
+            2,
+        )
+
+        row[
+            "v13_views_percentile"
+        ] = round(
+            views_pct.get(
+                key,
+                0.0,
+            ),
+            2,
+        )
+
+        row[
+            "v13_vph_percentile"
+        ] = round(
+            vph_pct.get(
+                key,
+                0.0,
+            ),
+            2,
+        )
+
+    return rows
+
+
+def select_diverse_ranked(
+    rows,
+):
+    ordered = sorted(
+        rows,
+        key=lambda row: (
+            float(
+                row.get(
+                    "v12_metadata_score",
+                    0,
+                )
+            ),
+            float(
+                row.get(
+                    "kick_views_per_hour",
+                    0,
+                )
+            ),
+            int(
+                row.get(
+                    "kick_view_count",
+                    0,
+                )
+            ),
+        ),
+        reverse=True,
+    )
+
+    selected = []
+    creator_counts = {}
+    game_counts = {}
+
+    for row in ordered:
+        creator = str(
+            row.get(
+                "channel",
+                "",
+            )
+        ).strip().lower()
+
+        game = str(
+            row.get(
+                "game",
+                "",
+            )
+        ).strip().lower()
+
+        if (
+            creator
+            and
+            creator_counts.get(
+                creator,
+                0,
+            )
+            >=
+            MAX_PER_CREATOR_IN_RANKED
+        ):
+            continue
+
+        if (
+            game
+            and
+            game_counts.get(
+                game,
+                0,
+            )
+            >=
+            MAX_PER_GAME_IN_RANKED
+        ):
+            continue
+
+        selected.append(
+            row
+        )
+
+        if creator:
+            creator_counts[
+                creator
+            ] = (
+                creator_counts.get(
+                    creator,
+                    0,
+                )
+                +
+                1
+            )
+
+        if game:
+            game_counts[
+                game
+            ] = (
+                game_counts.get(
+                    game,
+                    0,
+                )
+                +
+                1
+            )
+
+        if len(
+            selected
+        ) >= MAX_RANKED:
             break
 
-    if (
-        not chosen_playlist
-        and playlist_urls
-    ):
-        chosen_playlist = (
-            playlist_urls[-1]
-        )
-
-    source_seconds = (
-        probe_stream_duration(
-            chosen_playlist
-        )
-        if chosen_playlist
-        else None
-    )
-
-    text = norm(
-        f"{title} {desc}"
-    )
-
-    row = dict(
-        candidate
-    )
-
-    row.update(
-        {
-            "page_title":
-                title,
-            "page_description":
-                desc,
-            "metadata_text":
-                text,
-            "bad_hits":
-                hits(
-                    text,
-                    BLOCKED,
-                ),
-            "music_hits":
-                hits(
-                    text,
-                    MUSIC_BLOCKED,
-                ),
-            "action_hits":
-                hits(
-                    text,
-                    ACTION,
-                ),
-            "playlist_url":
-                chosen_playlist,
-            "source_duration_seconds":
-                (
-                    round(
-                        source_seconds,
-                        3,
-                    )
-                    if source_seconds
-                    is not None
-                    else None
-                ),
+    # If diversity caps left us short, backfill from the raw top order.
+    if len(
+        selected
+    ) < MAX_RANKED:
+        selected_ids = {
+            str(
+                row.get(
+                    "clip_id",
+                    "",
+                )
+            )
+            for row in selected
         }
-    )
 
-    return row
+        for row in ordered:
+            clip_id = str(
+                row.get(
+                    "clip_id",
+                    "",
+                )
+            )
+
+            if clip_id in selected_ids:
+                continue
+
+            selected.append(
+                row
+            )
+
+            selected_ids.add(
+                clip_id
+            )
+
+            if len(
+                selected
+            ) >= MAX_RANKED:
+                break
+
+    return selected
+
 
 def main():
     if not MANIFEST.exists():
         raise RuntimeError(
-            "Missing work/v11_candidate_manifest.json"
+            "Missing discovery manifest."
         )
 
-    data = json.loads(
-        MANIFEST.read_text(
-            encoding="utf-8"
-        )
+    manifest = load_json(
+        MANIFEST
     )
 
-    all_candidates = data.get(
+    all_candidates = manifest.get(
         "candidates",
         [],
     )
 
-    blocked_ids, blocked_urls = (
-        load_blocked_short_identities()
+    if not isinstance(
+        all_candidates,
+        list,
+    ):
+        all_candidates = []
+
+    history = load_json(
+        SHORTS_HISTORY
+    )
+
+    rejected = load_json(
+        SHORTS_REJECTED_HISTORY
+    )
+
+    (
+        used_ids,
+        used_urls,
+    ) = extract_identity_sets(
+        history,
+        [
+            "used_clips",
+        ],
+    )
+
+    (
+        rejected_ids,
+        rejected_urls,
+    ) = extract_identity_sets(
+        rejected,
+        [
+            "clip_ids",
+        ],
     )
 
     fresh_candidates = []
-    skipped_history = 0
+
     seen_ids = set()
     seen_urls = set()
 
     for candidate in all_candidates:
-        if not isinstance(candidate, dict):
+        if not isinstance(
+            candidate,
+            dict,
+        ):
             continue
 
-        cid = normalize_clip_id(
-            candidate.get("clip_id")
+        clip_id = normalize_clip_id(
+            candidate.get(
+                "clip_id"
+            )
+            or
+            candidate.get(
+                "id"
+            )
         )
 
-        curl = normalize_clip_url(
-            candidate.get("clip_url")
-            or candidate.get("source_url")
-            or candidate.get("url")
-            or candidate.get("source")
+        clip_url = normalize_clip_url(
+            candidate.get(
+                "clip_url"
+            )
+            or
+            candidate.get(
+                "url"
+            )
         )
 
         if (
-            (cid and cid in seen_ids)
+            not clip_id
             or
-            (curl and curl in seen_urls)
+            not clip_url
         ):
             continue
 
-        if candidate_is_blocked(
-            candidate,
-            blocked_ids,
-            blocked_urls,
+        if (
+            clip_id in used_ids
+            or
+            clip_url in used_urls
+            or
+            clip_id in rejected_ids
+            or
+            clip_url in rejected_urls
         ):
-            skipped_history += 1
             continue
+
+        if (
+            clip_id in seen_ids
+            or
+            clip_url in seen_urls
+        ):
+            continue
+
+        seen_ids.add(
+            clip_id
+        )
+
+        seen_urls.add(
+            clip_url
+        )
 
         fresh_candidates.append(
             candidate
         )
 
-        if cid:
-            seen_ids.add(cid)
-
-        if curl:
-            seen_urls.add(curl)
-
     candidates = fresh_candidates[
         :MAX_INSPECT
     ]
 
-    print(
-        f"V12.11.2 freshness filter: "
-        f"{len(all_candidates)} discovered -> "
-        f"{len(fresh_candidates)} fresh -> "
-        f"{len(candidates)} metadata-inspected."
-    )
+    if not candidates:
+        raise RuntimeError(
+            "No fresh candidates available "
+            "for V12.13 API ranking."
+        )
 
     print(
-        f"Skipped {skipped_history} previously "
-        f"published/rejected Shorts before inspection."
-    )
-
-    inspected = []
-    api_failures = []
-    api_successes = 0
-    too_short_count = 0
-    blocked_count = 0
-    music_count = 0
-    no_media_count = 0
-    unknown_duration_count = 0
-
-    print(
-        f"V12.11.2 DIRECT API: querying "
-        f"{len(candidates)} clips with "
-        f"{API_WORKERS} workers."
+        f"V12.13 QUALITY-FIRST API: "
+        f"querying {len(candidates)} clips "
+        f"with {API_WORKERS} workers."
     )
 
     rows_by_index = {}
+    failures = []
 
     with ThreadPoolExecutor(
         max_workers=API_WORKERS
     ) as executor:
         future_map = {
             executor.submit(
-                inspect_metadata_api,
+                inspect_candidate,
                 candidate,
             ): (
                 index,
@@ -931,22 +1562,29 @@ def main():
             )
 
             try:
-                row = future.result()
                 rows_by_index[
                     index
-                ] = row
-                api_successes += 1
+                ] = future.result()
 
             except Exception as exc:
-                api_failures.append(
+                failures.append(
                     (
                         index,
                         candidate,
-                        str(exc),
+                        str(
+                            exc
+                        ),
                     )
                 )
 
-    # Preserve discovery order after concurrent lookups.
+    deterministic = []
+
+    too_short = 0
+    blocked = 0
+    music = 0
+    no_media = 0
+    unknown_duration = 0
+
     for index in sorted(
         rows_by_index
     ):
@@ -954,403 +1592,66 @@ def main():
             index
         ]
 
-        candidate = candidates[
-            index - 1
-        ]
-
-        if row["bad_hits"]:
-            blocked_count += 1
-            print(
-                f"[{index}/{len(candidates)}] "
-                f"HARD REJECT blocked API metadata: "
-                f"{candidate.get('clip_id')} "
-                f"{row['bad_hits']}"
-            )
+        if row.get(
+            "bad_hits"
+        ):
+            blocked += 1
             continue
 
-        if row["music_hits"]:
-            music_count += 1
-            print(
-                f"[{index}/{len(candidates)}] "
-                f"HARD REJECT music API metadata: "
-                f"{candidate.get('clip_id')} "
-                f"{row['music_hits']}"
-            )
+        if row.get(
+            "music_hits"
+        ):
+            music += 1
             continue
 
         if not row.get(
             "media_url"
         ):
-            no_media_count += 1
-            print(
-                f"[{index}/{len(candidates)}] "
-                f"SKIP API has no clip media URL: "
-                f"{candidate.get('clip_id')}"
-            )
+            no_media += 1
             continue
 
-        source_seconds = row.get(
+        seconds = row.get(
             "source_duration_seconds"
         )
 
-        if source_seconds is None:
-            unknown_duration_count += 1
-            print(
-                f"[{index}/{len(candidates)}] "
-                f"SKIP API missing duration: "
-                f"{candidate.get('clip_id')}"
-            )
+        if seconds is None:
+            unknown_duration += 1
             continue
 
-        if (
-            float(
-                source_seconds
-            )
-            <
-            MIN_SOURCE_SECONDS
-        ):
-            too_short_count += 1
-            print(
-                f"[{index}/{len(candidates)}] "
-                f"SKIP too short "
-                f"({source_seconds:.2f}s): "
-                f"{candidate.get('clip_id')}"
-            )
+        if float(
+            seconds
+        ) < MIN_SOURCE_SECONDS:
+            too_short += 1
             continue
 
-        inspected.append(
+        deterministic.append(
             row
         )
-
-    # Direct API should be the normal path. If it is temporarily blocked,
-    # do a limited browser fallback rather than repeating V12.9's 100-page
-    # serial crawl.
-    browser_fallback_used = 0
-
-    if (
-        len(inspected)
-        <
-        MIN_DIRECT_SURVIVORS_BEFORE_SKIP_BROWSER
-        and
-        api_failures
-    ):
-        fallback_targets = (
-            sorted(
-                api_failures,
-                key=lambda item: item[0],
-            )[
-                :MAX_BROWSER_FALLBACKS
-            ]
-        )
-
-        print(
-            f"V12.11.2 API fallback: only "
-            f"{len(inspected)} eligible direct survivors; "
-            f"trying up to "
-            f"{len(fallback_targets)} clip pages."
-        )
-
-        with sync_playwright() as p:
-            browser = p.chromium.launch(
-                headless=True
-            )
-
-            page = browser.new_page()
-
-            for index, candidate, api_error in fallback_targets:
-                try:
-                    row = (
-                        inspect_metadata_browser_fallback(
-                            page,
-                            candidate,
-                        )
-                    )
-
-                    source_seconds = row.get(
-                        "source_duration_seconds"
-                    )
-
-                    if (
-                        row.get(
-                            "bad_hits"
-                        )
-                        or
-                        row.get(
-                            "music_hits"
-                        )
-                        or
-                        not row.get(
-                            "playlist_url"
-                        )
-                        or
-                        source_seconds is None
-                        or
-                        float(
-                            source_seconds
-                        )
-                        <
-                        MIN_SOURCE_SECONDS
-                    ):
-                        continue
-
-                    # Keep consumers on the unified V12.11.2 field name.
-                    row[
-                        "media_url"
-                    ] = row.get(
-                        "playlist_url"
-                    )
-
-                    row.setdefault(
-                        "kick_view_count",
-                        0,
-                    )
-
-                    row.setdefault(
-                        "kick_like_count",
-                        0,
-                    )
-
-                    row.setdefault(
-                        "kick_like_rate_pct",
-                        0.0,
-                    )
-
-                    row.setdefault(
-                        "kick_api_category",
-                        row.get(
-                            "game",
-                            "",
-                        ),
-                    )
-
-                    inspected.append(
-                        row
-                    )
-
-                    browser_fallback_used += 1
-
-                except Exception as exc:
-                    print(
-                        f"[{index}/{len(candidates)}] "
-                        f"fallback failed "
-                        f"{candidate.get('clip_id')}: "
-                        f"{exc}"
-                    )
-
-            browser.close()
 
     print(
-        "V12.11.2 API STATS: "
-        f"{api_successes} direct API responses, "
-        f"{len(api_failures)} direct failures, "
-        f"{too_short_count} under {MIN_SOURCE_SECONDS:.0f}s, "
-        f"{blocked_count} blocked, "
-        f"{music_count} music, "
-        f"{no_media_count} no-media, "
-        f"{unknown_duration_count} unknown-duration, "
-        f"{browser_fallback_used} browser fallbacks accepted."
+        "V12.13 API FILTER: "
+        f"{len(rows_by_index)} responses, "
+        f"{len(failures)} failures, "
+        f"{too_short} under {MIN_SOURCE_SECONDS:.0f}s, "
+        f"{blocked} blocked, "
+        f"{music} music, "
+        f"{no_media} no-media, "
+        f"{unknown_duration} unknown-duration."
     )
 
-    if not inspected:
+    if not deterministic:
         raise RuntimeError(
-            "No candidates survived deterministic "
-            "metadata screening."
+            "No clips survived V12.13 "
+            "deterministic screening."
         )
 
-    compact = []
-
-    for i, row in enumerate(
-        inspected
-    ):
-        compact.append(
-            {
-                "id": i,
-                "game": row.get(
-                    "game",
-                    "",
-                ),
-                "channel": row.get(
-                    "channel",
-                    "",
-                ),
-                "title": row.get(
-                    "page_title",
-                    "",
-                ),
-                "description": row.get(
-                    "page_description",
-                    "",
-                ),
-                "action_hits": row.get(
-                    "action_hits",
-                    [],
-                ),
-                "duration_seconds": row.get(
-                    "source_duration_seconds",
-                ),
-                "kick_category": row.get(
-                    "kick_api_category",
-                    "",
-                ),
-                "views": row.get(
-                    "kick_view_count",
-                    0,
-                ),
-                "likes": row.get(
-                    "kick_like_count",
-                    0,
-                ),
-                "like_rate_pct": row.get(
-                    "kick_like_rate_pct",
-                    0.0,
-                ),
-            }
-        )
-
-    client = OpenAI()
-
-    prompt = f"""
-You are the CHEAP metadata ordering stage for ViralSpawnTV.
-
-A later WINDOW-AWARE visual prescreener will inspect actual frames from these clips,
-so do not reject merely because metadata is sparse.
-
-Rank ALL surviving gaming candidates from most promising to least
-promising using ONLY the metadata below.
-
-Prefer:
-- gameplay action
-- clutch/fail/rage/reaction/comedy
-- clear stakes or challenge
-- obvious payoff language
-- something likely to create a strong first-second hook
-- real Kick views/likes as a SECONDARY traction signal
-
-Popularity is only a tie-breaker. A high-view clip with weak gaming
-story/hook language should not outrank a clearly stronger story candidate.
-
-Do not invent events that are not supported by metadata.
-
-Return every candidate supplied, up to {MAX_RANKED}.
-Score 0-100, but do not use this score as the final quality decision.
-
-Return ONLY JSON:
-{{
-  "ranked": [
-    {{
-      "id": 0,
-      "score": 72,
-      "reason": "brief metadata reason"
-    }}
-  ]
-}}
-
-CANDIDATES:
-{json.dumps(compact, ensure_ascii=False)}
-"""
-
-    response = client.responses.create(
-        model="gpt-5.6",
-        input=prompt,
+    score_rows(
+        deterministic
     )
 
-    raw = re.sub(
-        r"^```json\s*|\s*```$",
-        "",
-        response.output_text.strip(),
+    ranked = select_diverse_ranked(
+        deterministic
     )
-
-    ranked_json = json.loads(
-        raw
-    ).get(
-        "ranked",
-        [],
-    )
-
-    by_id = {}
-
-    for item in ranked_json:
-        try:
-            idx = int(
-                item["id"]
-            )
-            score = float(
-                item.get(
-                    "score",
-                    0,
-                )
-            )
-        except Exception:
-            continue
-
-        if (
-            idx < 0
-            or idx >= len(inspected)
-        ):
-            continue
-
-        by_id[idx] = {
-            "score": score,
-            "reason": norm(
-                item.get(
-                    "reason",
-                    "",
-                )
-            ),
-        }
-
-    # Keep every deterministic survivor, even if the model omitted one.
-    ranked = []
-
-    for idx, row in enumerate(
-        inspected
-    ):
-        item = by_id.get(
-            idx,
-            {
-                "score": 0,
-                "reason":
-                    "Metadata model omitted candidate; "
-                    "visual prescreener will decide.",
-            },
-        )
-
-        candidate = dict(
-            row
-        )
-
-        candidate[
-            "v12_metadata_score"
-        ] = round(
-            float(
-                item["score"]
-            ),
-            1,
-        )
-
-        candidate[
-            "v12_metadata_reason"
-        ] = item[
-            "reason"
-        ]
-
-        ranked.append(
-            candidate
-        )
-
-    ranked.sort(
-        key=lambda row: float(
-            row.get(
-                "v12_metadata_score",
-                0,
-            )
-        ),
-        reverse=True,
-    )
-
-    ranked = ranked[
-        :MAX_RANKED
-    ]
 
     OUT.parent.mkdir(
         parents=True,
@@ -1359,25 +1660,39 @@ CANDIDATES:
 
     payload = {
         "version":
-            "12.10-direct-api-window-input",
+            "12.13-quality-first-traction-rank",
+        "strategy":
+            "65pct_audience_traction_plus_action_freshness",
         "source_candidate_count":
-            len(all_candidates),
+            len(
+                all_candidates
+            ),
         "fresh_candidate_count":
-            len(fresh_candidates),
-        "metadata_inspected_count":
-            len(candidates),
-        "survived_deterministic_screen":
-            len(inspected),
-        "direct_api_success_count":
-            api_successes,
-        "direct_api_failure_count":
-            len(api_failures),
-        "browser_fallback_accepted_count":
-            browser_fallback_used,
+            len(
+                fresh_candidates
+            ),
+        "api_inspected_count":
+            len(
+                candidates
+            ),
+        "api_success_count":
+            len(
+                rows_by_index
+            ),
+        "api_failure_count":
+            len(
+                failures
+            ),
+        "duration_eligible_count":
+            len(
+                deterministic
+            ),
         "ranked_count":
-            len(ranked),
-        "min_metadata_score":
-            MIN_SCORE,
+            len(
+                ranked
+            ),
+        "minimum_source_seconds":
+            MIN_SOURCE_SECONDS,
         "candidates":
             ranked,
     }
@@ -1391,20 +1706,44 @@ CANDIDATES:
         encoding="utf-8",
     )
 
+    print()
     print(
-        f"V12.11.2 direct-API metadata/duration stage: "
+        f"V12.13 QUALITY-FIRST RANK COMPLETE: "
         f"{len(all_candidates)} discovered -> "
-        f"{len(inspected)} deterministic survivors -> "
-        f"{len(ranked)} sent to visual prescreen."
+        f"{len(deterministic)} duration/content survivors -> "
+        f"{len(ranked)} strongest candidates."
     )
+
+    for position, row in enumerate(
+        ranked[
+            :15
+        ],
+        1,
+    ):
+        print(
+            f"QUALITY TOP {position}: "
+            f"{row.get('clip_id')} | "
+            f"game={row.get('game')} | "
+            f"score={row.get('v12_metadata_score')} | "
+            f"views={row.get('kick_view_count')} | "
+            f"vph={row.get('kick_views_per_hour')} | "
+            f"likes={row.get('kick_like_count')} | "
+            f"like_rate="
+            f"{row.get('kick_like_rate_pct'):.2f}% | "
+            f"age_h={row.get('kick_age_hours')} | "
+            f"action_hits={row.get('action_hits')}"
+        )
 
 
 if __name__ == "__main__":
     try:
         main()
+
     except Exception as exc:
         print(
-            "V12.11.2 RANKER FAILED:",
-            exc,
+            f"V12.13 RANKER FAILED: "
+            f"{exc}"
         )
-        sys.exit(1)
+        sys.exit(
+            1
+        )
