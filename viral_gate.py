@@ -128,13 +128,13 @@ def score(
 You are the FINAL viral-quality gate for ViralSpawnTV,
 an English-language gaming Shorts channel.
 
-The local video is ALREADY the exact 49-58 second window selected by the
+The local video is ALREADY the exact 40-58 second window selected by the
 V12.11 two-phase prescreener. Judge THIS WHOLE WINDOW independently.
 
 Publish threshold: {MIN_SCORE}/100.
 
 The current ViralSpawnTV strategy is:
-- final Short around 50-60 seconds
+- final Short around 40-60 seconds
 - strong first-second Big Hook
 - enough story/escalation to sustain the longer Short
 - clear payoff near the end
@@ -174,7 +174,7 @@ Return ONLY JSON:
 }}
 
 Set recommended=true only when the overall score is {MIN_SCORE}+ and the
-window is genuinely worth publishing as a 50-60 second ViralSpawnTV Short.
+window is genuinely worth publishing as a 40-60 second ViralSpawnTV Short.
 
 SOURCE CHANNEL:
 {acquisition.get("channel", "")}
@@ -357,12 +357,12 @@ def main():
 
     if not passed:
         print(
-            "V12.11 VIRAL QUALITY GATE: REJECTED"
+            "V12.11.2 VIRAL QUALITY GATE: REJECTED"
         )
         sys.exit(22)
 
     print(
-        "V12.11 VIRAL QUALITY GATE: PASSED"
+        "V12.11.2 VIRAL QUALITY GATE: PASSED"
     )
 
 
@@ -371,7 +371,7 @@ if __name__ == "__main__":
         main()
     except Exception as exc:
         print(
-            f"V12.11 VIRAL QUALITY GATE ERROR: "
+            f"V12.11.2 VIRAL QUALITY GATE ERROR: "
             f"{exc}"
         )
         sys.exit(1)
