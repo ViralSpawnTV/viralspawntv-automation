@@ -129,7 +129,7 @@ You are the FINAL viral-quality gate for ViralSpawnTV,
 an English-language gaming Shorts channel.
 
 The local video is ALREADY the exact 40-58 second window selected by the
-V12.12 audio-aware two-phase prescreener. Judge THIS WHOLE WINDOW independently.
+V12.13 audio-aware two-phase prescreener. Judge THIS WHOLE WINDOW independently.
 
 Publish threshold: {MIN_SCORE}/100.
 
@@ -361,12 +361,12 @@ def main():
 
     if not passed:
         print(
-            "V12.12 VIRAL QUALITY GATE: REJECTED"
+            "V12.13 VIRAL QUALITY GATE: REJECTED"
         )
         sys.exit(22)
 
     print(
-        "V12.12 VIRAL QUALITY GATE: PASSED"
+        "V12.13 VIRAL QUALITY GATE: PASSED"
     )
 
 
@@ -375,7 +375,7 @@ if __name__ == "__main__":
         main()
     except Exception as exc:
         print(
-            f"V12.12 VIRAL QUALITY GATE ERROR: "
+            f"V12.13 VIRAL QUALITY GATE ERROR: "
             f"{exc}"
         )
         sys.exit(1)
