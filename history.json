@@ -694,6 +694,17 @@
       "youtube_video_id": "suBYyFrb1iI",
       "privacy_status": "public",
       "processed_at_utc": "2026-09-27T08:25:27.972810+00:00"
+    },
+    {
+      "clip_id": "clip_01M37CNKC55EQ21DR811R408G1",
+      "clip_url": "https://kick.com/graynote1/clips/clip_01M37CNKC55EQ21DR811R408G1",
+      "source": "https://kick.com/graynote1/clips/clip_01M37CNKC55EQ21DR811R408G1",
+      "creator": "graynote1",
+      "channel": "graynote1",
+      "game": "",
+      "youtube_video_id": "iKXfZMgm6UA",
+      "privacy_status": "public",
+      "processed_at_utc": "2026-09-27T10:26:46.369300+00:00"
     }
   ]
 }
