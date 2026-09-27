@@ -3,6 +3,7 @@ import json
 import re
 import subprocess
 import sys
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 from openai import OpenAI
@@ -15,7 +16,11 @@ WORK.mkdir(parents=True, exist_ok=True)
 
 MAX_VISUAL_CANDIDATES = 24
 PROMOTE_COUNT = 8
-BATCH_SIZE = 10
+BATCH_SIZE = 12
+
+# Remote FFmpeg preview extraction was the largest V12.9 cost after the
+# browser ranker. Run a few independent sources in parallel.
+FRAME_WORKERS = 3
 
 TARGET_FINAL_SCORE = 72
 
@@ -428,94 +433,111 @@ def extract_window_frames(
     return grouped
 
 
-def build_window_items(candidates):
-    items = []
+def build_one_candidate_window_set(
+    candidate_index,
+    candidate,
+    total,
+):
+    clip_id = str(
+        candidate.get(
+            "clip_id",
+            "",
+        )
+    ).strip()
 
-    for candidate_index, candidate in enumerate(
-        candidates[
-            :MAX_VISUAL_CANDIDATES
-        ],
-        1,
+    media_url = str(
+        candidate.get(
+            "media_url"
+        )
+        or
+        candidate.get(
+            "playlist_url"
+        )
+        or ""
+    ).strip()
+
+    source_seconds = candidate.get(
+        "source_duration_seconds"
+    )
+
+    if (
+        not clip_id
+        or
+        not media_url
+        or
+        source_seconds is None
     ):
-        clip_id = str(
-            candidate.get(
-                "clip_id",
-                "",
-            )
-        ).strip()
+        return {
+            "index":
+                candidate_index,
+            "clip_id":
+                clip_id,
+            "windows":
+                [],
+            "items":
+                [],
+            "error":
+                "missing direct media URL/duration",
+        }
 
-        playlist_url = str(
-            candidate.get(
-                "playlist_url",
-                "",
-            )
-        ).strip()
+    windows = make_windows(
+        source_seconds
+    )
 
-        source_seconds = candidate.get(
-            "source_duration_seconds"
+    if not windows:
+        return {
+            "index":
+                candidate_index,
+            "clip_id":
+                clip_id,
+            "windows":
+                [],
+            "items":
+                [],
+            "error":
+                "no eligible window",
+        }
+
+    try:
+        grouped = (
+            extract_window_frames(
+                media_url,
+                clip_id,
+                windows,
+            )
         )
 
-        print(
-            f"WINDOW PREVIEW "
-            f"{candidate_index}/"
-            f"{min(len(candidates), MAX_VISUAL_CANDIDATES)}: "
-            f"{clip_id}"
+    except Exception as exc:
+        return {
+            "index":
+                candidate_index,
+            "clip_id":
+                clip_id,
+            "windows":
+                windows,
+            "items":
+                [],
+            "error":
+                str(exc),
+        }
+
+    local_items = []
+
+    for window_index, window in enumerate(
+        windows
+    ):
+        frame_map = grouped.get(
+            window_index,
+            {},
         )
 
-        if (
-            not clip_id
-            or
-            not playlist_url
-            or
-            source_seconds is None
+        if not frame_map.get(
+            "hook"
         ):
-            print(
-                "  missing cached HLS/duration"
-            )
             continue
 
-        windows = make_windows(
-            source_seconds
-        )
-
-        if not windows:
-            print(
-                "  no eligible 49-58s window"
-            )
-            continue
-
-        try:
-            grouped = (
-                extract_window_frames(
-                    playlist_url,
-                    clip_id,
-                    windows,
-                )
-            )
-
-        except Exception as exc:
-            print(
-                f"  preview extraction failed: "
-                f"{exc}"
-            )
-            continue
-
-        for window_index, window in enumerate(
-            windows
-        ):
-            frame_map = grouped.get(
-                window_index,
-                {},
-            )
-
-            if not frame_map.get(
-                "hook"
-            ):
-                continue
-
-            item = {
-                "window_item_id":
-                    len(items),
+        local_items.append(
+            {
                 "candidate":
                     candidate,
                 "window_index":
@@ -525,25 +547,117 @@ def build_window_items(candidates):
                 "frames":
                     frame_map,
             }
+        )
+
+    return {
+        "index":
+            candidate_index,
+        "clip_id":
+            clip_id,
+        "windows":
+            windows,
+        "items":
+            local_items,
+        "error":
+            "",
+    }
+
+
+def build_window_items(candidates):
+    selected = candidates[
+        :MAX_VISUAL_CANDIDATES
+    ]
+
+    print(
+        f"V12.10 parallel preview extraction: "
+        f"{len(selected)} sources with "
+        f"{FRAME_WORKERS} FFmpeg workers."
+    )
+
+    results = []
+
+    with ThreadPoolExecutor(
+        max_workers=FRAME_WORKERS
+    ) as executor:
+        future_map = {
+            executor.submit(
+                build_one_candidate_window_set,
+                index,
+                candidate,
+                len(selected),
+            ): index
+            for index, candidate in enumerate(
+                selected,
+                1,
+            )
+        }
+
+        for future in as_completed(
+            future_map
+        ):
+            result = future.result()
+            results.append(
+                result
+            )
+
+    results.sort(
+        key=lambda row: row[
+            "index"
+        ]
+    )
+
+    items = []
+
+    for result in results:
+        clip_id = result[
+            "clip_id"
+        ]
+
+        error = result.get(
+            "error",
+            "",
+        )
+
+        if error:
+            print(
+                f"WINDOW PREVIEW "
+                f"{result['index']}/"
+                f"{len(selected)}: "
+                f"{clip_id} -> "
+                f"{error}"
+            )
+            continue
+
+        print(
+            f"WINDOW PREVIEW "
+            f"{result['index']}/"
+            f"{len(selected)}: "
+            f"{clip_id} | "
+            f"candidate windows: "
+            f"{len(result['windows'])}"
+        )
+
+        for item in result[
+            "items"
+        ]:
+            item[
+                "window_item_id"
+            ] = len(
+                items
+            )
 
             items.append(
                 item
             )
 
-        print(
-            f"  candidate windows: "
-            f"{len(windows)}"
-        )
-
     return items
-
 
 def score_batch(
     client,
     batch,
 ):
     prompt = f"""
-You are the V12.9 WINDOW-AWARE prescreener for ViralSpawnTV.
+You are the V12.10 DIRECT-API WINDOW prescreener for ViralSpawnTV.
 
 The FINAL gate threshold is {TARGET_FINAL_SCORE}/100.
 ViralSpawnTV is targeting final Shorts around 50-60 seconds.
@@ -557,6 +671,9 @@ You see exactly three representative images for that window:
 3. ENDING: roughly 1.5 seconds before the proposed window ends
 
 Judge THIS WINDOW, not the entire raw source.
+
+Kick views/likes are supplied only as a secondary real-world traction
+signal. They must never override weak visible hook/story/payoff quality.
 
 A strong window needs BOTH:
 - a first-second stop-the-scroll hook
@@ -660,6 +777,12 @@ Return ONLY JSON:
                         f"{candidate.get('page_description', '')}\n"
                         f"source_duration: "
                         f"{candidate.get('source_duration_seconds')}\n"
+                        f"kick_views: "
+                        f"{candidate.get('kick_view_count', 0)}\n"
+                        f"kick_likes: "
+                        f"{candidate.get('kick_like_count', 0)}\n"
+                        f"kick_like_rate_pct: "
+                        f"{candidate.get('kick_like_rate_pct', 0)}\n"
                         f"window_start: "
                         f"{window.get('start')}\n"
                         f"window_end: "
@@ -851,7 +974,7 @@ def main():
         )
 
     print(
-        f"V12.9 WINDOW PRESCREENER received "
+        f"V12.10 WINDOW PRESCREENER received "
         f"{len(candidates)} one-pass candidates."
     )
 
@@ -865,7 +988,7 @@ def main():
         )
 
     print(
-        f"V12.9 generated "
+        f"V12.10 generated "
         f"{len(items)} candidate windows."
     )
 
@@ -1287,7 +1410,7 @@ def main():
 
     payload = {
         "version":
-            "12.9-fast-window-aware-prescreen",
+            "12.10-direct-api-parallel-window-prescreen",
         "target_final_score":
             TARGET_FINAL_SCORE,
         "input_candidate_count":
@@ -1321,7 +1444,7 @@ def main():
 
     print()
     print(
-        f"V12.9 WINDOW PRESCREEN COMPLETE: "
+        f"V12.10 WINDOW PRESCREEN COMPLETE: "
         f"{len(candidates)} eligible sources -> "
         f"{len(items)} windows -> "
         f"{len(best_rows)} best-per-clip -> "
@@ -1351,7 +1474,7 @@ if __name__ == "__main__":
         main()
     except Exception as exc:
         print(
-            "V12.9 WINDOW PRESCREENER ERROR:",
+            "V12.10 WINDOW PRESCREENER ERROR:",
             exc,
         )
         sys.exit(1)
