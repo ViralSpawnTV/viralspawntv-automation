@@ -7,7 +7,7 @@ from pathlib import Path
 LOG = Path("work/v12_attempt_log.json")
 REJECTED = Path("shorts_rejected_history.json")
 
-MAX_EXPENSIVE_ATTEMPTS = 15
+MAX_EXPENSIVE_ATTEMPTS = 8
 
 
 def run(script):
@@ -64,15 +64,13 @@ def load_rejected():
         },
     )
 
-    if isinstance(data, list):
-        clip_ids = data
-
-    elif isinstance(data, dict):
+    if isinstance(data, dict):
         clip_ids = data.get(
             "clip_ids",
             [],
         )
-
+    elif isinstance(data, list):
+        clip_ids = data
     else:
         clip_ids = []
 
@@ -85,7 +83,8 @@ def load_rejected():
 
         if (
             clip_id
-            and clip_id not in clean
+            and
+            clip_id not in clean
         ):
             clean.append(
                 clip_id
@@ -104,7 +103,8 @@ def save_rejected(rejected):
 
         if (
             clip_id
-            and clip_id not in clean
+            and
+            clip_id not in clean
         ):
             clean.append(
                 clip_id
@@ -134,10 +134,11 @@ def reject_clip(
         clip_id
     ).strip()
 
-    if not clip_id:
-        return
-
-    if clip_id not in rejected:
+    if (
+        clip_id
+        and
+        clip_id not in rejected
+    ):
         rejected.append(
             clip_id
         )
@@ -162,28 +163,28 @@ def main():
     )
 
     # ---------------------------------------------------------
-    # 1. DISCOVER 100 FRESH CANDIDATES
+    # 1. DISCOVERY
     # ---------------------------------------------------------
 
     if run(
         "kick_game_discovery.py"
     ) != 0:
         raise RuntimeError(
-            "game discovery failed"
+            "V12.9 discovery failed"
         )
 
     # ---------------------------------------------------------
-    # 2. CHEAP METADATA ORDERING
+    # 2. ONE-PASS METADATA + HLS + DURATION RANKING
     # ---------------------------------------------------------
 
     if run(
         "candidate_ranker_v12_1.py"
     ) != 0:
         raise RuntimeError(
-            "V12.5 metadata ranking failed"
+            "V12.9 one-pass ranking failed"
         )
 
-    metadata_ranked = load_json(
+    ranked = load_json(
         "work/v12_ranked_candidates.json",
         {},
     ).get(
@@ -192,20 +193,19 @@ def main():
     )
 
     print(
-        f"V12.5 metadata stage supplied "
-        f"{len(metadata_ranked)} candidates "
-        f"to visual prescreen."
+        f"V12.9 one-pass stage supplied "
+        f"{len(ranked)} duration-eligible candidates."
     )
 
     # ---------------------------------------------------------
-    # 3. FAST VISUAL PRESCREEN (TOP 40 ONLY)
+    # 3. WINDOW-AWARE VISUAL PRESCREEN
     # ---------------------------------------------------------
 
     if run(
         "viral_prescreener.py"
     ) != 0:
         raise RuntimeError(
-            "V12.5 visual prescreen failed"
+            "V12.9 window prescreen failed"
         )
 
     prescreened = load_json(
@@ -218,26 +218,33 @@ def main():
 
     if not prescreened:
         raise RuntimeError(
-            "visual prescreen shortlist empty"
+            "V12.9 prescreen shortlist empty"
         )
 
+    actual_attempt_limit = min(
+        MAX_EXPENSIVE_ATTEMPTS,
+        len(
+            prescreened
+        ),
+    )
+
     print(
-        f"V12.5 prescreen shortlist contains "
+        f"V12.9 prescreen shortlist: "
         f"{len(prescreened)} candidates."
     )
 
     print(
-        f"V12.5 may inspect up to "
-        f"{MAX_EXPENSIVE_ATTEMPTS} full-gate candidates."
+        f"V12.9 will inspect at most "
+        f"{actual_attempt_limit} expensive candidates."
     )
 
     # ---------------------------------------------------------
-    # 4. FULL EXPENSIVE GATE LOOP
+    # 4. FULL GATE LOOP
     # ---------------------------------------------------------
 
     for attempt_no in range(
         1,
-        MAX_EXPENSIVE_ATTEMPTS + 1,
+        actual_attempt_limit + 1,
     ):
         code = run(
             "kick_gaming_acquisition_v12.py"
@@ -251,7 +258,7 @@ def main():
                     "result":
                         "failed",
                     "reason":
-                        "prescreened_batch_exhausted_or_acquisition_failed",
+                        "shortlist_exhausted_or_acquisition_failed",
                 }
             )
 
@@ -280,9 +287,17 @@ def main():
                 acq.get(
                     "game"
                 ),
-            "metadata_score":
+            "window_start_original":
                 acq.get(
-                    "v12_metadata_score"
+                    "proposed_window_start_original"
+                ),
+            "window_end_original":
+                acq.get(
+                    "proposed_window_end_original"
+                ),
+            "prescreen_rank_score":
+                acq.get(
+                    "prescreen_rank_score"
                 ),
             "prescreen_predicted_score":
                 acq.get(
@@ -292,22 +307,35 @@ def main():
                 acq.get(
                     "prescreen_probability_72_plus"
                 ),
+            "prescreen_hook":
+                acq.get(
+                    "prescreen_hook"
+                ),
+            "prescreen_story_sustain":
+                acq.get(
+                    "prescreen_story_sustain"
+                ),
+            "prescreen_payoff":
+                acq.get(
+                    "prescreen_payoff"
+                ),
         }
 
         print(
             "\n"
-            f"V12.5 full-gate attempt "
+            f"V12.9 full-gate attempt "
             f"{attempt_no}/"
-            f"{MAX_EXPENSIVE_ATTEMPTS}: "
+            f"{actual_attempt_limit}: "
             f"{clip_id} | "
-            f"pred="
-            f"{row.get('prescreen_predicted_score')} | "
-            f"P72="
-            f"{row.get('prescreen_probability_72_plus')}"
+            f"window="
+            f"{row.get('window_start_original')}-"
+            f"{row.get('window_end_original')} | "
+            f"rank="
+            f"{row.get('prescreen_rank_score')}"
         )
 
         # -----------------------------------------------------
-        # FULL VIRAL QUALITY GATE
+        # FINAL 72 VIRAL QUALITY GATE
         # -----------------------------------------------------
 
         if run(
@@ -338,7 +366,7 @@ def main():
             continue
 
         # -----------------------------------------------------
-        # COMMERCIAL MUSIC GATE
+        # MUSIC GATE
         # -----------------------------------------------------
 
         if run(
@@ -393,11 +421,11 @@ def main():
             )
 
             raise RuntimeError(
-                "Short production failed"
+                "V12.9 Short production failed"
             )
 
         # -----------------------------------------------------
-        # FINAL CONTENT / GAMBLING GATE
+        # FINAL CONTENT GATE
         # -----------------------------------------------------
 
         if run(
@@ -427,10 +455,6 @@ def main():
 
             continue
 
-        # -----------------------------------------------------
-        # SUCCESS
-        # -----------------------------------------------------
-
         row.update(
             {
                 "result":
@@ -453,8 +477,8 @@ def main():
         )
 
         print(
-            f"V12.5 SUCCESS on full-gate "
-            f"attempt {attempt_no}: "
+            f"V12.9 SUCCESS on attempt "
+            f"{attempt_no}: "
             f"{clip_id}"
         )
 
@@ -469,9 +493,9 @@ def main():
     )
 
     raise RuntimeError(
-        f"V12.5 found no publishable Short "
-        f"after {MAX_EXPENSIVE_ATTEMPTS} "
-        f"full-gate attempts."
+        f"V12.9 found no publishable Short "
+        f"after {len(attempts)} attempted "
+        f"candidate(s)."
     )
 
 
@@ -480,7 +504,7 @@ if __name__ == "__main__":
         main()
     except Exception as exc:
         print(
-            "V12.5 PIPELINE FAILED:",
+            "V12.9 PIPELINE FAILED:",
             exc,
         )
         sys.exit(1)
