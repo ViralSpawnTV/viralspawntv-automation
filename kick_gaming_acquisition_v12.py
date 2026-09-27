@@ -15,6 +15,11 @@ OUTDIR = Path("work/kick_gaming")
 OUT = OUTDIR / "selected_kick_gaming_source.mp4"
 RESULT = OUTDIR / "acquisition_result.json"
 
+# V12.6 / V5.8 duration strategy.
+# Production adds a 1-second outro, so we need at least
+# 49 seconds of source footage to create a 50+ second final Short.
+MIN_SOURCE_SECONDS = 49.0
+
 
 def load_json(path, default):
     try:
@@ -99,6 +104,28 @@ def candidate_url(candidate):
         or candidate.get("url")
         or ""
     ).strip()
+
+
+def probe_duration(path):
+    result = subprocess.run(
+        [
+            "ffprobe",
+            "-v",
+            "error",
+            "-show_entries",
+            "format=duration",
+            "-of",
+            "default=noprint_wrappers=1:nokey=1",
+            str(path),
+        ],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+
+    return float(
+        result.stdout.strip()
+    )
 
 
 def acquire(candidate):
@@ -250,11 +277,32 @@ def acquire(candidate):
             "Acquired output file is missing or too small."
         )
 
+    source_seconds = probe_duration(
+        OUT
+    )
+
+    print(
+        f"ACQUIRED SOURCE DURATION: "
+        f"{source_seconds:.2f}s"
+    )
+
+    if source_seconds < MIN_SOURCE_SECONDS:
+        try:
+            OUT.unlink()
+        except Exception:
+            pass
+
+        raise RuntimeError(
+            f"Source too short for V5.8: "
+            f"{source_seconds:.2f}s < "
+            f"{MIN_SOURCE_SECONDS:.1f}s minimum."
+        )
+
     result = {
         "success":
             True,
         "version":
-            "12.4-prescreen-compatible",
+            "12.6-duration-50-60",
         "clip_id":
             clip_id,
         "clip_url":
@@ -313,6 +361,8 @@ def acquire(candidate):
             ),
         "local_path":
             str(OUT),
+        "source_duration_seconds":
+            round(source_seconds, 3),
         "rights_status":
             "unverified",
         "creator_permission_verified":
