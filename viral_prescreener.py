@@ -15,7 +15,7 @@ WORK = Path("work/viral_prescreen")
 WORK.mkdir(parents=True, exist_ok=True)
 
 MAX_PRESCREEN = 40
-PROMOTE_COUNT = 15
+PROMOTE_COUNT = 25
 BATCH_SIZE = 8
 
 # Keep this aligned with the real gate in viral_gate.py.
@@ -452,7 +452,7 @@ def main():
         )
 
     print(
-        f"V12.5 visual prescreen received "
+        f"V12.6 visual prescreen received "
         f"{len(candidates)} candidates."
     )
 
@@ -466,7 +466,7 @@ def main():
         )
 
     print(
-        f"V12.5 visual prescreen acquired previews for "
+        f"V12.6 visual prescreen acquired previews for "
         f"{len(visual)} candidates."
     )
 
@@ -678,7 +678,7 @@ def main():
 
     print()
     print(
-        f"V12.5 PRESCREEN COMPLETE: "
+        f"V12.6 PRESCREEN COMPLETE: "
         f"{len(candidates)} input -> "
         f"{len(visual)} previews -> "
         f"{len(scored)} scored -> "
