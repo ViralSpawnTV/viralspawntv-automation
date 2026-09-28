@@ -782,6 +782,17 @@
       "youtube_video_id": "jbMp3zwefnY",
       "privacy_status": "public",
       "processed_at_utc": "2026-09-28T04:38:06.097564+00:00"
+    },
+    {
+      "clip_id": "clip_01JQWDMVHV2S9AZYMQ6J8VNJEA",
+      "clip_url": "https://kick.com/zachmazer/clips/clip_01JQWDMVHV2S9AZYMQ6J8VNJEA",
+      "source": "https://kick.com/zachmazer/clips/clip_01JQWDMVHV2S9AZYMQ6J8VNJEA",
+      "creator": "zachmazer",
+      "channel": "zachmazer",
+      "game": "",
+      "youtube_video_id": "Ysd-dEZ8Sis",
+      "privacy_status": "public",
+      "processed_at_utc": "2026-09-28T06:24:50.827515+00:00"
     }
   ]
 }
