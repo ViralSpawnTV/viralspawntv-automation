@@ -826,6 +826,17 @@
       "youtube_video_id": "eLlabbzh2wE",
       "privacy_status": "public",
       "processed_at_utc": "2026-09-28T12:16:32.852159+00:00"
+    },
+    {
+      "clip_id": "clip_01M1WV75E5Z1J5ZD9S514CQ0GQ",
+      "clip_url": "https://kick.com/haykousa/clips/clip_01M1WV75E5Z1J5ZD9S514CQ0GQ",
+      "source": "https://kick.com/haykousa/clips/clip_01M1WV75E5Z1J5ZD9S514CQ0GQ",
+      "creator": "haykousa",
+      "channel": "haykousa",
+      "game": "",
+      "youtube_video_id": "GEdqbnuowWc",
+      "privacy_status": "public",
+      "processed_at_utc": "2026-09-28T13:46:40.146972+00:00"
     }
   ]
 }
