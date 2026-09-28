@@ -17,9 +17,9 @@ OUT = Path("work/v12_ranked_candidates.json")
 SHORTS_HISTORY = Path("history.json")
 SHORTS_REJECTED_HISTORY = Path("shorts_rejected_history.json")
 
-# V12.13 QUALITY-FIRST TRACTION RANKER
+# V12.14.6 QUALITY-FIRST TRACTION RANKER
 MAX_INSPECT = 320
-MAX_RANKED = 48
+MAX_RANKED = 100
 MIN_SOURCE_SECONDS = 40.0
 
 API_WORKERS = 16
@@ -170,7 +170,7 @@ GAME_PRIOR = {
 }
 
 MAX_PER_CREATOR_IN_RANKED = 5
-MAX_PER_GAME_IN_RANKED = 12
+MAX_PER_GAME_IN_RANKED = 24
 
 
 def norm(value):
@@ -1523,11 +1523,11 @@ def main():
     if not candidates:
         raise RuntimeError(
             "No fresh candidates available "
-            "for V12.13 API ranking."
+            "for V12.14.6 API ranking."
         )
 
     print(
-        f"V12.13 QUALITY-FIRST API: "
+        f"V12.14.6 QUALITY-FIRST API: "
         f"querying {len(candidates)} clips "
         f"with {API_WORKERS} workers."
     )
@@ -1629,7 +1629,7 @@ def main():
         )
 
     print(
-        "V12.13 API FILTER: "
+        "V12.14.6 API FILTER: "
         f"{len(rows_by_index)} responses, "
         f"{len(failures)} failures, "
         f"{too_short} under {MIN_SOURCE_SECONDS:.0f}s, "
@@ -1641,7 +1641,7 @@ def main():
 
     if not deterministic:
         raise RuntimeError(
-            "No clips survived V12.13 "
+            "No clips survived V12.14.6 "
             "deterministic screening."
         )
 
@@ -1660,9 +1660,9 @@ def main():
 
     payload = {
         "version":
-            "12.13-quality-first-traction-rank",
+            "12.14.6-100-candidate-traction-rank",
         "strategy":
-            "65pct_audience_traction_plus_action_freshness",
+            "100_candidate_traction_rank_before_active_firefight_scan",
         "source_candidate_count":
             len(
                 all_candidates
@@ -1708,7 +1708,7 @@ def main():
 
     print()
     print(
-        f"V12.13 QUALITY-FIRST RANK COMPLETE: "
+        f"V12.14.6 QUALITY-FIRST RANK COMPLETE: "
         f"{len(all_candidates)} discovered -> "
         f"{len(deterministic)} duration/content survivors -> "
         f"{len(ranked)} strongest candidates."
@@ -1741,7 +1741,7 @@ if __name__ == "__main__":
 
     except Exception as exc:
         print(
-            f"V12.13 RANKER FAILED: "
+            f"V12.14.6 RANKER FAILED: "
             f"{exc}"
         )
         sys.exit(
