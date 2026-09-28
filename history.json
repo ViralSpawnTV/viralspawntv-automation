@@ -738,6 +738,17 @@
       "youtube_video_id": "S2KWFMwA5rQ",
       "privacy_status": "public",
       "processed_at_utc": "2026-09-27T20:45:14.989283+00:00"
+    },
+    {
+      "clip_id": "clip_01J9E6GSPBGVJKJPZPDZW2NVNR",
+      "clip_url": "https://kick.com/hipfiar/clips/clip_01J9E6GSPBGVJKJPZPDZW2NVNR",
+      "source": "https://kick.com/hipfiar/clips/clip_01J9E6GSPBGVJKJPZPDZW2NVNR",
+      "creator": "hipfiar",
+      "channel": "hipfiar",
+      "game": "",
+      "youtube_video_id": "2BCJx7Nt05A",
+      "privacy_status": "public",
+      "processed_at_utc": "2026-09-28T00:10:05.329330+00:00"
     }
   ]
 }
