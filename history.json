@@ -870,6 +870,17 @@
       "youtube_video_id": "xJgU8XlZTS4",
       "privacy_status": "public",
       "processed_at_utc": "2026-09-28T18:35:37.455550+00:00"
+    },
+    {
+      "clip_id": "clip_01JVXTZ3PBWS2G98HV6E4GBMZ5",
+      "clip_url": "https://kick.com/gowkaiser/clips/clip_01JVXTZ3PBWS2G98HV6E4GBMZ5",
+      "source": "https://kick.com/gowkaiser/clips/clip_01JVXTZ3PBWS2G98HV6E4GBMZ5",
+      "creator": "gowkaiser",
+      "channel": "gowkaiser",
+      "game": "",
+      "youtube_video_id": "cF7hYfegkGw",
+      "privacy_status": "public",
+      "processed_at_utc": "2026-09-28T20:28:19.176322+00:00"
     }
   ]
 }
