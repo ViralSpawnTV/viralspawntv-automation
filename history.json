@@ -815,6 +815,17 @@
       "youtube_video_id": "HKhSmEfEEjU",
       "privacy_status": "public",
       "processed_at_utc": "2026-09-28T10:17:37.610679+00:00"
+    },
+    {
+      "clip_id": "clip_01K3X75DGJZ1MF11SR21W2F2DJ",
+      "clip_url": "https://kick.com/samsaberi/clips/clip_01K3X75DGJZ1MF11SR21W2F2DJ",
+      "source": "https://kick.com/samsaberi/clips/clip_01K3X75DGJZ1MF11SR21W2F2DJ",
+      "creator": "samsaberi",
+      "channel": "samsaberi",
+      "game": "",
+      "youtube_video_id": "eLlabbzh2wE",
+      "privacy_status": "public",
+      "processed_at_utc": "2026-09-28T12:16:32.852159+00:00"
     }
   ]
 }
