@@ -10,7 +10,7 @@ from pathlib import Path
 from openai import OpenAI
 
 
-INPUT = Path("work/v12_ranked_candidates.json")
+INPUT = Path("work/v12_firefight_candidates.json")
 OUT = Path("work/v12_prescreened_candidates.json")
 WORK = Path("work/viral_prescreen")
 WORK.mkdir(parents=True, exist_ok=True)
@@ -35,7 +35,7 @@ MAX_WINDOW_SECONDS = 58.0
 OPENING_AUDIO_SECONDS = 7.0
 ENDING_AUDIO_SECONDS = 7.0
 
-# V12.14.5: expensive source-gate attempts should only be spent on clips
+# V12.14.6: expensive source-gate attempts should only be spent on clips
 # that already show BOTH a worthwhile payoff and enough visible story.
 # These remain looser than the real source gate (65 source / 60 payoff).
 MIN_PROMOTE_PAYOFF = 55
@@ -88,7 +88,7 @@ def make_windows(source_seconds):
     """
     Build up to three 40-58 second windows.
 
-    V12.14.5 judges the ENDING/PAYOFF first. The window itself is still
+    V12.14.6 judges the ENDING/PAYOFF first. The window itself is still
     continuous, but later ranking starts from "is the ending worth waiting
     for?" rather than "does the raw source already have a viral first second?"
     """
@@ -777,7 +777,7 @@ def score_payoff_batch(
     batch,
 ):
     prompt = """
-You are Phase 1 of ViralSpawnTV V12.14.5.
+You are Phase 1 of ViralSpawnTV V12.14.6.
 
 This is PAYOFF-FIRST source selection.
 
@@ -927,7 +927,7 @@ def score_story_batch(
     batch,
 ):
     prompt = """
-You are Phase 2 of ViralSpawnTV V12.14.5.
+You are Phase 2 of ViralSpawnTV V12.14.6.
 
 These gaming windows already have the strongest available endings/payoffs.
 Now decide whether the footage BEFORE that payoff contains enough material
@@ -1150,7 +1150,7 @@ def main():
         windows
     )
 
-    # V12.14.5 COST CONTROL:
+    # V12.14.6 COST CONTROL:
     # Candidate_ranker already orders sources by traction/quality evidence.
     # Do not spend ~14 minutes analyzing every possible window. Keep the
     # strongest front of the ranked pool and cap Phase-1 at 36 windows.
@@ -1159,7 +1159,7 @@ def main():
     ]
 
     print(
-        f"V12.14.5 PAYOFF-FIRST: "
+        f"V12.14.6 PAYOFF-FIRST: "
         f"{len(candidates)} ranked sources -> "
         f"{raw_window_count} possible windows -> "
         f"{len(windows)} payoff windows inspected."
@@ -1391,7 +1391,7 @@ def main():
             break
 
     print(
-        f"V12.14.5 PAYOFF PHASE: "
+        f"V12.14.6 PAYOFF PHASE: "
         f"{len(payoff_items)} endings inspected -> "
         f"{len(payoff_scored)} usable -> "
         f"{len(phase2_seed)} strongest payoffs advance | "
@@ -1689,7 +1689,7 @@ def main():
             )
 
     print(
-        f"V12.14.5 STORY PHASE: "
+        f"V12.14.6 STORY PHASE: "
         f"{len(story_items)} windows -> "
         f"{len(final_rows)} scored | "
         f"{time.perf_counter() - story_started:.1f}s"
@@ -1758,7 +1758,7 @@ def main():
         reverse=True,
     )
 
-    # V12.14.5: do not spend one of the four expensive source-gate
+    # V12.14.6: do not spend one of the four expensive source-gate
     # attempts on a clip that has only an isolated reaction/payoff or only
     # general editability. It must show BOTH a worthwhile ending AND enough
     # visible story substance.
@@ -1807,7 +1807,7 @@ def main():
         :PROMOTE_COUNT
     ]
 
-    # V12.14.5 RELIABILITY BACKFILL:
+    # V12.14.6 RELIABILITY BACKFILL:
     # Strict candidates remain first. If fewer than four clear the cheap
     # promotion thresholds, fill the remaining slots with the highest-ranked
     # distinct source clips instead of letting the entire workflow depend on
@@ -1880,7 +1880,7 @@ def main():
     ]
 
     print(
-        f"V12.14.5 PROMOTION FILTER: "
+        f"V12.14.6 PROMOTION FILTER: "
         f"{len(best_rows)} best-per-clip -> "
         f"{len(promotion_ready)} strict qualified -> "
         f"{len(backfilled)} reliability backfill -> "
@@ -1952,7 +1952,7 @@ def main():
 
     print()
     print(
-        f"V12.14.5 PRESCREEN COMPLETE: "
+        f"V12.14.6 PRESCREEN COMPLETE: "
         f"{len(windows)} windows -> "
         f"{len(best_rows)} source clips -> "
         f"{len(promoted)} promoted."
@@ -1981,7 +1981,7 @@ if __name__ == "__main__":
         main()
     except Exception as exc:
         print(
-            "V12.14.5 PRESCREENER ERROR:",
+            "V12.14.6 PRESCREENER ERROR:",
             exc,
         )
         sys.exit(1)
