@@ -760,6 +760,17 @@
       "youtube_video_id": "wd1xpb53Y70",
       "privacy_status": "public",
       "processed_at_utc": "2026-09-28T00:31:47.526189+00:00"
+    },
+    {
+      "clip_id": "clip_01JH9JKM8WTBP5TJN0KD794TTJ",
+      "clip_url": "https://kick.com/yznsa/clips/clip_01JH9JKM8WTBP5TJN0KD794TTJ",
+      "source": "https://kick.com/yznsa/clips/clip_01JH9JKM8WTBP5TJN0KD794TTJ",
+      "creator": "yznsa",
+      "channel": "yznsa",
+      "game": "",
+      "youtube_video_id": "p3Zo78kMSFE",
+      "privacy_status": "public",
+      "processed_at_utc": "2026-09-28T02:18:30.117270+00:00"
     }
   ]
 }
