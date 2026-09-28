@@ -67,7 +67,7 @@ def run_timed(
     )
 
     print(
-        f"V12.14.5 TIMING | "
+        f"V12.14.6 TIMING | "
         f"{label}: "
         f"{time.perf_counter() - started:.1f}s"
     )
@@ -289,7 +289,7 @@ def backup_finished_candidate(
     )
 
     print(
-        f"V12.14.5 reliability backup saved | "
+        f"V12.14.6 reliability backup saved | "
         f"score={current_score} | "
         f"hook={finished_result.get('hook')} | "
         f"payoff={finished_result.get('payoff')}"
@@ -427,7 +427,7 @@ def main():
         "================================================"
     )
     print(
-        "ViralSpawnTV V12.14.5 "
+        "ViralSpawnTV V12.14.6 "
         "Reliability-First One-Short Pipeline"
     )
     print(
@@ -443,7 +443,7 @@ def main():
         "kick_game_discovery.py",
     ) != 0:
         raise RuntimeError(
-            "V12.14.5 discovery failed"
+            "V12.14.6 discovery failed"
         )
 
     if run_timed(
@@ -451,7 +451,19 @@ def main():
         "candidate_ranker_v12_1.py",
     ) != 0:
         raise RuntimeError(
-            "V12.14.5 ranking failed"
+            "V12.14.6 ranking failed"
+        )
+
+    # ---------------------------------------------------------
+    # ACTIVE FIREFIGHT / COMBAT FILTER
+    # ---------------------------------------------------------
+
+    if run_timed(
+        "active_firefight_prescreener",
+        "active_firefight_prescreener.py",
+    ) != 0:
+        raise RuntimeError(
+            "V12.14.6 active-firefight scan failed"
         )
 
     if run_timed(
@@ -459,7 +471,7 @@ def main():
         "viral_prescreener.py",
     ) != 0:
         raise RuntimeError(
-            "V12.14.5 prescreen failed"
+            "V12.14.6 prescreen failed"
         )
 
     prescreened = load_json(
@@ -485,11 +497,11 @@ def main():
 
     if not prescreened:
         raise RuntimeError(
-            "V12.14.5 prescreen shortlist empty"
+            "V12.14.6 prescreen shortlist empty"
         )
 
     print(
-        f"V12.14.5 guaranteed shortlist: "
+        f"V12.14.6 guaranteed shortlist: "
         f"{len(prescreened)} candidate(s)."
     )
 
@@ -626,7 +638,7 @@ def main():
 
     if not source_candidates:
         raise RuntimeError(
-            "V12.14.5 could not source-gate any candidate."
+            "V12.14.6 could not source-gate any candidate."
         )
 
     normal = [
@@ -717,7 +729,7 @@ def main():
         ]
 
         print(
-            f"V12.14.5 SOURCE SELECTION: "
+            f"V12.14.6 SOURCE SELECTION: "
             f"{len(normal)} normal-pass source(s); "
             f"best normal source renders first."
         )
@@ -725,7 +737,7 @@ def main():
         render_order = borderline
 
         print(
-            "V12.14.5 EMERGENCY SOURCE FALLBACK: "
+            "V12.14.6 EMERGENCY SOURCE FALLBACK: "
             "no source cleared 65/60, so the strongest borderline "
             "source will be rendered."
         )
@@ -744,7 +756,7 @@ def main():
         )
 
         print(
-            "V12.14.5 BEST-SOURCE FALLBACK: "
+            "V12.14.6 BEST-SOURCE FALLBACK: "
             "all shortlist candidates scored below borderline thresholds. "
             "Rendering the highest-ranked source rather than returning "
             "no video."
@@ -773,7 +785,7 @@ def main():
 
         print()
         print(
-            f"V12.14.5 render candidate "
+            f"V12.14.6 render candidate "
             f"{render_index}/{len(render_order)}: "
             f"{clip_id} | "
             f"source_rank={item.get('source_rank')}"
@@ -807,7 +819,7 @@ def main():
 
         if production_code != 0:
             print(
-                f"V12.14.5 production failed for "
+                f"V12.14.6 production failed for "
                 f"{clip_id}; trying next source."
             )
             reject_clip(
@@ -880,7 +892,7 @@ def main():
 
         if finished_code == 0:
             print(
-                f"V12.14.5 SUCCESS: "
+                f"V12.14.6 SUCCESS: "
                 f"{clip_id} | "
                 f"tier={finished.get('quality_tier')} | "
                 f"score={finished.get('score')} | "
@@ -889,7 +901,7 @@ def main():
             )
 
             print(
-                f"V12.14.5 TOTAL PIPELINE TIME: "
+                f"V12.14.6 TOTAL PIPELINE TIME: "
                 f"{time.perf_counter() - pipeline_started:.1f}s"
             )
 
@@ -905,7 +917,7 @@ def main():
 
     if best is not None:
         print(
-            "V12.14.5 RELIABILITY SUCCESS: "
+            "V12.14.6 RELIABILITY SUCCESS: "
             "no rendered source hit the viral/decent target, so the "
             "highest-scoring finished Short was restored as BEST AVAILABLE. | "
             f"score={best.get('score')} | "
@@ -914,14 +926,14 @@ def main():
         )
 
         print(
-            f"V12.14.5 TOTAL PIPELINE TIME: "
+            f"V12.14.6 TOTAL PIPELINE TIME: "
             f"{time.perf_counter() - pipeline_started:.1f}s"
         )
 
         return
 
     raise RuntimeError(
-        "V12.14.5 could not create a finished Short. "
+        "V12.14.6 could not create a finished Short. "
         "All shortlisted sources failed acquisition/music/content/production "
         "before any video could be rendered."
     )
@@ -933,7 +945,7 @@ if __name__ == "__main__":
 
     except Exception as exc:
         print(
-            "V12.14.5 PIPELINE FAILED:",
+            "V12.14.6 PIPELINE FAILED:",
             exc,
         )
         sys.exit(
