@@ -23,20 +23,20 @@ MAX_PUBLIC_UPLOADS_PER_CREATOR_24H = 2
 MAX_PUBLIC_UPLOADS_PER_GAME_24H = 4
 DIVERSITY_WINDOW_HOURS = 24
 
-# V12.14.2 ADAPTIVE DISCOVERY
+# V12.14.6 ADAPTIVE DISCOVERY
 #
 # Stop based on ACTUAL usable Shorts sources, not raw links.
 TARGET_ELIGIBLE_CANDIDATES = int(
     os.getenv(
         "DISCOVERY_TARGET_ELIGIBLE",
-        "60",
+        "100",
     )
 )
 
 MIN_ACCEPTABLE_ELIGIBLE = int(
     os.getenv(
         "DISCOVERY_MIN_ELIGIBLE",
-        "50",
+        "80",
     )
 )
 
@@ -45,7 +45,7 @@ MIN_SOURCE_SECONDS = 40.0
 MAX_ELIGIBLE_PER_GAME = int(
     os.getenv(
         "DISCOVERY_MAX_ELIGIBLE_PER_GAME",
-        "8",
+        "12",
     )
 )
 
@@ -1522,7 +1522,7 @@ def main():
         "================================================"
     )
     print(
-        "ViralSpawnTV V12.14.2 "
+        "ViralSpawnTV V12.14.6 "
         "Adaptive Eligible Discovery"
     )
     print(
@@ -1872,9 +1872,9 @@ def main():
 
         manifest = {
             "version":
-                "12.14.2-adaptive-eligible",
+                "12.14.6-100-eligible-active-firefight-pool",
             "strategy":
-                "stop_on_actual_40s_plus_eligible_pool",
+                "100_eligible_then_active_firefight_filter",
             "created_at_utc":
                 datetime.now(
                     timezone.utc
@@ -1927,7 +1927,7 @@ def main():
 
         print()
         print(
-            f"V12.14.2 ADAPTIVE DISCOVERY COMPLETE: "
+            f"V12.14.6 ADAPTIVE DISCOVERY COMPLETE: "
             f"{len(eligible)} actual "
             f"{MIN_SOURCE_SECONDS:.0f}s+ "
             f"eligible gaming clips."
@@ -1951,7 +1951,7 @@ if __name__ == "__main__":
         main()
     except Exception as exc:
         print(
-            f"V12.14.2 DISCOVERY FAILED: "
+            f"V12.14.6 DISCOVERY FAILED: "
             f"{exc}"
         )
         sys.exit(1)
