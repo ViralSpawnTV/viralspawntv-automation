@@ -903,6 +903,17 @@
       "youtube_video_id": "bZK1Y7ZU5B8",
       "privacy_status": "public",
       "processed_at_utc": "2026-09-29T00:35:58.793732+00:00"
+    },
+    {
+      "clip_id": "clip_01H717CFWEVZ75GAKAFNGNZRSH",
+      "clip_url": "https://kick.com/rivalxfactor/clips/clip_01H717CFWEVZ75GAKAFNGNZRSH",
+      "source": "https://kick.com/rivalxfactor/clips/clip_01H717CFWEVZ75GAKAFNGNZRSH",
+      "creator": "rivalxfactor",
+      "channel": "rivalxfactor",
+      "game": "",
+      "youtube_video_id": "h5ce5vKvQn8",
+      "privacy_status": "public",
+      "processed_at_utc": "2026-09-29T02:48:45.165321+00:00"
     }
   ]
 }
