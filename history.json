@@ -1079,6 +1079,17 @@
       "youtube_video_id": "0TiFyu_atGA",
       "privacy_status": "public",
       "processed_at_utc": "2026-09-30T10:43:57.416044+00:00"
+    },
+    {
+      "clip_id": "clip_01M3BHGGYSYAE3M2YJ4A3RH56V",
+      "clip_url": "https://kick.com/drakred/clips/clip_01M3BHGGYSYAE3M2YJ4A3RH56V",
+      "source": "https://kick.com/drakred/clips/clip_01M3BHGGYSYAE3M2YJ4A3RH56V",
+      "creator": "drakred",
+      "channel": "drakred",
+      "game": "",
+      "youtube_video_id": "nH2382gIqK0",
+      "privacy_status": "public",
+      "processed_at_utc": "2026-09-30T12:41:19.347933+00:00"
     }
   ]
 }
