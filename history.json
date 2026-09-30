@@ -1013,6 +1013,17 @@
       "youtube_video_id": "RKtpobvYbVI",
       "privacy_status": "public",
       "processed_at_utc": "2026-09-29T22:44:51.584762+00:00"
+    },
+    {
+      "clip_id": "clip_01J018X5CP0TJA7DXV4SR0W020",
+      "clip_url": "https://kick.com/loochy/clips/clip_01J018X5CP0TJA7DXV4SR0W020",
+      "source": "https://kick.com/loochy/clips/clip_01J018X5CP0TJA7DXV4SR0W020",
+      "creator": "loochy",
+      "channel": "loochy",
+      "game": "",
+      "youtube_video_id": "d2B1UMwxbps",
+      "privacy_status": "public",
+      "processed_at_utc": "2026-09-30T00:37:23.544220+00:00"
     }
   ]
 }
