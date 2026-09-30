@@ -1035,6 +1035,17 @@
       "youtube_video_id": "KG2nZAi3IRw",
       "privacy_status": "public",
       "processed_at_utc": "2026-09-30T02:42:51.825557+00:00"
+    },
+    {
+      "clip_id": "clip_01K6QS6EBM166PH90NE0BNQYAX",
+      "clip_url": "https://kick.com/uavon/clips/clip_01K6QS6EBM166PH90NE0BNQYAX",
+      "source": "https://kick.com/uavon/clips/clip_01K6QS6EBM166PH90NE0BNQYAX",
+      "creator": "uavon",
+      "channel": "uavon",
+      "game": "",
+      "youtube_video_id": "AHEBB5sVCbY",
+      "privacy_status": "public",
+      "processed_at_utc": "2026-09-30T04:25:44.328589+00:00"
     }
   ]
 }
