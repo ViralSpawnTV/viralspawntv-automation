@@ -1189,6 +1189,17 @@
       "youtube_video_id": "ahbh1iA14Bo",
       "privacy_status": "public",
       "processed_at_utc": "2026-10-03T10:24:13.552123+00:00"
+    },
+    {
+      "clip_id": "clip_01M2BB651B2G95PTAYAJ2J3V9G",
+      "clip_url": "https://kick.com/dangermacdmp/clips/clip_01M2BB651B2G95PTAYAJ2J3V9G",
+      "source": "https://kick.com/dangermacdmp/clips/clip_01M2BB651B2G95PTAYAJ2J3V9G",
+      "creator": "dangermacdmp",
+      "channel": "dangermacdmp",
+      "game": "",
+      "youtube_video_id": "bzEGm3ecEIE",
+      "privacy_status": "public",
+      "processed_at_utc": "2026-10-03T15:06:25.243212+00:00"
     }
   ]
 }
