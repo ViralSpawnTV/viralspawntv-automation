@@ -1167,6 +1167,17 @@
       "youtube_video_id": "e78aIb-L5Lo",
       "privacy_status": "public",
       "processed_at_utc": "2026-10-03T06:32:39.025895+00:00"
+    },
+    {
+      "clip_id": "clip_01H14C9YV8850ENFGT7EKQQ6P6",
+      "clip_url": "https://kick.com/diadro/clips/clip_01H14C9YV8850ENFGT7EKQQ6P6",
+      "source": "https://kick.com/diadro/clips/clip_01H14C9YV8850ENFGT7EKQQ6P6",
+      "creator": "diadro",
+      "channel": "diadro",
+      "game": "",
+      "youtube_video_id": "Z0g15W32esE",
+      "privacy_status": "public",
+      "processed_at_utc": "2026-10-03T08:16:25.225517+00:00"
     }
   ]
 }
