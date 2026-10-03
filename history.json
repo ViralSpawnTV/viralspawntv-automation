@@ -1200,6 +1200,17 @@
       "youtube_video_id": "bzEGm3ecEIE",
       "privacy_status": "public",
       "processed_at_utc": "2026-10-03T15:06:25.243212+00:00"
+    },
+    {
+      "clip_id": "clip_01M3GBXZTHR3TK8AD6BCZEG8EV",
+      "clip_url": "https://kick.com/kinz0/clips/clip_01M3GBXZTHR3TK8AD6BCZEG8EV",
+      "source": "https://kick.com/kinz0/clips/clip_01M3GBXZTHR3TK8AD6BCZEG8EV",
+      "creator": "kinz0",
+      "channel": "kinz0",
+      "game": "",
+      "youtube_video_id": "DUU3JiRPPKA",
+      "privacy_status": "public",
+      "processed_at_utc": "2026-10-03T20:42:07.646742+00:00"
     }
   ]
 }
