@@ -1178,6 +1178,17 @@
       "youtube_video_id": "Z0g15W32esE",
       "privacy_status": "public",
       "processed_at_utc": "2026-10-03T08:16:25.225517+00:00"
+    },
+    {
+      "clip_id": "clip_01GZDHTYNRV6TRDVK916YGJSWS",
+      "clip_url": "https://kick.com/akesgaming/clips/clip_01GZDHTYNRV6TRDVK916YGJSWS",
+      "source": "https://kick.com/akesgaming/clips/clip_01GZDHTYNRV6TRDVK916YGJSWS",
+      "creator": "akesgaming",
+      "channel": "akesgaming",
+      "game": "",
+      "youtube_video_id": "ahbh1iA14Bo",
+      "privacy_status": "public",
+      "processed_at_utc": "2026-10-03T10:24:13.552123+00:00"
     }
   ]
 }
