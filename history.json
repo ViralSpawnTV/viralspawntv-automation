@@ -1222,6 +1222,17 @@
       "youtube_video_id": "vACY2cIDt5E",
       "privacy_status": "public",
       "processed_at_utc": "2026-10-04T03:15:14.894494+00:00"
+    },
+    {
+      "clip_id": "clip_01H3R3N640CC1K6D5KZNGC56NM",
+      "clip_url": "https://kick.com/jolavanille/clips/clip_01H3R3N640CC1K6D5KZNGC56NM",
+      "source": "https://kick.com/jolavanille/clips/clip_01H3R3N640CC1K6D5KZNGC56NM",
+      "creator": "jolavanille",
+      "channel": "jolavanille",
+      "game": "",
+      "youtube_video_id": "qd_Y9KzGwD0",
+      "privacy_status": "public",
+      "processed_at_utc": "2026-10-04T06:08:37.023146+00:00"
     }
   ]
 }
