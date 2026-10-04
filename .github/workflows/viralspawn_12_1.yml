@@ -61,6 +61,7 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           NARRATION_MAX_BEATS: "1"
           MUSIC_VOLUME: "0.12"
+          MUSIC_DIR: "assets/music/assets/music"
         run: python v12_1_pipeline.py
 
       - name: Upload public Short
