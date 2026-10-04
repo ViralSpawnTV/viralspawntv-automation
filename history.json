@@ -1244,6 +1244,17 @@
       "youtube_video_id": "WCnrexhSUuY",
       "privacy_status": "public",
       "processed_at_utc": "2026-10-04T11:28:03.612501+00:00"
+    },
+    {
+      "clip_id": "clip_01M1Q3ESJ3476KQQMF58NEQ3WC",
+      "clip_url": "https://kick.com/veronikavolt/clips/clip_01M1Q3ESJ3476KQQMF58NEQ3WC",
+      "source": "https://kick.com/veronikavolt/clips/clip_01M1Q3ESJ3476KQQMF58NEQ3WC",
+      "creator": "veronikavolt",
+      "channel": "veronikavolt",
+      "game": "",
+      "youtube_video_id": "nwfGRGSyZ5I",
+      "privacy_status": "public",
+      "processed_at_utc": "2026-10-04T14:22:07.897379+00:00"
     }
   ]
 }
