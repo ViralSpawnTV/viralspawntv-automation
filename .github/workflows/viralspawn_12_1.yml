@@ -59,6 +59,8 @@ jobs:
       - name: Produce V12.1 Short
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          NARRATION_MAX_BEATS: "1"
+          MUSIC_VOLUME: "0.12"
         run: python v12_1_pipeline.py
 
       - name: Upload public Short
@@ -91,6 +93,9 @@ jobs:
           fi
 
           cp history.json /tmp/history_after_upload.json
+          if [ -f music_rotation_state.json ]; then
+            cp music_rotation_state.json /tmp/music_rotation_after_upload.json
+          fi
 
           git fetch origin main
           git reset --hard origin/main
@@ -300,14 +305,29 @@ jobs:
           git config user.name "ViralSpawnTV Automation"
           git config user.email "actions@users.noreply.github.com"
 
-          git add history.json
+          python - <<'MUSIC'
+          import json
+          from pathlib import Path
+          saved = Path("/tmp/music_rotation_after_upload.json")
+          current = Path("music_rotation_state.json")
+          if saved.exists():
+              candidate = json.loads(saved.read_text())
+              latest = json.loads(current.read_text()) if current.exists() else {}
+              if int(candidate.get("cursor", 0)) >= int(latest.get("cursor", 0)):
+                  current.write_text(json.dumps(candidate, indent=2) + "\n")
+          MUSIC
 
-          if git diff --cached --quiet -- history.json; then
+          git add history.json
+          if [ -f music_rotation_state.json ]; then
+            git add music_rotation_state.json
+          fi
+
+          if git diff --cached --quiet -- history.json music_rotation_state.json; then
             echo "History entry already exists on main. Nothing to commit."
             exit 0
           fi
 
-          git commit -m "Record published ViralSpawnTV Short"
+          git commit -m "Record published ViralSpawnTV Short and music rotation"
 
           if git push origin HEAD:main; then
             echo "history.json successfully merged and persisted."
@@ -386,14 +406,29 @@ jobs:
           print(f"Retry merge contains {len(merged)} permanent used clips.")
           PY
 
-          git add history.json
+          python - <<'MUSIC'
+          import json
+          from pathlib import Path
+          saved = Path("/tmp/music_rotation_after_upload.json")
+          current = Path("music_rotation_state.json")
+          if saved.exists():
+              candidate = json.loads(saved.read_text())
+              latest = json.loads(current.read_text()) if current.exists() else {}
+              if int(candidate.get("cursor", 0)) >= int(latest.get("cursor", 0)):
+                  current.write_text(json.dumps(candidate, indent=2) + "\n")
+          MUSIC
 
-          if git diff --cached --quiet -- history.json; then
+          git add history.json
+          if [ -f music_rotation_state.json ]; then
+            git add music_rotation_state.json
+          fi
+
+          if git diff --cached --quiet -- history.json music_rotation_state.json; then
             echo "Successful Short history already exists on latest main."
             exit 0
           fi
 
-          git commit -m "Record published ViralSpawnTV Short"
+          git commit -m "Record published ViralSpawnTV Short and music rotation"
           git push origin HEAD:main
           echo "history.json successfully persisted after re-merge."
 
@@ -582,6 +617,7 @@ jobs:
           retention-days: 7
           path: |
             history.json
+            music_rotation_state.json
             shorts_rejected_history.json
             work/v11_candidate_manifest.json
             work/v12_ranked_candidates.json
