@@ -7,6 +7,7 @@ import re
 import subprocess
 import textwrap
 from difflib import SequenceMatcher
+from music_rotation import choose_music, music_filter, commit_music
 
 from openai import OpenAI
 from playwright.sync_api import sync_playwright
@@ -1403,7 +1404,11 @@ Return ONLY JSON:
 
 COMMENTARY RULES:
 - Preserve the existing first hook idea unless it is unsupported.
-- Return 3-5 total lines when the footage supports them.
+- Return 1-2 total lines MAXIMUM.
+- Line 1 is the opening hook.
+- Line 2 is optional and must add essential factual context.
+- Do not add narration merely to fill silence.
+- Let game audio and subtitles carry the firefight whenever possible.
 - Use relative times from the selected segment start.
 - Every later line must add NEW context/progression/reaction.
 - No player names/handles.
@@ -1977,7 +1982,7 @@ def create_plan(
 ):
 
     print("\n" + "=" * 65)
-    print("VIRALSPAWNTV V5.9.5 RELIABILITY EDITOR")
+    print("VIRALSPAWNTV V5.9.6 MINIMAL NARRATION EDITOR")
     print("=" * 65)
 
     transcript_with_times = "\n".join(
@@ -2139,7 +2144,17 @@ clear payoff or reaction
 VIRALSPAWNTV COMMENTARY
 ============================================================
 
-Create 3-5 short original commentary beats.
+Create ONLY 1-2 short original commentary beats.
+
+MINIMAL NARRATION MODE:
+- Beat 1 is the Big Hook voice line.
+- Beat 2 is OPTIONAL and should only exist when one short factual context
+  line materially helps a new viewer understand the stakes.
+- Default to ONLY the opening hook; omit the second line unless essential.
+- Never add a third narration beat.
+- Let the original game audio, streamer reactions, gunfire, footsteps,
+  reloads, explosions, and subtitles carry the clip whenever possible.
+- Do not narrate the payoff if the payoff is already visually obvious.
 
 Each beat must add ORIGINAL ViralSpawnTV value: explain strategy, build the
 story, point out a meaningful gameplay decision, react to a specific moment,
@@ -2148,8 +2163,10 @@ see. Make every line specific to THIS clip so the narration would not make
 sense pasted onto a different gaming clip.
 
 PROGRESSION CLARITY:
-At least ONE non-hook narration beat should help a viewer unfamiliar with
-the game understand how the situation is progressing toward the payoff.
+If a second narration beat is genuinely needed, use it to help a viewer
+unfamiliar with the game understand one important piece of context or
+progression. If subtitles/game audio already make the situation clear,
+do not add a second beat.
 Use only facts supported by the transcript or visible evidence.
 Examples of useful progression information:
 - what objective is being defended/attempted
@@ -3414,6 +3431,259 @@ def generate_voices(
     return beats
 
 
+
+# ============================================================
+# V5.9.6 MINIMAL NARRATION ENFORCER
+# ============================================================
+
+def enforce_minimal_narration(
+    plan
+):
+    """
+    Default to one opening hook; NARRATION_MAX_BEATS optionally allows 0-2.
+
+    Keep:
+      1) opening hook
+      2) at most one useful context beat
+
+    Prefer a middle-context line rather than narration immediately before
+    the payoff, so the original game audio/reaction owns the ending.
+    """
+
+    commentary = (
+        plan.get(
+            "commentary",
+            [],
+        )
+        if isinstance(
+            plan.get(
+                "commentary",
+                [],
+            ),
+            list,
+        )
+        else []
+    )
+
+    clean = []
+
+    for beat in commentary:
+        text = clean_text(
+            beat.get(
+                "text",
+                "",
+            )
+        )
+
+        if not text:
+            continue
+
+        row = dict(
+            beat
+        )
+
+        row[
+            "text"
+        ] = text
+
+        try:
+            row[
+                "time"
+            ] = float(
+                row.get(
+                    "time",
+                    0.0,
+                )
+            )
+        except Exception:
+            row[
+                "time"
+            ] = 0.0
+
+        clean.append(
+            row
+        )
+
+    if not clean:
+        plan[
+            "commentary"
+        ] = []
+
+        return plan
+
+    hook = dict(
+        clean[
+            0
+        ]
+    )
+
+    hook[
+        "time"
+    ] = max(
+        0.10,
+        min(
+            0.55,
+            float(
+                hook.get(
+                    "time",
+                    0.15,
+                )
+            ),
+        ),
+    )
+
+    selected = [
+        hook
+    ]
+
+    if len(
+        clean
+    ) > 1:
+        segment_start = float(
+            plan.get(
+                "segment_start",
+                0.0,
+            )
+        )
+
+        segment_end = float(
+            plan.get(
+                "segment_end",
+                segment_start + 40.0,
+            )
+        )
+
+        payoff_time = float(
+            plan.get(
+                "payoff_time",
+                segment_end,
+            )
+        )
+
+        core_length = max(
+            1.0,
+            segment_end
+            -
+            segment_start,
+        )
+
+        payoff_relative = max(
+            0.0,
+            payoff_time
+            -
+            segment_start,
+        )
+
+        # Prefer one context line around 35-60% of the edit, while staying
+        # at least ~4 seconds away from the payoff.
+        target = core_length * 0.46
+
+        candidates = []
+
+        for beat in clean[
+            1:
+        ]:
+            when = float(
+                beat.get(
+                    "time",
+                    0.0,
+                )
+            )
+
+            if when < 5.0:
+                continue
+
+            if (
+                payoff_relative > 8.0
+                and
+                when
+                >
+                payoff_relative
+                -
+                4.0
+            ):
+                continue
+
+            word_count = len(
+                re.findall(
+                    r"[A-Za-z0-9']+",
+                    str(
+                        beat.get(
+                            "text",
+                            "",
+                        )
+                    ),
+                )
+            )
+
+            # Shorter, centered context lines are favored.
+            score = (
+                abs(
+                    when
+                    -
+                    target
+                )
+                +
+                max(
+                    0,
+                    word_count
+                    -
+                    14,
+                )
+                *
+                1.5
+            )
+
+            candidates.append(
+                (
+                    score,
+                    beat,
+                )
+            )
+
+        if candidates:
+            candidates.sort(
+                key=lambda item:
+                    item[
+                        0
+                    ]
+            )
+
+            context = dict(
+                candidates[
+                    0
+                ][
+                    1
+                ]
+            )
+
+            selected.append(
+                context
+            )
+
+    max_beats = max(0, min(2, int(os.getenv("NARRATION_MAX_BEATS", "1"))))
+    plan["commentary"] = selected[:max_beats]
+
+    plan[
+        "minimal_narration_mode"
+    ] = True
+
+    plan[
+        "minimal_narration_count"
+    ] = len(
+        plan[
+            "commentary"
+        ]
+    )
+
+    print(
+        f"V5.9.7 MINIMAL NARRATION: "
+        f"{len(plan['commentary'])} voice beat(s)."
+    )
+
+    return plan
+
+
 # ============================================================
 # VIDEO FILTER
 # ============================================================
@@ -3979,7 +4249,7 @@ def build_video_filter(
 # AUDIO FILTER
 # ============================================================
 
-def build_audio_filter(beats):
+def build_audio_filter(beats, music=None, clip_length=None):
 
     filters = []
 
@@ -4009,7 +4279,7 @@ def build_audio_filter(beats):
 
         source_chain += (
             ",volume="
-            "volume=0.20:"
+            "volume=0.45:"
             f"enable='between(t,"
             f"{start:.3f},"
             f"{end:.3f})'"
@@ -4070,6 +4340,10 @@ def build_audio_filter(beats):
             f"[voice{i}]"
         )
 
+    if music is not None:
+        filters.append(music_filter(len(beats) + 1, clip_length, beats))
+        mix_inputs.append("[musicbed]")
+
     filters.append(
         "".join(
             mix_inputs
@@ -4079,7 +4353,7 @@ def build_audio_filter(beats):
         f"inputs={len(mix_inputs)}:"
         "duration=first:"
         "dropout_transition=0:"
-        "normalize=0"
+        "normalize=0,alimiter=limit=0.95:latency=1"
         "[finalaudio]"
     )
 
@@ -4123,11 +4397,10 @@ def render(
         )
     )
 
-    audio_filter = (
-        build_audio_filter(
-            beats
-        )
-    )
+    music = choose_music(ROOT, clip_length)
+    print(f"Music: {music['filename']} at {music['offset']:.3f}s")
+    plan["background_music"] = {"filename": music["filename"], "offset": music["offset"]}
+    audio_filter = build_audio_filter(beats, music, clip_length)
 
     filter_complex = (
         video_filter
@@ -4161,6 +4434,9 @@ def render(
                 beat["file"]
             ),
         ])
+
+    command.extend(["-stream_loop", "-1", "-ss", str(music["offset"]),
+                    "-i", music["path"]])
 
     command.extend([
         "-filter_complex",
@@ -4219,6 +4495,8 @@ def render(
             "V4 final video "
             "was not created."
         )
+
+    commit_music(music)
 
     final_duration = duration(
         CORE_VIDEO
@@ -4523,7 +4801,8 @@ def save_metadata(
         "impacts": plan[
             "impacts"
         ],
-        "shorts_branding_version": "5.9.5-reliability-first-best-effort",
+        "background_music": plan.get("background_music", {}),
+        "shorts_branding_version": "5.9.7-music-single-hook",
         "branding_intro": str(INTRO_IMAGE),
         "branding_outro": str(OUTRO_IMAGE),
         "branding_intro_seconds": INTRO_SECONDS,
@@ -4645,6 +4924,14 @@ def main():
         print(
             "V5.9.5 PRE-RENDER PLAN GATE: PASSED"
         )
+
+    # --------------------------------------------------------
+    # 5A.5 Minimal narration hard cap
+    # --------------------------------------------------------
+
+    plan = enforce_minimal_narration(
+        plan
+    )
 
     # --------------------------------------------------------
     # 5B. English-output safety gate
