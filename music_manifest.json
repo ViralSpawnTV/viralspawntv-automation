@@ -1,0 +1,57 @@
+{
+  "source": "User supplied YouTube Audio Library downloads; attribution-not-required filter shown in supplied PDFs.",
+  "tracks": [
+    {
+      "filename": "Adding Up - Blue Deer Studio.mp3",
+      "sha256": "65a120c90af1d742474abe721b6879f9537a8867ba0124d281f0cba7e9e28896"
+    },
+    {
+      "filename": "Dead Alive (feat. Nyles Lannon) - Blue Deer Studio.mp3",
+      "sha256": "ac38d77b815b82310ccd24f160cf1ddedfd37439dd75002c9a595571686e4b3d"
+    },
+    {
+      "filename": "Death Duel - Alex Jones _ Xander Jones.mp3",
+      "sha256": "daaf7cde011946e5ae2ded96fcee8fff7d0fae96a355aef6f3f1727ac0c1d6e2"
+    },
+    {
+      "filename": "Gasoline - Killshot 22.mp3",
+      "sha256": "7ec532a1a6896915258f91e59ed0899dca2fa7904e60714cd6945d746fb2d440"
+    },
+    {
+      "filename": "Higher Water - Blue Deer Studio.mp3",
+      "sha256": "4d0f600d5e4e4d58d1258aa030c4cbc08b5dcc69e6dc2299bd804d6d045af0a8"
+    },
+    {
+      "filename": "Mukbang - The Soundlings.mp3",
+      "sha256": "c729c64ffa99bdb54281f74e3c8dcf2cf30bea1374afaf7997cedb30b494e7f7"
+    },
+    {
+      "filename": "Paradigm - Blue Deer Studio.mp3",
+      "sha256": "2d3df0d7e370d141d99d952fed83735619fc63e2d1ca3537d63f23e9bee69408"
+    },
+    {
+      "filename": "RAM - Halocene.mp3",
+      "sha256": "42795d84c613076614cb4536fed028f94b6e9f0c8ba402e0bd8c6ea6dc32616b"
+    },
+    {
+      "filename": "Rise of the Machines - Trey Xavier.mp3",
+      "sha256": "eeb75335ddb2eb588ec1d0712a92263a76769936c1c6763eb03098141488a16b"
+    },
+    {
+      "filename": "Sick Parade - Blue Deer Studio.mp3",
+      "sha256": "fbbe4905799d40e9b313192e187b368c59f39fc7286cfbebbf6082d317f49f79"
+    },
+    {
+      "filename": "Sixseven - The Soundlings.mp3",
+      "sha256": "86dd617851103732a150a7dcda49c6dd5e70c5ab50ab3ee7a11028148c2b7881"
+    },
+    {
+      "filename": "This Is The End - True Blue Music _ Bosley.mp3",
+      "sha256": "2296283ff6ef946027d0895332788b71e08e9edfafdaa542303bf5fe96de77ad"
+    },
+    {
+      "filename": "Through The Gates Of Hell - Blue Deer Studio.mp3",
+      "sha256": "99d7241abf946c9583a246f50dad4b65357444fea46de5b20b446d8404c11c27"
+    }
+  ]
+}
