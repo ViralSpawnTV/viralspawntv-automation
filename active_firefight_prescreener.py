@@ -24,8 +24,7 @@ WORK.mkdir(parents=True, exist_ok=True)
 #
 # Up to 100 clips are screened LOCALLY with FFmpeg/Python.
 # Only ~30 strongest combat-looking clips reach AI vision.
-# If OpenAI quota is unavailable, the workflow falls back to the
-# local ranking instead of failing the entire Short run.
+# Paid confirmation is mandatory; motion-only candidates cannot publish.
 # ------------------------------------------------------------
 
 MAX_CANDIDATES = 100
@@ -34,7 +33,7 @@ LOCAL_AI_CANDIDATES = 30
 TARGET_SURVIVORS = 24
 MIN_SURVIVORS = 16
 
-MIN_FIREFIGHT_SCORE = 60
+MIN_FIREFIGHT_SCORE = 70
 FRAME_WORKERS = 8
 LOCAL_WORKERS = 8
 AI_BATCH_SIZE = 10
@@ -679,7 +678,7 @@ Return ONLY JSON:
   ]
 }
 
-A firefight_score of 60+ should mean this clip is genuinely worth sending
+A firefight_score of 70+ should mean this clip is genuinely worth sending
 to the more expensive payoff/story pipeline.
 """
 
@@ -803,173 +802,20 @@ def final_ai_rank(row):
 
 
 def local_only_survivors(local_rows):
-    """
-    API-credit fallback.
+    # Motion cannot confirm gunfire. No unverified fallback is promoted.
+    return []
 
-    We still strongly prefer shooter games and actual sustained local motion.
-    This keeps the workflow alive instead of failing with insufficient_quota.
-    """
 
-    strict = [
-        row
-        for row in local_rows
-        if (
-            row.get(
-                "local_shooter_game",
-                False,
-            )
-            and
-            row.get(
-                "local_firefight_score",
-                0,
-            )
-            >=
-            48
-            and
-            row.get(
-                "local_sustained_motion_score",
-                0,
-            )
-            >=
-            30
-        )
-    ]
-
-    if len(
-        strict
-    ) < MIN_SURVIVORS:
-        used = {
-            str(
-                row.get(
-                    "clip_id",
-                    "",
-                )
-            )
-            for row in strict
-        }
-
-        for row in local_rows:
-            clip_id = str(
-                row.get(
-                    "clip_id",
-                    "",
-                )
-            )
-
-            if (
-                not clip_id
-                or
-                clip_id in used
-            ):
-                continue
-
-            if not row.get(
-                "local_shooter_game",
-                False,
-            ):
-                continue
-
-            fallback = dict(
-                row
-            )
-
-            fallback[
-                "active_firefight_backfill"
-            ] = True
-
-            strict.append(
-                fallback
-            )
-
-            used.add(
-                clip_id
-            )
-
-            if len(
-                strict
-            ) >= MIN_SURVIVORS:
-                break
-
-    output = []
-
-    for row in strict[
-        :TARGET_SURVIVORS
-    ]:
-        candidate = dict(
-            row
-        )
-
-        candidate[
-            "active_firefight_score"
-        ] = clamp(
-            candidate.get(
-                "local_firefight_score",
-                0,
-            )
-        )
-
-        candidate[
-            "active_firefight_samples"
-        ] = 0
-
-        candidate[
-            "active_sustained_combat"
-        ] = bool(
-            candidate.get(
-                "local_sustained_motion_score",
-                0,
-            )
-            >=
-            35
-        )
-
-        candidate[
-            "active_enemy_engagement"
-        ] = 0
-
-        candidate[
-            "active_combat_intensity"
-        ] = clamp(
-            candidate.get(
-                "local_motion_score",
-                0,
-            )
-        )
-
-        candidate[
-            "active_dead_time_risk"
-        ] = clamp(
-            100
-            -
-            candidate.get(
-                "local_sustained_motion_score",
-                0,
-            )
-        )
-
-        candidate[
-            "active_firefight_reason"
-        ] = (
-            "Local-only fallback because paid vision was unavailable."
-        )
-
-        candidate[
-            "active_firefight_rank"
-        ] = round(
-            float(
-                candidate.get(
-                    "local_firefight_score",
-                    0,
-                )
-            ),
-            2,
-        )
-
-        output.append(
-            candidate
-        )
-
-    return output
+def confirmed_gunfight(row):
+    return (
+        row.get("local_shooter_game") is True
+        and row.get("active_firefight_score", 0) >= MIN_FIREFIGHT_SCORE
+        and row.get("active_sustained_combat") is True
+        and row.get("active_firefight_samples", 0) >= 3
+        and row.get("active_enemy_engagement", 0) >= 60
+        and row.get("active_combat_intensity", 0) >= 60
+        and row.get("active_dead_time_risk", 100) <= 35
+    )
 
 
 def main():
@@ -1030,7 +876,7 @@ def main():
     ]
 
     if not local_shooters:
-        local_shooters = local_rows
+        raise RuntimeError("No shooter-game candidates; refusing non-shooter backfill.")
 
     ai_candidates = local_shooters[
         :LOCAL_AI_CANDIDATES
@@ -1188,12 +1034,7 @@ def main():
 
                     candidate[
                         "active_sustained_combat"
-                    ] = bool(
-                        result.get(
-                            "sustained_combat",
-                            False,
-                        )
-                    )
+                    ] = (result.get("sustained_combat") is True)
 
                     candidate[
                         "active_enemy_engagement"
@@ -1268,32 +1109,7 @@ def main():
             reverse=True,
         )
 
-        strict = [
-            row
-            for row in scored_rows
-            if (
-                row.get(
-                    "active_firefight_score",
-                    0,
-                )
-                >=
-                MIN_FIREFIGHT_SCORE
-                and
-                (
-                    row.get(
-                        "active_sustained_combat",
-                        False,
-                    )
-                    or
-                    row.get(
-                        "active_firefight_samples",
-                        0,
-                    )
-                    >=
-                    2
-                )
-            )
-        ]
+        strict = [row for row in scored_rows if confirmed_gunfight(row)]
 
         survivors = strict[
             :TARGET_SURVIVORS
@@ -1309,44 +1125,7 @@ def main():
             for row in survivors
         }
 
-        if len(
-            survivors
-        ) < MIN_SURVIVORS:
-            for row in scored_rows:
-                clip_id = str(
-                    row.get(
-                        "clip_id",
-                        "",
-                    )
-                )
-
-                if (
-                    not clip_id
-                    or
-                    clip_id in used
-                ):
-                    continue
-
-                fallback = dict(
-                    row
-                )
-
-                fallback[
-                    "active_firefight_backfill"
-                ] = True
-
-                survivors.append(
-                    fallback
-                )
-
-                used.add(
-                    clip_id
-                )
-
-                if len(
-                    survivors
-                ) >= MIN_SURVIVORS:
-                    break
+        # Never refill with rejected/noncombat rows, regardless of pool size.
 
     else:
         survivors = local_only_survivors(
