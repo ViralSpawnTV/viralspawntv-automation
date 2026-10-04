@@ -8,6 +8,7 @@ import subprocess
 import textwrap
 from difflib import SequenceMatcher
 from music_rotation import choose_music, music_filter, commit_music
+from action_segment_gate import validate_action_segment
 
 from openai import OpenAI
 from playwright.sync_api import sync_playwright
@@ -4801,6 +4802,7 @@ def save_metadata(
         "impacts": plan[
             "impacts"
         ],
+        "action_segment_validation": plan.get("action_segment_validation", {}),
         "background_music": plan.get("background_music", {}),
         "shorts_branding_version": "5.9.7-music-single-hook",
         "branding_intro": str(INTRO_IMAGE),
@@ -4924,6 +4926,9 @@ def main():
         print(
             "V5.9.5 PRE-RENDER PLAN GATE: PASSED"
         )
+
+    # Mandatory action check uses the exact repaired segment, before TTS/render.
+    validate_action_segment(client, clip["video"], plan, WORK)
 
     # --------------------------------------------------------
     # 5A.5 Minimal narration hard cap
