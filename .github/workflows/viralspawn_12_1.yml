@@ -626,6 +626,7 @@ jobs:
             work/kick_gaming/acquisition_result.json
             work/viral_gate/viral_gate_result.json
             work/music_gate/music_gate_result.json
+            work/production/action_segment_gate/result.json
             work/production/final_content_gate.json
             work/production/ViralSpawnTV_V4_metadata.json
             work/production/youtube_upload_result.json
