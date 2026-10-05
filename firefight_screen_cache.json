@@ -560,6 +560,86 @@
         "reason": "One scoped combat/elimination moment is visible, but the remaining samples show movement, a round loss, buy phase, and scoreboard; insufficient repeated direct gunfight evidence."
       },
       "window_start": 20.0
+    },
+    "clip_01M1W2EA5QJR6GRT32QFKR76WG": {
+      "policy": "direct-gunfight-window-v1",
+      "updated_at": 1791224514.395001,
+      "expires_at": 1791310914.395001,
+      "media_url": "https://clips.kick.com/clips/c8/clip_01M1W2EA5QJR6GRT32QFKR76WG/playlist.m3u8",
+      "passed": true,
+      "verdict": {
+        "id": 0,
+        "firefight_score": 74,
+        "active_samples": 2,
+        "sustained_combat": false,
+        "direct_gunfight": true,
+        "enemy_engagement": 80,
+        "combat_intensity": 72,
+        "dead_time_risk": 38,
+        "content_type": "gaming",
+        "reason": "Visible enemy engagement, weapon use, and a confirmed elimination/ACE, though crowd and transition shots interrupt the combat window."
+      },
+      "window_start": 80.0
+    },
+    "clip_01M26WBMPS1STXMTT4JAC4Y4JB": {
+      "policy": "direct-gunfight-window-v1",
+      "updated_at": 1791224514.39587,
+      "expires_at": 1791483714.39587,
+      "media_url": "https://clips.kick.com/clips/47/clip_01M26WBMPS1STXMTT4JAC4Y4JB/playlist.m3u8",
+      "passed": false,
+      "verdict": {
+        "id": 1,
+        "firefight_score": 48,
+        "active_samples": 1,
+        "sustained_combat": false,
+        "direct_gunfight": false,
+        "enemy_engagement": 55,
+        "combat_intensity": 48,
+        "dead_time_risk": 44,
+        "content_type": "gaming",
+        "reason": "Mostly smoke setup and scoped angle holding; one apparent sniper elimination is insufficient, while the later knife ability does not establish repeated firearm combat."
+      },
+      "window_start": 5.0
+    },
+    "clip_01M3XVCC7WC8G96YBFAAXX0E5Z": {
+      "policy": "direct-gunfight-window-v1",
+      "updated_at": 1791224514.3966653,
+      "expires_at": 1791310914.3966653,
+      "media_url": "https://clips.kick.com/clips/41/clip_01M3XVCC7WC8G96YBFAAXX0E5Z/playlist.m3u8",
+      "passed": true,
+      "verdict": {
+        "id": 2,
+        "firefight_score": 65,
+        "active_samples": 2,
+        "sustained_combat": true,
+        "direct_gunfight": true,
+        "enemy_engagement": 62,
+        "combat_intensity": 61,
+        "dead_time_risk": 29,
+        "content_type": "gaming",
+        "reason": "Repeated bow aiming and firing activity with apparent hit/elimination feedback supports direct ranged-weapon engagement, though enemies are not consistently clear."
+      },
+      "window_start": 60.0
+    },
+    "clip_01M3X67FFX2PFR6RJ0VX16F5P4": {
+      "policy": "direct-gunfight-window-v1",
+      "updated_at": 1791224514.3975716,
+      "expires_at": 1791310914.3975716,
+      "media_url": "https://clips.kick.com/clips/8d/clip_01M3X67FFX2PFR6RJ0VX16F5P4/playlist.m3u8",
+      "passed": true,
+      "verdict": {
+        "id": 3,
+        "firefight_score": 84,
+        "active_samples": 3,
+        "sustained_combat": true,
+        "direct_gunfight": true,
+        "enemy_engagement": 82,
+        "combat_intensity": 86,
+        "dead_time_risk": 16,
+        "content_type": "gaming",
+        "reason": "Clear automatic weapon fire, continued combat movement, elimination feedback, reloading, and renewed aiming toward enemy positions."
+      },
+      "window_start": 0.0
     }
   }
 }
