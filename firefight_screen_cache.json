@@ -320,6 +320,86 @@
         "reason": "Multiple active CS2 combat samples show visible opponents, muzzle fire, damage, kill-feed activity, and continued engagement."
       },
       "window_start": 75.0
+    },
+    "clip_01M3PW82D0WG4JSEMEHZ3RWFW5": {
+      "policy": "direct-gunfight-window-v1",
+      "updated_at": 1791213694.2032444,
+      "expires_at": 1791472894.2032444,
+      "media_url": "https://clips.kick.com/clips/38/clip_01M3PW82D0WG4JSEMEHZ3RWFW5/playlist.m3u8",
+      "passed": false,
+      "verdict": {
+        "id": 0,
+        "firefight_score": 22,
+        "active_samples": 0,
+        "sustained_combat": false,
+        "direct_gunfight": false,
+        "enemy_engagement": 15,
+        "combat_intensity": 25,
+        "dead_time_risk": 78,
+        "content_type": "gaming",
+        "reason": "Mostly movement, grenade handling, weapon preparation, and smoke; no clearly visible enemy or repeated direct firing engagement."
+      },
+      "window_start": 0.0
+    },
+    "clip_01M41FHKVAQSGSF1R9P0SREH4A": {
+      "policy": "direct-gunfight-window-v1",
+      "updated_at": 1791213694.2039895,
+      "expires_at": 1791300094.2039895,
+      "media_url": "https://clips.kick.com/clips/df/clip_01M41FHKVAQSGSF1R9P0SREH4A/playlist.m3u8",
+      "passed": true,
+      "verdict": {
+        "id": 1,
+        "firefight_score": 94,
+        "active_samples": 4,
+        "sustained_combat": true,
+        "direct_gunfight": true,
+        "enemy_engagement": 95,
+        "combat_intensity": 92,
+        "dead_time_risk": 8,
+        "content_type": "gaming",
+        "reason": "Multiple direct ranged engagements with aimed weapon fire, damage feedback, enemy down, eliminations, and a victory finish."
+      },
+      "window_start": 10.0
+    },
+    "clip_01HN33D0N0THC2703YY3PTM155": {
+      "policy": "direct-gunfight-window-v1",
+      "updated_at": 1791213694.2046962,
+      "expires_at": 1791472894.2046962,
+      "media_url": "https://clips.kick.com/clips/34/clip_01HN33D0N0THC2703YY3PTM155/playlist.m3u8",
+      "passed": false,
+      "verdict": {
+        "id": 2,
+        "firefight_score": 8,
+        "active_samples": 0,
+        "sustained_combat": false,
+        "direct_gunfight": false,
+        "enemy_engagement": 5,
+        "combat_intensity": 72,
+        "dead_time_risk": 15,
+        "content_type": "gaming",
+        "reason": "Sustained weapon action is visible, but it is Zombies PvE rather than direct PvP combat."
+      },
+      "window_start": 10.0
+    },
+    "clip_01HK61VRW6YMYNJ85NTE2VP1BG": {
+      "policy": "direct-gunfight-window-v1",
+      "updated_at": 1791213694.2054489,
+      "expires_at": 1791472894.2054489,
+      "media_url": "https://clips.kick.com/clips/aa/clip_01HK61VRW6YMYNJ85NTE2VP1BG/playlist.m3u8",
+      "passed": false,
+      "verdict": {
+        "id": 3,
+        "firefight_score": 3,
+        "active_samples": 0,
+        "sustained_combat": false,
+        "direct_gunfight": false,
+        "enemy_engagement": 0,
+        "combat_intensity": 2,
+        "dead_time_risk": 98,
+        "content_type": "gaming",
+        "reason": "Scoreboard, buy phase, knife movement, and downtime only; no direct weapon engagement."
+      },
+      "window_start": 0.0
     }
   }
 }
