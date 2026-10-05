@@ -11,22 +11,65 @@ SAMPLES = 16
 MIN_CORE_SECONDS = 19.0
 CONTEXT_LIMITS = {"reload": 4.0, "armor": 4.0, "incoming_fire": 6.0, "outcome": 8.0}
 
+# Strict output fields remove ambiguity between 'evidence' and similar names.
+# Exact coverage/unique IDs and semantic requirements are still checked locally.
+VERDICT_SCHEMA = {
+    "type": "object", "additionalProperties": False,
+    "properties": {
+        "ranged_shooter_gameplay": {"type": "boolean"},
+        "samples": {"type": "array", "items": {
+            "type": "object", "additionalProperties": False,
+            "properties": {
+                "id": {"type": "integer", "enum": list(range(SAMPLES))},
+                "direct_gunfight": {"type": "boolean"},
+                "context_type": {"type": "string", "enum": ["none", *CONTEXT_LIMITS]},
+                "terminal_payoff": {"type": "boolean"},
+                "evidence": {"type": "string"},
+            },
+            "required": ["id", "direct_gunfight", "context_type", "terminal_payoff", "evidence"],
+        }},
+    },
+    "required": ["ranged_shooter_gameplay", "samples"],
+}
+
 
 def judge_samples(data, seconds):
-    rows = data.get("samples", []) if isinstance(data, dict) else []
+    def invalid(reason, **details):
+        return {"passed": False, "reason": reason, "valid_evidence": False,
+                "model_evidence": data, "validation_details": details}
+    if not isinstance(data, dict) or type(data.get("ranged_shooter_gameplay")) is not bool:
+        return invalid("Missing/invalid ranged-shooter verdict")
+    rows = data.get("samples")
+    if not isinstance(rows, list):
+        return invalid("Missing/invalid sample list")
     by_id = {}
-    for row in rows:
+    invalid_rows = []
+    for index, row in enumerate(rows):
         if not isinstance(row, dict) or type(row.get("id")) is not int:
+            invalid_rows.append(index)
             continue
         if row["id"] in by_id:
-            return {"passed": False, "reason": "Duplicate sample IDs", "valid_evidence": False}
+            return invalid("Duplicate sample IDs", duplicate_id=row["id"])
         by_id[row["id"]] = row
-    if set(by_id) != set(range(SAMPLES)) or any(
-        type(row.get("direct_gunfight")) is not bool
-        or not isinstance(row.get("evidence"), str) or not row["evidence"].strip()
-        for row in by_id.values()
-    ):
-        return {"passed": False, "reason": "Incomplete/invalid visual verdicts", "valid_evidence": False}
+    missing = sorted(set(range(SAMPLES)) - set(by_id))
+    unexpected = sorted(set(by_id) - set(range(SAMPLES)))
+    invalid_fields = {}
+    for i, row in by_id.items():
+        fields = []
+        if type(row.get("direct_gunfight")) is not bool:
+            fields.append("direct_gunfight")
+        if not isinstance(row.get("evidence"), str) or not row["evidence"].strip():
+            fields.append("evidence")
+        if row.get("context_type") not in ("none", *CONTEXT_LIMITS):
+            fields.append("context_type")
+        if type(row.get("terminal_payoff")) is not bool:
+            fields.append("terminal_payoff")
+        if fields:
+            invalid_fields[str(i)] = fields
+    if missing or unexpected or invalid_rows or invalid_fields:
+        return invalid("Incomplete/invalid visual verdicts", missing_ids=missing,
+                       unexpected_ids=unexpected, invalid_rows=invalid_rows,
+                       invalid_fields=invalid_fields, returned_rows=len(rows))
     direct = [by_id[i]["direct_gunfight"] for i in range(SAMPLES)]
     positions = [i for i, value in enumerate(direct) if value]
     width = seconds / SAMPLES
@@ -134,9 +177,16 @@ def inspect_segment(client, video, start, end, folder):
         "shown fight, such as a confirmed team wipe or final elimination. Intermediate knocks "
         "and a persistent banner alone are not terminal payoff. "
         "Return JSON only: ranged_shooter_gameplay boolean and samples, exactly 16 objects with "
-        "integer id 0-15, direct_gunfight boolean, context_type, terminal_payoff boolean, and concise visible evidence."
+        "integer id 0-15, direct_gunfight boolean, context_type, terminal_payoff boolean, "
+        "and an evidence STRING (field name exactly evidence, not visible_evidence). "
+        "Include every interval, including inactive ones, with all five fields. "
+        "Use at most 12 words per evidence string; describe the visible observation. "
+        "Return exactly one object for each integer ID 0 through 15, with no duplicates."
     )}]
     folder.mkdir(parents=True, exist_ok=True)
+    response_status = None
+    incomplete_details = None
+    raw_text = ""
     try:
         for i in range(SAMPLES):
             center = (i + 0.5) * seconds / SAMPLES
@@ -154,15 +204,30 @@ def inspect_segment(client, video, start, end, folder):
                 content.append({"type": "input_image", "image_url": "data:image/jpeg;base64," + encoded})
         response = client.responses.create(model=os.getenv("ACTION_GATE_MODEL", "gpt-5.6"),
                                            max_output_tokens=3000,
+                                           text={"format": {
+                                               "type": "json_schema", "name": "action_interval_verdicts",
+                                               "strict": True, "schema": VERDICT_SCHEMA,
+                                           }},
                                            input=[{"role": "user", "content": content}])
-        text = response.output_text.strip()
+        response_status = getattr(response, "status", None)
+        details = getattr(response, "incomplete_details", None)
+        incomplete_details = details.model_dump() if hasattr(details, "model_dump") else details
+        raw_text = response.output_text or ""
+        if response_status != "completed":
+            raise RuntimeError("Visual assessment did not complete")
+        text = raw_text.strip()
         if text.startswith("```"):
             text = text.split("\n", 1)[1].rsplit("```", 1)[0].strip()
         result = judge_samples(json.loads(text), seconds)
     except Exception as exc:
         result = {"passed": False, "valid_evidence": False,
-                  "reason": f"Action verification unavailable: {exc}"}
-    result.update(segment_start=start, segment_end=end, segment_seconds=seconds)
+                  "reason": f"Action verification unavailable: {type(exc).__name__}",
+                  "error_type": type(exc).__name__}
+    result.update(segment_start=start, segment_end=end, segment_seconds=seconds,
+                  response_status=response_status, incomplete_details=incomplete_details)
+    if not result.get("valid_evidence"):
+        result["raw_response_text"] = raw_text[:12000]
+        result["raw_response_truncated"] = len(raw_text) > 12000
     return result
 
 
