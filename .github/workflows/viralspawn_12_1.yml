@@ -62,7 +62,20 @@ jobs:
           NARRATION_MAX_BEATS: "1"
           MUSIC_VOLUME: "0.12"
           MUSIC_DIR: "assets/music/assets/music"
-        run: python v12_1_pipeline.py
+          DISCOVERY_TARGET_ELIGIBLE: "100"
+          DISCOVERY_MAX_ELIGIBLE_PER_GAME: "24"
+          DISCOVERY_API_PAGES_PER_QUERY: "6"
+          FIREFIGHT_MAX_PAID_CLIPS: "12"
+          VIRALSPAWN_VISUAL_PRESCREEN_ONLY: "1"
+        run: python budgeted_pipeline.py
+
+      - name: Capture screening verdict cache
+        if: always()
+        shell: bash
+        run: |
+          if [ -f firefight_screen_cache.json ]; then
+            cp firefight_screen_cache.json /tmp/firefight_screen_cache_after_run.json
+          fi
 
       - name: Upload public Short
         env:
@@ -610,6 +623,34 @@ jobs:
           echo "Failed to persist Shorts rejection history after $MAX_ATTEMPTS attempts."
           exit 1
 
+      - name: Persist screening verdict cache
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          GENERATED=/tmp/firefight_screen_cache_after_run.json
+          if [ ! -f "$GENERATED" ]; then
+            echo "No screening cache generated."
+            exit 0
+          fi
+          git config user.name "ViralSpawnTV Automation"
+          git config user.email "actions@users.noreply.github.com"
+          for ATTEMPT in 1 2 3; do
+            git fetch origin main
+            git reset --hard origin/main
+            python firefight_cache.py merge "$GENERATED" firefight_screen_cache.json
+            git add firefight_screen_cache.json
+            if git diff --cached --quiet -- firefight_screen_cache.json; then
+              exit 0
+            fi
+            git commit -m "Update firefight screening verdict cache"
+            if git push origin HEAD:main; then
+              exit 0
+            fi
+          done
+          echo "Unable to persist screening cache after three attempts."
+          exit 1
+
       - name: Upload V12.1 diagnostics
         if: always()
         uses: actions/upload-artifact@v4
@@ -620,6 +661,10 @@ jobs:
             history.json
             music_rotation_state.json
             shorts_rejected_history.json
+            firefight_screen_cache.json
+            work/ai_budget.json
+            work/firefight_prescreen/screening_report.json
+            work/v12_firefight_candidates.json
             work/v11_candidate_manifest.json
             work/v12_ranked_candidates.json
             work/v12_attempt_log.json
