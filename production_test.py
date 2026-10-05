@@ -47,10 +47,10 @@ INTRO_SECONDS = 0.0
 OUTRO_SECONDS = 1.0
 
 # V5.9.2 DURATION TARGET
-# Final Shorts may now run 40-60 seconds.
+# Final Shorts may now run 20-60 seconds.
 # Continue preferring longer 52-58 second cores when the story supports it,
 # but allow shorter strong stories instead of padding them.
-FINAL_MIN_SECONDS = 40.0
+FINAL_MIN_SECONDS = 20.0
 FINAL_MAX_SECONDS = 60.0
 CORE_MIN_SECONDS = FINAL_MIN_SECONDS - OUTRO_SECONDS
 CORE_MAX_SECONDS = 58.0
@@ -2033,13 +2033,13 @@ TIMESTAMPED TRANSCRIPT:
 Representative video frames are supplied after this prompt.
 
 Your job is to turn this source into a highly engaging,
-fast-paced, professional YouTube Short whose FINAL runtime is 40-60 seconds.
+fast-paced, professional YouTube Short whose FINAL runtime is 20-60 seconds. End at the actual fight payoff; never add quiet footage to reach a length target.
 
 The finished video adds a 1-second ViralSpawnTV outro after the selected
-source segment. Therefore, select a CORE gameplay segment between 39 and
+source segment. Therefore, select a CORE gameplay segment between 19 and
 58 seconds whenever the source supports it.
 
-Prefer a 52-58 second CORE segment when the story naturally supports it. A strong 39-51 second core is allowed; do not pad with dead air simply to make the Short longer.
+Prefer a fight-focused 24-40 second CORE segment. Use 52-58 seconds only when action stays strong. A strong 19-51 second core is allowed; do not pad with dead air simply to make the Short longer.
 
 Do not invent facts.
 
@@ -2086,17 +2086,16 @@ Do NOT keep post-payoff filler such as:
 - scoreboards with no reaction
 - dead movement after the result
 
-If a 39-second minimum core requires a little extra footage, preserve the
-minimum runtime but still cut as much post-payoff filler as possible.
+Choose a shorter fight-focused edit instead of extending it with armor, walking, looting or menus after the payoff.
 
 DURATION REQUIREMENT:
-- Absolute minimum CORE length: 39 seconds.
-- Preferred CORE length: 52-58 seconds.
+- Absolute minimum CORE length: 19 seconds.
+- Preferred CORE length: 24-40 seconds; use 52-58 only when action stays strong.
 - Absolute maximum CORE length: 58 seconds.
 - The separate 1-second ViralSpawnTV outro makes the final Short about
-  40-59 seconds.
+  20-59 seconds.
 
-If the source is only 40-51 seconds long, use nearly the entire usable story rather than rejecting it for being shorter than the preferred range.
+Keep only the active fight and its meaningful payoff; do not use the entire source just because it is available.
 
 BIG HOOK OPENING — HIGHEST PRIORITY:
 The first 1-2 seconds are the most important part of the entire Short.
@@ -2352,7 +2351,7 @@ American English. If the source is already English, preserve its
 meaning while cleaning it up for readable Shorts captions.
 
 Do NOT caption every sentence.
-Prefer roughly 7-16 useful caption moments across a 39-58 second CORE Short.
+Prefer roughly 7-16 useful caption moments across a 19-58 second CORE Short.
 Leave intentional gaps with no captions.
 Do not invent dialogue.
 Keep each caption short, ideally 2-7 words.
@@ -2534,7 +2533,7 @@ Return ONLY valid JSON:
         raise RuntimeError(
             f"Source clip is only {seconds:.2f}s; "
             f"need at least {CORE_MIN_SECONDS:.1f}s "
-            "for the 40-60 second Shorts strategy."
+            "for the 20-60 second fight-focused Shorts strategy."
         )
 
     # Long sources still prefer a 52s+ story when available.
@@ -2601,7 +2600,7 @@ Return ONLY valid JSON:
             ),
         )
 
-    # Final safety: guarantee the absolute 39-second core.
+    # Final safety: guarantee the absolute 19-second core.
     if end - start < CORE_MIN_SECONDS:
         if end >= CORE_MIN_SECONDS:
             start = max(
