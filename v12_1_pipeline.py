@@ -33,6 +33,7 @@ def run(
     extra_env=None,
 ):
     env = os.environ.copy()
+    env["VIRALSPAWN_AI_STAGE"] = script
 
     if extra_env:
         env.update(
@@ -184,9 +185,13 @@ def reject_clip(
     rejected,
 ):
     ledger = os.environ.get("VIRALSPAWN_AI_LEDGER")
-    if ledger and json.loads(Path(ledger).read_text()).get("exhausted"):
-        print("Budget exhausted: deferring clip rather than permanently rejecting it.")
-        return
+    if ledger:
+        data = json.loads(Path(ledger).read_text())
+        calls = data.get("calls", [])
+        last = calls[-1] if calls else {}
+        if data.get("exhausted") or (last.get("status") == "failed"):
+            print("API failure/budget limit: deferring clip; no permanent rejection.")
+            return
     clip_id = str(
         clip_id or ""
     ).strip()
@@ -203,6 +208,24 @@ def reject_clip(
     save_rejected(
         rejected
     )
+
+
+def relative_action_hint(candidate):
+    """Convert original-source motion timestamps to the acquired clip's timeline."""
+    hint = candidate.get("local_window_start")
+    if hint is None:
+        return ""
+    acquisition = load_json("work/kick_gaming/acquisition_result.json", {})
+    if str(acquisition.get("clip_id", "")) != str(candidate.get("clip_id", "")):
+        return ""
+    try:
+        value = float(hint)
+        if acquisition.get("local_source_is_selected_window") is True:
+            value -= float(acquisition.get("proposed_window_start_original") or 0)
+        seconds = float(acquisition.get("source_duration_seconds") or 0)
+        return str(max(0.0, min(value, max(0.0, seconds - 19))))
+    except (ValueError, TypeError):
+        return ""
 
 
 def force_acquire(
@@ -819,7 +842,7 @@ def main():
         production_code = run_timed(
             f"production_{render_index}",
             "production_test.py",
-            extra_env={"FIREFIGHT_WINDOW_START": candidate.get("local_window_start", "")},
+            extra_env={"FIREFIGHT_WINDOW_START": relative_action_hint(candidate)},
         )
 
         if production_code != 0:
@@ -827,10 +850,7 @@ def main():
                 f"V12.14.6 production failed for "
                 f"{clip_id}; trying next source."
             )
-            reject_clip(
-                clip_id,
-                rejected,
-            )
+            print("Edit/render failure: source deferred; no permanent rejection.")
             continue
 
         # Gambling/content safety remains a hard gate.
