@@ -2458,6 +2458,12 @@ Return ONLY valid JSON:
 }}
 """
 
+    window_hint = os.getenv("FIREFIGHT_WINDOW_START", "")
+    if window_hint:
+        prompt += ("\nLocal motion screening found a promising action window beginning around "
+                   + window_hint + " seconds, lasting up to 35 seconds. Use this only as a search hint; "
+                   "verify visible gunfire from the actual frames and preserve the real payoff. "
+                   "The selected edit must contain sustained gunfights, not menus or results screens.\n")
     content = [{
         "type": "input_text",
         "text": prompt,
