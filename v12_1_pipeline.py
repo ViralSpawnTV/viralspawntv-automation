@@ -828,15 +828,18 @@ def main():
             )
             continue
 
-        # Commercial music remains a hard safety/rights gate.
-        if run_timed(
+        # Only explicit music rejection permanently blacklists a source.
+        # Uncertain evidence, extraction/model errors and budget/API failures
+        # still block this candidate, but leave it eligible for later review.
+        music_code = run_timed(
             f"music_gate_{render_index}",
             "music_gate.py",
-        ) != 0:
-            reject_clip(
-                clip_id,
-                rejected,
-            )
+        )
+        if music_code != 0:
+            if music_code == 20:
+                reject_clip(clip_id, rejected)
+            else:
+                print("Music screen uncertain/failed: deferring clip without permanent rejection.")
             continue
 
         production_code = run_timed(
