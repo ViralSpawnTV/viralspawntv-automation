@@ -400,6 +400,86 @@
         "reason": "Scoreboard, buy phase, knife movement, and downtime only; no direct weapon engagement."
       },
       "window_start": 0.0
+    },
+    "clip_01M468P2BRYPBSJZ1C90DD0ZSZ": {
+      "policy": "direct-gunfight-window-v1",
+      "updated_at": 1791216937.786851,
+      "expires_at": 1791476137.786851,
+      "media_url": "https://clips.kick.com/clips/87/clip_01M468P2BRYPBSJZ1C90DD0ZSZ/playlist.m3u8",
+      "passed": false,
+      "verdict": {
+        "id": 0,
+        "firefight_score": 28,
+        "active_samples": 1,
+        "sustained_combat": false,
+        "direct_gunfight": false,
+        "enemy_engagement": 35,
+        "combat_intensity": 25,
+        "dead_time_risk": 85,
+        "content_type": "gaming",
+        "reason": "Only one sampled gameplay moment suggests engagement; the remaining window is scoreboard, transitions, and advertisement footage."
+      },
+      "window_start": 5.0
+    },
+    "clip_01M46AXN29HARFEG3C14F5J49B": {
+      "policy": "direct-gunfight-window-v1",
+      "updated_at": 1791216937.7877636,
+      "expires_at": 1791476137.7877636,
+      "media_url": "https://clips.kick.com/clips/08/clip_01M46AXN29HARFEG3C14F5J49B/playlist.m3u8",
+      "passed": false,
+      "verdict": {
+        "id": 1,
+        "firefight_score": 22,
+        "active_samples": 1,
+        "sustained_combat": false,
+        "direct_gunfight": false,
+        "enemy_engagement": 25,
+        "combat_intensity": 20,
+        "dead_time_risk": 88,
+        "content_type": "gaming",
+        "reason": "Mostly player-camera and transition footage, with only one replay frame and no multiple visible firing exchanges."
+      },
+      "window_start": 20.0
+    },
+    "clip_01M421QFT12FTH86HAJ7M9NYZW": {
+      "policy": "direct-gunfight-window-v1",
+      "updated_at": 1791216937.788589,
+      "expires_at": 1791476137.788589,
+      "media_url": "https://clips.kick.com/clips/83/clip_01M421QFT12FTH86HAJ7M9NYZW/playlist.m3u8",
+      "passed": false,
+      "verdict": {
+        "id": 2,
+        "firefight_score": 42,
+        "active_samples": 1,
+        "sustained_combat": false,
+        "direct_gunfight": false,
+        "enemy_engagement": 45,
+        "combat_intensity": 38,
+        "dead_time_risk": 65,
+        "content_type": "gaming",
+        "reason": "One scoped combat-like moment with damage indicators, followed primarily by equipment deployment, looting, and repositioning; insufficient repeated gunfight evidence."
+      },
+      "window_start": 70.0
+    },
+    "clip_01M469DCN23P4GJ37EQRAFKB80": {
+      "policy": "direct-gunfight-window-v1",
+      "updated_at": 1791216937.7894118,
+      "expires_at": 1791303337.7894118,
+      "media_url": "https://clips.kick.com/clips/62/clip_01M469DCN23P4GJ37EQRAFKB80/playlist.m3u8",
+      "passed": true,
+      "verdict": {
+        "id": 3,
+        "firefight_score": 78,
+        "active_samples": 3,
+        "sustained_combat": true,
+        "direct_gunfight": true,
+        "enemy_engagement": 82,
+        "combat_intensity": 74,
+        "dead_time_risk": 20,
+        "content_type": "gaming",
+        "reason": "Multiple consecutive broadcast gameplay samples show rifles trained on nearby outlined opponents, active team damage and deaths, and continued engagement across the same fight."
+      },
+      "window_start": 60.0
     }
   }
 }
