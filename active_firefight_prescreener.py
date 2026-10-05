@@ -11,6 +11,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 from openai import OpenAI
+from firefight_cache import load as load_cache, current as cached_verdict, remember
 
 
 INPUT = Path("work/v12_ranked_candidates.json")
@@ -23,20 +24,20 @@ WORK.mkdir(parents=True, exist_ok=True)
 # LOCAL FIRST -> AI SECOND
 #
 # Up to 100 clips are screened LOCALLY with FFmpeg/Python.
-# Only ~30 strongest combat-looking clips reach AI vision.
+# At most 12 clips reach paid vision; stop once four have passed.
 # Paid confirmation is mandatory; motion-only candidates cannot publish.
 # ------------------------------------------------------------
 
 MAX_CANDIDATES = 100
 
-LOCAL_AI_CANDIDATES = 30
-TARGET_SURVIVORS = 24
+LOCAL_AI_CANDIDATES = min(12, max(1, int(os.getenv("FIREFIGHT_MAX_PAID_CLIPS", "12"))))
+TARGET_SURVIVORS = 4
 MIN_SURVIVORS = 16
 
 MIN_FIREFIGHT_SCORE = 70
 FRAME_WORKERS = 8
-LOCAL_WORKERS = 8
-AI_BATCH_SIZE = 10
+LOCAL_WORKERS = 4
+AI_BATCH_SIZE = 4
 
 # Low-resolution raw grayscale frames.
 LOCAL_WIDTH = 96
@@ -183,7 +184,7 @@ def frame_motion_metrics(media_url):
         command,
         check=True,
         capture_output=True,
-        timeout=35,
+        timeout=60,
     )
 
     raw = proc.stdout
@@ -263,7 +264,12 @@ def frame_motion_metrics(media_url):
         max(1, len(transition_means))
     )
 
+    # A promising 35-second window, rather than whole-clip sustained motion.
+    width = max(1, min(len(transition_means), 7))
+    peak = max(range(max(1, len(transition_means) - width + 1)),
+               key=lambda i: sum(transition_means[i:i + width]))
     return {
+        "window_start": peak * 5.0,
         "frame_count":
             count,
         "avg_change":
@@ -289,9 +295,22 @@ def local_candidate_score(candidate):
             "candidate has no media URL"
         )
 
-    metrics = frame_motion_metrics(
-        media_url
-    )
+    # Download once, then reuse the local preview for all frame extraction.
+    preview = WORK / safe_name(candidate.get("clip_id", "")) / "preview.mp4"
+    preview.parent.mkdir(parents=True, exist_ok=True)
+    preview.unlink(missing_ok=True)
+    try:
+        subprocess.run(["ffmpeg", "-v", "error", "-y", "-rw_timeout", "12000000",
+                        "-i", media_url, "-t", "120", "-map", "0:v:0", "-an",
+                        "-vf", "scale=640:-2", "-r", "15", "-c:v", "libx264",
+                        "-preset", "ultrafast", "-crf", "30", str(preview)],
+                       check=True, capture_output=True, timeout=90)
+        if not preview.is_file() or not preview.stat().st_size:
+            raise RuntimeError("Empty local preview")
+        metrics = frame_motion_metrics(str(preview))
+    except Exception:
+        preview.unlink(missing_ok=True)
+        raise
 
     game = str(
         candidate.get(
@@ -346,9 +365,10 @@ def local_candidate_score(candidate):
         title_score * 0.05
     )
 
-    row = dict(
-        candidate
-    )
+    row = dict(candidate)
+    row["local_preview_path"] = str(preview)
+    row["local_window_start"] = metrics.get("window_start", 0.0)
+    row["local_preview_seconds"] = min(120.0, float(candidate.get("source_duration_seconds") or 120))
 
     row[
         "local_firefight_score"
@@ -464,26 +484,15 @@ def local_scan_parallel(candidates):
 
 def extract_ai_frames(candidate):
     """
-    Slightly richer visual evidence only for the ~30 clips that survived
+    Slightly richer visual evidence only for the small batch of clips that survived
     the local filter.
     """
 
-    media_url = str(
-        candidate.get("media_url")
-        or
-        candidate.get("playlist_url")
-        or
-        ""
-    ).strip()
-
-    duration = float(
-        candidate.get(
-            "source_duration_seconds",
-            0,
-        )
-        or
-        0
-    )
+    media_url = candidate.get("local_preview_path", "")
+    duration = float(candidate.get("local_preview_seconds") or 0)
+    window_start = max(0.0, float(candidate.get("local_window_start") or 0))
+    window_start = min(window_start, max(0.0, duration - 35))
+    window_seconds = min(35.0, duration - window_start)
 
     clip_id = str(
         candidate.get(
@@ -529,7 +538,7 @@ def extract_ai_frames(candidate):
             0.5,
             min(
                 duration - 0.5,
-                duration * fraction,
+                window_start + window_seconds * fraction,
             ),
         )
 
@@ -539,6 +548,7 @@ def extract_ai_frames(candidate):
             f"ai_{index}.jpg"
         )
 
+        path.unlink(missing_ok=True)
         command = [
             "ffmpeg",
             "-y",
@@ -646,9 +656,15 @@ For shooter games, require convincing evidence such as:
 - visible enemies being actively engaged
 - aiming and firing exchanges
 - hit markers / damage / shield breaks
-- explosions or abilities being used directly in combat
+- direct firearm/ranged-weapon engagement (abilities alone do not qualify)
 - kill/knock/elimination activity
 - multiple sampled moments from the same active fight
+
+You see the most promising window, not the entire source. Accept a source
+with at least two convincing direct gunfight samples, even if the entire
+source has downtime. A separate mandatory gate verifies the exact final edit.
+Set direct_gunfight true ONLY when direct weapon engagement is visible.
+Aiming, running, melee, camera motion or celebration alone must be false.
 
 Do NOT treat these as firefights:
 - merely holding an angle
@@ -669,6 +685,7 @@ Return ONLY JSON:
       "firefight_score": 0-100,
       "active_samples": 0-5,
       "sustained_combat": true,
+      "direct_gunfight": true,
       "enemy_engagement": 0-100,
       "combat_intensity": 0-100,
       "dead_time_risk": 0-100,
@@ -678,7 +695,7 @@ Return ONLY JSON:
   ]
 }
 
-A firefight_score of 70+ should mean this clip is genuinely worth sending
+A firefight_score of 60+ should mean this clip is genuinely worth sending
 to the more expensive payoff/story pipeline.
 """
 
@@ -756,7 +773,8 @@ to the more expensive payoff/story pipeline.
             )
 
     response = client.responses.create(
-        model="gpt-5.6",
+        max_output_tokens=2200,
+        model=os.getenv("FIREFIGHT_MODEL", "gpt-5.6"),
         input=[
             {
                 "role":
@@ -807,380 +825,156 @@ def local_only_survivors(local_rows):
 
 
 def confirmed_gunfight(row):
-    return (
-        row.get("local_shooter_game") is True
-        and row.get("active_firefight_score", 0) >= MIN_FIREFIGHT_SCORE
-        and row.get("active_sustained_combat") is True
-        and row.get("active_firefight_samples", 0) >= 3
-        and row.get("active_enemy_engagement", 0) >= 60
-        and row.get("active_combat_intensity", 0) >= 60
-        and row.get("active_dead_time_risk", 100) <= 35
-    )
+    # Broad source eligibility; the exact edit still faces the strict final gate.
+    return (row.get("local_shooter_game") is True
+            and row.get("active_direct_gunfight") is True
+            and row.get("active_firefight_score", 0) >= 60
+            and row.get("active_firefight_samples", 0) >= 2)
+
+
+def valid_verdict(result):
+    if not isinstance(result, dict):
+        return False
+    if type(result.get("direct_gunfight")) is not bool:
+        return False
+    if type(result.get("active_samples")) is not int or not 0 <= result["active_samples"] <= 5:
+        return False
+    if type(result.get("sustained_combat")) is not bool:
+        return False
+    for name in ("firefight_score", "enemy_engagement", "combat_intensity", "dead_time_risk"):
+        value = result.get(name)
+        if type(value) not in (int, float) or not math.isfinite(value) or not 0 <= value <= 100:
+            return False
+    return True
+
+
+def apply_verdict(row, result):
+    row = dict(row)
+    for source, target in (("firefight_score", "active_firefight_score"),
+                           ("active_samples", "active_firefight_samples"),
+                           ("sustained_combat", "active_sustained_combat"),
+                           ("direct_gunfight", "active_direct_gunfight"),
+                           ("enemy_engagement", "active_enemy_engagement"),
+                           ("combat_intensity", "active_combat_intensity"),
+                           ("dead_time_risk", "active_dead_time_risk"),
+                           ("reason", "active_firefight_reason")):
+        row[target] = result.get(source)
+    row["active_firefight_rank"] = final_ai_rank(row)
+    return row
 
 
 def main():
-    if not INPUT.exists():
-        raise RuntimeError(
-            "Missing work/v12_ranked_candidates.json"
-        )
-
     started = time.perf_counter()
-
-    payload = json.loads(
-        INPUT.read_text(
-            encoding="utf-8"
-        )
-    )
-
-    candidates = [
-        row
-        for row in payload.get(
-            "candidates",
-            [],
-        )
-        if isinstance(
-            row,
-            dict,
-        )
-    ][
-        :MAX_CANDIDATES
-    ]
-
-    if not candidates:
-        raise RuntimeError(
-            "No candidates available."
-        )
-
-    print(
-        f"V12.14.7 LOCAL FIREFIGHT PREFILTER: "
-        f"{len(candidates)} candidates."
-    )
-
-    local_rows = local_scan_parallel(
-        candidates
-    )
-
-    if not local_rows:
-        raise RuntimeError(
-            "Local firefight scan produced no usable clips."
-        )
-
-    # Prefer shooter-game footage before paid AI.
-    local_shooters = [
-        row
-        for row in local_rows
-        if row.get(
-            "local_shooter_game",
-            False,
-        )
-    ]
-
-    if not local_shooters:
-        raise RuntimeError("No shooter-game candidates; refusing non-shooter backfill.")
-
-    ai_candidates = local_shooters[
-        :LOCAL_AI_CANDIDATES
-    ]
-
-    print(
-        f"V12.14.7 LOCAL PREFILTER COMPLETE: "
-        f"{len(candidates)} -> "
-        f"{len(local_rows)} locally scored -> "
-        f"{len(ai_candidates)} sent to paid vision."
-    )
-
-    for index, row in enumerate(
-        ai_candidates[
-            :12
-        ],
-        1,
-    ):
-        print(
-            f"LOCAL TOP {index}: "
-            f"{row.get('clip_id')} | "
-            f"game={row.get('game')} | "
-            f"local={row.get('local_firefight_score')} | "
-            f"motion={row.get('local_motion_score')} | "
-            f"sustained={row.get('local_sustained_motion_score')}"
-        )
-
-    # --------------------------------------------------------
-    # Paid AI confirmation only on the top ~30.
-    # If quota is unavailable, degrade gracefully to local-only.
-    # --------------------------------------------------------
-
-    frames_by_id = extract_ai_parallel(
-        ai_candidates
-    )
-
-    visual_items = []
-
-    for candidate in ai_candidates:
-        clip_id = str(
-            candidate.get(
-                "clip_id",
-                "",
-            )
-        )
-
-        frames = frames_by_id.get(
-            clip_id,
-            [],
-        )
-
-        if not frames:
+    OUT.unlink(missing_ok=True)
+    payload = json.loads(INPUT.read_text(encoding="utf-8"))
+    cache = load_cache()
+    rows = []
+    seen = set()
+    for row in payload.get("candidates", []):
+        if not isinstance(row, dict):
             continue
-
-        visual_items.append(
-            {
-                "candidate":
-                    candidate,
-                "frames":
-                    frames,
-            }
-        )
-
-    scored_rows = []
-    ai_available = True
-    ai_error = ""
-
-    if visual_items:
-        try:
+        clip_id = str(row.get("clip_id", ""))
+        if not clip_id or clip_id in seen:
+            continue
+        seen.add(clip_id)
+        if str(row.get("game", "")).casefold() not in SHOOTER_GAMES:
+            continue
+        rows.append(row)
+        if len(rows) >= MAX_CANDIDATES:
+            break
+    report = {"version": "budget-screen-v1", "input_count": len(rows),
+              "paid_clip_limit": LOCAL_AI_CANDIDATES, "paid_clip_count": 0,
+              "cached_passes": 0, "cached_rejects": 0, "decisions": [], "errors": []}
+    survivors = []
+    uncached = []
+    for row in rows:
+        entry = cached_verdict(row, cache)
+        if entry:
+            checked = apply_verdict(dict(row, local_shooter_game=True, local_window_start=entry.get("window_start")), entry["verdict"])
+            if entry["passed"] and confirmed_gunfight(checked):
+                survivors.append(checked)
+                report["cached_passes"] += 1
+            else:
+                report["cached_rejects"] += 1
+        else:
+            uncached.append(row)
+    print(f"FREE SCREEN: {len(rows)} unique shooter clips; "
+          f"{report['cached_passes']} cached passes, {report['cached_rejects']} cached rejects")
+    local_rows = []
+    try:
+        if len(survivors) < TARGET_SURVIVORS:
+            local_rows = local_scan_parallel(uncached)
+            # A loose motion threshold removes static footage; it never confirms combat.
+            shortlist = [row for row in local_rows if row.get("local_shooter_game") is True
+                         and row.get("local_frame_count", 0) >= 5
+                         and row.get("local_motion_score", 0) >= 12][:LOCAL_AI_CANDIDATES]
+            report["local_scored_count"] = len(local_rows)
+            report["local_shortlist_count"] = len(shortlist)
+            print(f"LOCAL SCREEN: {len(uncached)} attempted -> {len(local_rows)} decoded "
+                  f"-> {len(shortlist)} shortlisted; at most {LOCAL_AI_CANDIDATES} paid reviews")
             client = OpenAI()
-
-            for start in range(
-                0,
-                len(visual_items),
-                AI_BATCH_SIZE,
-            ):
-                batch = visual_items[
-                    start:
-                    start + AI_BATCH_SIZE
-                ]
-
-                results = classify_batch(
-                    client,
-                    batch,
-                )
-
+            for start in range(0, len(shortlist), AI_BATCH_SIZE):
+                if len(survivors) >= TARGET_SURVIVORS:
+                    print("EARLY STOP: four confirmed source candidates available")
+                    break
+                batch_rows = shortlist[start:start + AI_BATCH_SIZE]
+                frames_by_id = extract_ai_parallel(batch_rows)
+                batch = []
+                for row in batch_rows:
+                    frames = frames_by_id.get(str(row.get("clip_id")), [])
+                    if len(frames) != 5:
+                        report["errors"].append({"clip_id": row.get("clip_id"), "reason": "Incomplete frames; no paid review/cache"})
+                        continue
+                    batch.append({"candidate": row, "frames": frames})
+                if not batch:
+                    continue
+                report["paid_clip_count"] += len(batch)
+                results = classify_batch(client, batch)
+                # Duplicate or missing IDs cannot become approvals or cached rejections.
                 by_id = {}
-
+                duplicates = set()
+                if not isinstance(results, list):
+                    results = []
                 for result in results:
-                    try:
-                        by_id[
-                            int(
-                                result.get(
-                                    "id"
-                                )
-                            )
-                        ] = result
-                    except Exception:
-                        pass
-
-                for local_id, item in enumerate(
-                    batch
-                ):
-                    result = by_id.get(
-                        local_id
-                    )
-
-                    if not result:
+                    if not isinstance(result, dict) or type(result.get("id")) is not int:
                         continue
-
-                    content_type = str(
-                        result.get(
-                            "content_type",
-                            "gaming",
-                        )
-                    ).strip().lower()
-
-                    if content_type in {
-                        "gambling",
-                        "non_gaming",
-                        "music_performance",
-                    }:
+                    if result["id"] in by_id:
+                        duplicates.add(result["id"])
+                    by_id[result["id"]] = result
+                for index, item in enumerate(batch):
+                    row = item["candidate"]
+                    result = by_id.get(index)
+                    if index in duplicates or not valid_verdict(result):
+                        report["errors"].append({"clip_id": row.get("clip_id"), "reason": "Invalid/missing AI verdict; not cached"})
                         continue
-
-                    candidate = dict(
-                        item[
-                            "candidate"
-                        ]
-                    )
-
-                    candidate[
-                        "active_firefight_score"
-                    ] = clamp(
-                        result.get(
-                            "firefight_score"
-                        )
-                    )
-
-                    candidate[
-                        "active_firefight_samples"
-                    ] = max(
-                        0,
-                        min(
-                            5,
-                            int(
-                                result.get(
-                                    "active_samples",
-                                    0,
-                                )
-                                or
-                                0
-                            ),
-                        ),
-                    )
-
-                    candidate[
-                        "active_sustained_combat"
-                    ] = (result.get("sustained_combat") is True)
-
-                    candidate[
-                        "active_enemy_engagement"
-                    ] = clamp(
-                        result.get(
-                            "enemy_engagement"
-                        )
-                    )
-
-                    candidate[
-                        "active_combat_intensity"
-                    ] = clamp(
-                        result.get(
-                            "combat_intensity"
-                        )
-                    )
-
-                    candidate[
-                        "active_dead_time_risk"
-                    ] = clamp(
-                        result.get(
-                            "dead_time_risk"
-                        )
-                    )
-
-                    candidate[
-                        "active_firefight_reason"
-                    ] = str(
-                        result.get(
-                            "reason",
-                            "",
-                        )
-                    ).strip()
-
-                    candidate[
-                        "active_firefight_rank"
-                    ] = final_ai_rank(
-                        candidate
-                    )
-
-                    scored_rows.append(
-                        candidate
-                    )
-
-        except Exception as exc:
-            ai_available = False
-            ai_error = str(
-                exc
-            )
-
-            print(
-                "V12.14.7 PAID VISION UNAVAILABLE: "
-                f"{ai_error}"
-            )
-
-    if ai_available and scored_rows:
-        scored_rows.sort(
-            key=lambda row: (
-                float(
-                    row.get(
-                        "active_firefight_rank",
-                        0,
-                    )
-                ),
-                float(
-                    row.get(
-                        "local_firefight_score",
-                        0,
-                    )
-                ),
-            ),
-            reverse=True,
-        )
-
-        strict = [row for row in scored_rows if confirmed_gunfight(row)]
-
-        survivors = strict[
-            :TARGET_SURVIVORS
-        ]
-
-        used = {
-            str(
-                row.get(
-                    "clip_id",
-                    "",
-                )
-            )
-            for row in survivors
-        }
-
-        # Never refill with rejected/noncombat rows, regardless of pool size.
-
-    else:
-        survivors = local_only_survivors(
-            local_rows
-        )
-
+                    checked = apply_verdict(row, result)
+                    passed = confirmed_gunfight(checked)
+                    remember(row, result, passed)
+                    decision = {"clip_id": row.get("clip_id"), "passed": passed,
+                                "window_start": row.get("local_window_start"), "verdict": result}
+                    report["decisions"].append(decision)
+                    print(f"PAID SCREEN {'PASS' if passed else 'REJECT'} {row.get('clip_id')}: "
+                          f"gunfight={result['direct_gunfight']} score={result['firefight_score']} "
+                          f"active={result['active_samples']}/5 | {result.get('reason', '')}")
+                    if passed:
+                        survivors.append(checked)
+    except Exception as exc:
+        report["errors"].append({"reason": str(exc)})
+        print(f"PAID SCREEN STOPPED: {exc}")
+    finally:
+        survivors.sort(key=lambda row: row.get("active_firefight_rank", 0), reverse=True)
+        survivors = survivors[:TARGET_SURVIVORS]
+        report["survivor_count"] = len(survivors)
+        report["elapsed_seconds"] = round(time.perf_counter() - started, 2)
+        WORK.mkdir(parents=True, exist_ok=True)
+        (WORK / "screening_report.json").write_text(json.dumps(report, indent=2))
+        OUT.parent.mkdir(parents=True, exist_ok=True)
+        OUT.write_text(json.dumps({"version": "budget-screen-v1", "candidates": survivors,
+                                   "survivor_count": len(survivors)}, indent=2))
     if not survivors:
-        raise RuntimeError(
-            "No active-combat candidates survived local/AI filtering."
-        )
-
-    output = {
-        "version":
-            "12.14.7-local-first-firefight",
-        "strategy":
-            "100_local_motion_scan_then_top30_paid_firefight_confirmation",
-        "input_count":
-            len(candidates),
-        "local_scored_count":
-            len(local_rows),
-        "paid_ai_candidate_count":
-            len(ai_candidates),
-        "paid_ai_available":
-            ai_available,
-        "paid_ai_error":
-            ai_error,
-        "survivor_count":
-            len(survivors),
-        "candidates":
-            survivors,
-    }
-
-    OUT.parent.mkdir(
-        parents=True,
-        exist_ok=True,
-    )
-
-    OUT.write_text(
-        json.dumps(
-            output,
-            indent=2,
-            ensure_ascii=False,
-        ),
-        encoding="utf-8",
-    )
-
-    print()
-    print(
-        f"V12.14.7 FIREFIGHT FILTER COMPLETE: "
-        f"{len(candidates)} initial -> "
-        f"{len(ai_candidates)} paid-check candidates -> "
-        f"{len(survivors)} survivors | "
-        f"paid_ai_available={ai_available} | "
-        f"{time.perf_counter() - started:.1f}s"
-    )
+        raise RuntimeError("No confirmed gunfight source survived; skipping upload. See screening_report.json")
+    print(f"FIREFIGHT COMPLETE: {len(survivors)} confirmed sources; "
+          f"{report['paid_clip_count']} paid clip reviews")
 
 
 if __name__ == "__main__":
@@ -1189,7 +983,7 @@ if __name__ == "__main__":
 
     except Exception as exc:
         print(
-            f"V12.14.7 FIREFIGHT FILTER ERROR: "
+            f"BUDGET FIREFIGHT FILTER ERROR: "
             f"{exc}"
         )
         sys.exit(1)
