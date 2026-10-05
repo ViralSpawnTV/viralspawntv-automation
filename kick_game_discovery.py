@@ -11,6 +11,7 @@ from pathlib import Path
 from urllib.parse import urlencode, urlsplit, urlunsplit
 
 from playwright.sync_api import sync_playwright
+from firefight_cache import load as load_firefight_cache, current as cached_firefight_verdict
 
 
 HISTORY_PATH = Path("history.json")
@@ -45,7 +46,7 @@ MIN_SOURCE_SECONDS = 40.0
 MAX_ELIGIBLE_PER_GAME = int(
     os.getenv(
         "DISCOVERY_MAX_ELIGIBLE_PER_GAME",
-        "12",
+        "24",
     )
 )
 
@@ -74,7 +75,7 @@ API_TIMEOUT_SECONDS = int(
 API_PAGES_PER_QUERY = int(
     os.getenv(
         "DISCOVERY_API_PAGES_PER_QUERY",
-        "4",
+        "6",
     )
 )
 
@@ -125,16 +126,11 @@ GAME_CATEGORIES = [
     ("Fortnite", "fortnite"),
     ("Apex Legends", "apex-legends"),
     ("Marvel Rivals", "marvel-rivals"),
-    ("Rocket League", "rocket-league"),
     ("Overwatch 2", "overwatch-2"),
     ("Call of Duty: Black Ops 7", "call-of-duty-black-ops-7"),
-    ("Dead by Daylight", "dead-by-daylight"),
     ("Escape from Tarkov", "escape-from-tarkov"),
     ("Rust", "rust"),
     ("Grand Theft Auto V (GTA)", "grand-theft-auto-v"),
-    ("League of Legends", "league-of-legends"),
-    ("Minecraft", "minecraft"),
-    ("Roblox", "roblox"),
 ]
 
 GAME_NAMES = {
@@ -1123,6 +1119,10 @@ def detail_candidate(candidate):
 
 
 def is_eligible(candidate):
+    cached = cached_firefight_verdict(candidate, load_firefight_cache())
+    if cached and cached.get("passed") is False:
+        return False
+
     duration = to_float(
         candidate.get(
             "prevalidated_duration_seconds"
@@ -1334,7 +1334,7 @@ def api_candidates_for_category(
     rows = []
     seen = set()
 
-    queries = [
+    queries = [("date", "day"), ("date", "month")] + [
         (
             "view",
             "week",
