@@ -10,7 +10,7 @@ from pathlib import Path
 LOG = Path("work/v12_attempt_log.json")
 REJECTED = Path("shorts_rejected_history.json")
 
-MAX_SOURCE_CANDIDATES = 4
+MAX_SOURCE_CANDIDATES = 2
 
 # Normal source quality remains preferred.
 NORMAL_SOURCE_SCORE = 65
@@ -183,6 +183,10 @@ def reject_clip(
     clip_id,
     rejected,
 ):
+    ledger = os.environ.get("VIRALSPAWN_AI_LEDGER")
+    if ledger and json.loads(Path(ledger).read_text()).get("exhausted"):
+        print("Budget exhausted: deferring clip rather than permanently rejecting it.")
+        return
     clip_id = str(
         clip_id or ""
     ).strip()
@@ -815,6 +819,7 @@ def main():
         production_code = run_timed(
             f"production_{render_index}",
             "production_test.py",
+            extra_env={"FIREFIGHT_WINDOW_START": candidate.get("local_window_start", "")},
         )
 
         if production_code != 0:
