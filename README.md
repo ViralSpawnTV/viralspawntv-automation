@@ -1,28 +1,59 @@
-# ViralSpawnTV Automation
+[README.md](https://github.com/user-attachments/files/33060694/README.md)
+# ViralSpawnTV: 100 local clips, small paid shortlist
 
-A starter automation for producing transformative vertical commentary Shorts from **authorized source feeds**.
+## Install in this order
 
-## What it does
-Runs up to 10 times per day, checks configured sources, rejects already-processed clips, drafts original commentary/title/description with OpenAI, generates a consistent American-English voiceover, renders a 1080x1920 MP4 with FFmpeg, and can upload it through the YouTube Data API.
+1. Download and extract this ZIP on your computer.
+2. In the ROOT of ViralSpawnTV/viralspawntv-automation, replace these six existing files with the full files from this ZIP:
+   - kick_game_discovery.py
+   - active_firefight_prescreener.py
+   - viral_prescreener.py
+   - v12_1_pipeline.py
+   - production_test.py
+   - action_segment_gate.py (add it if it is missing)
+3. Add these three NEW files to the same repository root:
+   - firefight_cache.py
+   - ai_budget.py
+   - budgeted_pipeline.py
+4. Open your EXISTING Shorts workflow under .github/workflows/. Replace its ENTIRE contents with the contents of ViralSpawnTV_Shorts_Budget_Screen.yml. Keep the existing workflow filename; do not create a second scheduled Shorts workflow.
+5. Commit all files to main before running. Keep music_rotation.py, music_manifest.json, your MP3s, history.json, and the other pipeline scripts. The workflow retains your current MUSIC_DIR: assets/music/assets/music.
+6. GitHub > Actions > your existing ViralSpawnTV Shorts workflow > Run workflow > main > Run workflow.
+7. Review the log. Expected messages include FREE SCREEN, LOCAL SCREEN, PAID SCREEN PASS/REJECT, EARLY STOP when four pass, and SHARED AI BUDGET.
+8. If the run fails, download the viralspawntv-v12-1-production diagnostic artifact and share its work/firefight_prescreen/screening_report.json and work/ai_budget.json. Do not repeatedly rerun a failing job before checking its reason.
 
-## Safety defaults
-- `AUTO_UPLOAD` defaults to `false` so the first renders can be reviewed.
-- YouTube `publish_mode` defaults to `private`.
-- Discovery only accepts sources explicitly marked `reuse_authorized: true`.
-- API keys/tokens are never committed.
+README.md and VALIDATION.md are instructions, not required repository uploads. All Python files are complete replacements/additions, not snippets.
 
-## Setup
-1. Upload this project to the GitHub repository.
-2. Copy `config.example.json` to `config.json` and configure feeds/endpoints for clips you have permission to reuse. Commit `config.json` (do not put credentials in it).
-3. In GitHub repository Settings → Secrets and variables → Actions, create `OPENAI_API_KEY` and later `YOUTUBE_TOKEN_JSON`.
-4. Run the workflow manually first. Keep `AUTO_UPLOAD` false while validating voice, captions, source audio, and pacing.
-5. After YouTube OAuth is configured and test uploads are correct, create repository variable `AUTO_UPLOAD=true`. Keep `publish_mode` as `private` until final QC is satisfactory; switch to `public` or scheduled publishing only after validation.
+## What changes
 
-## Source adapter
-The included `json` source adapter expects an endpoint shaped roughly as `{ "clips": [{"download_url":"...", "title":"..."}] }`. This intentionally does not scrape/download arbitrary YouTube/Twitch videos. Add official APIs or creator-provided feeds where you have the needed rights/authorization.
+- Discovery targets 100 unique eligible shooter clips. More pages and recent-date searches widen the pool; creator/game publishing limits are retained. Availability, history and network access can still leave fewer than 100.
+- Up to 100 uncached shooter sources are screened locally with FFmpeg/Python. This has no OpenAI charge but uses GitHub runner time. Four download workers fetch a preview once per clip, capped at the first 120 seconds; frame extraction reuses that local preview.
+- Motion selects a promising 35-second window. It does not prove gunfire or guarantee exclusion of every menu. Five visual samples from that window go to paid review only for a small shortlist.
+- Paid firefight review runs in batches of four, with at most 12 clips reviewed. It stops after four confirmed sources are available. A source must have direct weapon engagement in at least two samples and score at least 60. It no longer has to show sustained combat throughout its entire original duration.
+- No rejected or motion-only source is backfilled into the approved pool. The exact selected edit still faces the mandatory strict action_segment_gate.py check before narration and rendering.
+- Paid source approvals are cached for 24 hours; valid AI rejections for 72 hours. Expired entries are reconsidered. A changed source URL invalidates the verdict. Network failures, incomplete frames, API failures and malformed verdicts are not cached as rejections.
+- The cache is captured before workflow Git resets and merged back to main, including on failed runs. It does not replace published-clip history or existing rejection history.
+- Later payoff/story screening reviews one window per approved source, at most four windows, and skips preliminary paid audio transcription. Existing selected-source audio and music checks still run. At most two sources proceed to expensive acquisition/render attempts.
+- Music rotation and one short narration hook remain enabled.
 
-## YouTube OAuth
-YouTube uploads require user OAuth consent. Generate an authorized-user token with the `youtube.upload` scope, then store the resulting token JSON as the `YOUTUBE_TOKEN_JSON` GitHub Actions secret. Never commit client secrets or refresh tokens.
+## Shared API limits per production run
 
-## Important
-Ten workflow runs do not mean ten forced uploads. If there is no new authorized candidate, the run exits without publishing. This protects quality and reduces duplicate/reuse problems.
+The workflow MUST launch `python budgeted_pipeline.py`. Running `python v12_1_pipeline.py` directly bypasses the shared API protection.
+
+The launcher installs protection into the pipeline and its Python subprocesses. Supported synchronous OpenAI Responses, audio transcription and speech requests share one ledger. SDK automatic retries are disabled. Every attempted request reserves its allowance BEFORE contacting OpenAI; failed calls do not refund the reservation.
+
+Default upper limits in ai_budget.py:
+
+| Resource | Limit |
+| --- | ---: |
+| All supported API requests combined | 28 |
+| Responses requests | 18 |
+| Image inputs across Responses requests | 240 |
+| Output tokens reserved across Responses requests | 72,000 |
+| Output tokens per Responses request | 6,000, or the caller's smaller limit |
+| Text input bytes across Responses requests | 800,000 |
+| WAV audio submitted for transcription | 300 seconds |
+| Speech input characters | 800 |
+
+A reached limit stops further paid requests for that run. Clips deferred because the shared budget was exhausted are not added to permanent rejection history. A run can skip publishing when no candidate passes or the budget is exhausted. These are workload limits, not a fixed dollar ceiling; model prices and actual usage determine the bill. Existing scripts use their existing models. The ledger records model names, reservations and returned token usage where the SDK exposes it; audio duration/character reservations remain visible even without returned token usage.
+
+Preliminary visual-only screening trades some audio context for lower cost. The local motion heuristic and sampled AI checks can miss fights or misclassify them. No code can promise that every run finds an acceptable gunfight. This patch was tested without live paid AI calls; the next workflow run is the live validation.
