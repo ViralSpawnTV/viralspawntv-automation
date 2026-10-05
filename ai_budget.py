@@ -2,7 +2,8 @@
 
 These are workload caps, not a dollar quote. Actual tokens are recorded.
 Every attempted request is charged to the ledger before network access;
-failed calls do not refund reservations. SDK retries are disabled.
+failed calls do not refund reservations. SDK retries are disabled; one explicit
+transient retry is separately reserved and capped by the same ledger.
 """
 import functools
 import fcntl
@@ -128,7 +129,8 @@ def reserve(kind, kwargs):
             data["reserved"][key] = data["reserved"].get(key, 0) + amount
         index = len(data["calls"])
         data["calls"].append({"kind": kind, "model": kwargs.get("model"),
-                              "reserved": amounts, "status": "reserved", "time": time.time()})
+                              "reserved": amounts, "status": "reserved", "time": time.time(),
+                              "stage": os.environ.get("VIRALSPAWN_AI_STAGE", "unknown")})
         return index
     result = change_ledger(update)
     if isinstance(result, str):
@@ -148,6 +150,8 @@ def complete(index, response=None, error=None):
         if error:
             # Do not include prompts, keys, media URLs, or full exception payloads.
             row["error_type"] = type(error).__name__
+            row["http_status"] = getattr(error, "status_code", None)
+            row["transient"] = is_transient(error)
         if usage:
             row["usage"] = usage
             for key in ("input_tokens", "output_tokens", "total_tokens"):
@@ -155,21 +159,70 @@ def complete(index, response=None, error=None):
     change_ledger(update)
 
 
+def is_transient(error):
+    code = getattr(error, "status_code", None)
+    body = getattr(error, "body", None)
+    if isinstance(body, dict):
+        detail = body.get("error", body)
+        if isinstance(detail, dict) and detail.get("code") == "insufficient_quota":
+            return False
+    return code in {429, 500, 502, 503, 504} or type(error).__name__ in {"APIConnectionError", "APITimeoutError"}
+
+
+def retry_fits(kind, kwargs):
+    """Do not consume the rest of a run when a retry cannot fit its limits."""
+    probe = dict(kwargs)
+    if kind == "responses":
+        probe["max_output_tokens"] = min(3000, int(probe.get("max_output_tokens") or 6000))
+    data = json.loads(ledger_path().read_text())
+    if data.get("exhausted"):
+        return False
+    amounts = {"requests": 1}
+    if kind == "responses":
+        images, size = input_size(probe.get("input"))
+        size += len(str(probe.get("instructions", "")).encode())
+        amounts.update(response_requests=1, images=images, text_bytes=size,
+                       reserved_output_tokens=probe["max_output_tokens"])
+    elif kind == "transcription":
+        amounts["transcription_seconds"] = audio_seconds(probe["file"])
+    elif kind == "speech":
+        amounts["speech_characters"] = len(str(probe.get("input", "")))
+    else:
+        return False
+    return all(data["reserved"].get(key, 0) + amount <= data["limits"][key]
+               for key, amount in amounts.items())
+
+
 def wrap(method, kind):
     @functools.wraps(method)
     def guarded(self, *args, **kwargs):
         if args:
             raise BudgetExceeded("Positional API arguments cannot be metered")
-        # with_options(max_retries=...) cannot re-enable invisible SDK attempts.
         self._client.max_retries = 0
-        index = reserve(kind, kwargs)
-        try:
-            response = method(self, **kwargs)
-        except Exception as exc:
-            complete(index, error=exc)
-            raise
-        complete(index, response=response)
-        return response
+        file = kwargs.get("file") if kind == "transcription" else None
+        if isinstance(file, tuple):
+            file = file[1]
+        position = file.tell() if hasattr(file, "tell") else None
+        for attempt in range(2):
+            if attempt and position is not None:
+                file.seek(position)
+            index = reserve(kind, kwargs)
+            try:
+                response = method(self, **kwargs)
+            except Exception as exc:
+                complete(index, error=exc)
+                if attempt == 0 and is_transient(exc):
+                    if position is not None:
+                        file.seek(position)
+                    if retry_fits(kind, kwargs):
+                        if kind == "responses":
+                            kwargs["max_output_tokens"] = min(3000, kwargs["max_output_tokens"])
+                        print(f"TEMPORARY API ERROR: {kind}; one budgeted retry")
+                        time.sleep(2)
+                        continue
+                raise
+            complete(index, response=response)
+            return response
     return guarded
 
 
