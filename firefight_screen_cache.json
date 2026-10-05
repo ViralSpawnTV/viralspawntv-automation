@@ -240,6 +240,86 @@
         "reason": "Spectating/holding an angle with a combat report displayed, followed by an ability; no direct weapon exchange is visible."
       },
       "window_start": 15.0
+    },
+    "clip_01M3WM3Y9VCQ1FGD52BM6BAHD2": {
+      "policy": "direct-gunfight-window-v1",
+      "updated_at": 1791210317.9776244,
+      "expires_at": 1791296717.9776244,
+      "media_url": "https://clips.kick.com/clips/b6/clip_01M3WM3Y9VCQ1FGD52BM6BAHD2/playlist.m3u8",
+      "passed": true,
+      "verdict": {
+        "id": 0,
+        "firefight_score": 92,
+        "active_samples": 4,
+        "sustained_combat": true,
+        "direct_gunfight": true,
+        "enemy_engagement": 94,
+        "combat_intensity": 90,
+        "dead_time_risk": 10,
+        "content_type": "gaming",
+        "reason": "Multiple Valorant fight moments show enemy engagement, incoming damage, kill indicators, and continued weapon use."
+      },
+      "window_start": 0.0
+    },
+    "clip_01H0VK33YRVWCME02M4XRWAT4M": {
+      "policy": "direct-gunfight-window-v1",
+      "updated_at": 1791210317.978585,
+      "expires_at": 1791469517.978585,
+      "media_url": "https://clips.kick.com/clips/4m/clip_01H0VK33YRVWCME02M4XRWAT4M/1d89b9e1-6b70-4165-952b-82693c4dba69.mp4",
+      "passed": false,
+      "verdict": {
+        "id": 1,
+        "firefight_score": 0,
+        "active_samples": 0,
+        "sustained_combat": false,
+        "direct_gunfight": false,
+        "enemy_engagement": 0,
+        "combat_intensity": 0,
+        "dead_time_risk": 100,
+        "content_type": "irl",
+        "reason": "Live-action cake prank with no gameplay or ranged combat."
+      },
+      "window_start": 0.0
+    },
+    "clip_01M464GFT74QJQNT17AWT459A9": {
+      "policy": "direct-gunfight-window-v1",
+      "updated_at": 1791210317.979453,
+      "expires_at": 1791469517.979453,
+      "media_url": "https://clips.kick.com/clips/25/clip_01M464GFT74QJQNT17AWT459A9/playlist.m3u8",
+      "passed": false,
+      "verdict": {
+        "id": 2,
+        "firefight_score": 24,
+        "active_samples": 1,
+        "sustained_combat": false,
+        "direct_gunfight": false,
+        "enemy_engagement": 28,
+        "combat_intensity": 18,
+        "dead_time_risk": 82,
+        "content_type": "gaming",
+        "reason": "Mostly esports player reactions; only one brief scoped gameplay moment and no repeated visible weapon engagement."
+      },
+      "window_start": 0.0
+    },
+    "clip_01M462PAZMFFZPS32JYT8XRYEG": {
+      "policy": "direct-gunfight-window-v1",
+      "updated_at": 1791210317.9802997,
+      "expires_at": 1791296717.9802997,
+      "media_url": "https://clips.kick.com/clips/db/clip_01M462PAZMFFZPS32JYT8XRYEG/playlist.m3u8",
+      "passed": true,
+      "verdict": {
+        "id": 3,
+        "firefight_score": 84,
+        "active_samples": 4,
+        "sustained_combat": true,
+        "direct_gunfight": true,
+        "enemy_engagement": 87,
+        "combat_intensity": 82,
+        "dead_time_risk": 16,
+        "content_type": "gaming",
+        "reason": "Multiple active CS2 combat samples show visible opponents, muzzle fire, damage, kill-feed activity, and continued engagement."
+      },
+      "window_start": 75.0
     }
   }
 }
