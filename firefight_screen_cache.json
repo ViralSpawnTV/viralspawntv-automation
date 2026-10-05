@@ -480,6 +480,86 @@
         "reason": "Multiple consecutive broadcast gameplay samples show rifles trained on nearby outlined opponents, active team damage and deaths, and continued engagement across the same fight."
       },
       "window_start": 60.0
+    },
+    "clip_01M46C75MSES0RKKBJ69RX11XJ": {
+      "policy": "direct-gunfight-window-v1",
+      "updated_at": 1791219838.8297052,
+      "expires_at": 1791306238.8297052,
+      "media_url": "https://clips.kick.com/clips/9d/clip_01M46C75MSES0RKKBJ69RX11XJ/playlist.m3u8",
+      "passed": true,
+      "verdict": {
+        "id": 0,
+        "firefight_score": 68,
+        "active_samples": 2,
+        "sustained_combat": true,
+        "direct_gunfight": true,
+        "enemy_engagement": 72,
+        "combat_intensity": 65,
+        "dead_time_risk": 38,
+        "content_type": "gaming",
+        "reason": "Two separate elimination indicators within the same clutch sequence, including a scoped rifle shot/ammo change, support direct ranged engagement despite planting and angle-holding downtime."
+      },
+      "window_start": 25.0
+    },
+    "clip_01M22H2DN3C3HCNREWY6YY9Z94": {
+      "policy": "direct-gunfight-window-v1",
+      "updated_at": 1791219838.830611,
+      "expires_at": 1791479038.830611,
+      "media_url": "https://clips.kick.com/clips/d0/clip_01M22H2DN3C3HCNREWY6YY9Z94/playlist.m3u8",
+      "passed": false,
+      "verdict": {
+        "id": 1,
+        "firefight_score": 10,
+        "active_samples": 0,
+        "sustained_combat": false,
+        "direct_gunfight": false,
+        "enemy_engagement": 20,
+        "combat_intensity": 12,
+        "dead_time_risk": 86,
+        "content_type": "gaming",
+        "reason": "Enemies are visible, but the player only carries a melee weapon and no direct ranged-weapon engagement is shown."
+      },
+      "window_start": 10.0
+    },
+    "clip_01H5TYZA90WBS6GPTRC1B652TK": {
+      "policy": "direct-gunfight-window-v1",
+      "updated_at": 1791219838.8313642,
+      "expires_at": 1791479038.8313642,
+      "media_url": "https://clips.kick.com/clips/tk/clip_01H5TYZA90WBS6GPTRC1B652TK/92770a28-228b-4266-b9ea-9c030d4c43f0.mp4",
+      "passed": false,
+      "verdict": {
+        "id": 2,
+        "firefight_score": 0,
+        "active_samples": 0,
+        "sustained_combat": false,
+        "direct_gunfight": false,
+        "enemy_engagement": 0,
+        "combat_intensity": 0,
+        "dead_time_risk": 100,
+        "content_type": "non-gaming",
+        "reason": "Sampled window is live-action entertainment footage with a reaction overlay, not Apex Legends combat."
+      },
+      "window_start": 20.0
+    },
+    "clip_01H6W26TE4AJBNJNW41QR6FZSE": {
+      "policy": "direct-gunfight-window-v1",
+      "updated_at": 1791219838.8321145,
+      "expires_at": 1791479038.8321145,
+      "media_url": "https://clips.kick.com/clips/se/clip_01H6W26TE4AJBNJNW41QR6FZSE/playlist.m3u8",
+      "passed": false,
+      "verdict": {
+        "id": 3,
+        "firefight_score": 38,
+        "active_samples": 1,
+        "sustained_combat": false,
+        "direct_gunfight": false,
+        "enemy_engagement": 45,
+        "combat_intensity": 36,
+        "dead_time_risk": 70,
+        "content_type": "gaming",
+        "reason": "One scoped combat/elimination moment is visible, but the remaining samples show movement, a round loss, buy phase, and scoreboard; insufficient repeated direct gunfight evidence."
+      },
+      "window_start": 20.0
     }
   }
 }
