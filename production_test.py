@@ -43,6 +43,9 @@ INTRO_IMAGE = ROOT / "viralspawntv_intro.png"
 OUTRO_IMAGE = ROOT / "viralspawntv_outro.png"
 OUTRO_CTA = "FOLLOW FOR DAILY GAMING CLIPS"
 NEON_FRAME = ROOT / "viralspawntv_neon_frame_overlay.png"
+# Larger action window inside the existing ViralSpawnTV decorative frame.
+GAMEPLAY_HEIGHT = 1200
+HOOK_GAMEPLAY_HEIGHT = 1230
 INTRO_SECONDS = 0.0
 OUTRO_SECONDS = 1.0
 
@@ -3704,9 +3707,8 @@ def build_video_filter(
         str(
             plan["headline"]
         ).upper(),
-        # V5.9.1: wrap earlier so even wide letters remain inside
-        # the mobile-safe area. Three short lines are allowed.
-        width=15,
+        # Compact hook: use more horizontal room at a smaller font size.
+        width=22,
     )
 
     credit_file = make_text_file(
@@ -3734,13 +3736,13 @@ def build_video_filter(
     # MAIN SOURCE
     # ========================================================
 
-    # V5.7: Make gameplay materially larger on mobile.
-    # 16:9 footage is scaled to 820px tall, then horizontally cropped
-    # to 1080px so the action occupies ~35% more vertical space.
+    # Preserve aspect ratio while filling a 1080 x 1200 action window.
+    # A centered crop retains the aim point for this shooter workflow.
+    # The decorative frame and logo remain a separate, unchanged asset.
     filters.append(
         "[0:v]"
-        "scale=-2:820,"
-        "crop=1080:820"
+        f"scale=1080:{GAMEPLAY_HEIGHT}:force_original_aspect_ratio=increase,"
+        f"crop=1080:{GAMEPLAY_HEIGHT}"
         "[foreground]"
     )
 
@@ -3758,8 +3760,8 @@ def build_video_filter(
     # intro card or delaying the actual clip.
     filters.append(
         "[0:v]"
-        "scale=-2:900,"
-        "crop=1080:900"
+        f"scale=1080:{HOOK_GAMEPLAY_HEIGHT}:force_original_aspect_ratio=increase,"
+        f"crop=1080:{HOOK_GAMEPLAY_HEIGHT}"
         "[hookforeground]"
     )
 
@@ -3800,15 +3802,14 @@ def build_video_filter(
         )
 
         zoom_factor = {
-            1: 1.04,
-            2: 1.07,
-            3: 1.11,
+            1: 1.015,
+            2: 1.03,
+            3: 1.05,
         }[intensity]
 
-        # Base gameplay is now 820px tall. Punch zoom by increasing
-        # height further and cropping horizontally back to 1080.
+        # Keep extra punch-ins modest now that the base action is larger.
         zoom_height = int(
-            820 *
+            GAMEPLAY_HEIGHT *
             zoom_factor
         )
 
@@ -3821,8 +3822,7 @@ def build_video_filter(
 
         filters.append(
             f"[0:v]"
-            f"scale=-2:"
-            f"{zoom_height},"
+            f"scale=1080:{zoom_height}:force_original_aspect_ratio=increase,"
             f"crop=1080:"
             f"{zoom_height}"
             f"[{zoom_source}]"
@@ -3853,13 +3853,13 @@ def build_video_filter(
     filters.append(
         f"[{current}]"
         "drawbox="
-        # V5.9.1 mobile-safe Big Hook panel:
-        # 80px side margins and enough height for up to 3 wrapped lines.
-        "x=80:"
-        "y=150:"
-        "w=920:"
-        "h=350:"
-        "color=black@0.68:"
+        # Small overlay over the upper gameplay, away from the aim point.
+        # The large separate title card no longer consumes the upper area.
+        "x=140:"
+        "y=380:"
+        "w=800:"
+        "h=200:"
+        "color=black@0.48:"
         "t=fill:"
         "enable='between(t,0,2.80)',"
 
@@ -3867,13 +3867,11 @@ def build_video_filter(
         f"fontfile={FONT}:"
         f"textfile={headline_file}:"
         "fontcolor=white:"
-        "fontsize=68:"
-        "line_spacing=8:"
-        "x='max(95,(w-text_w)/2)':"
-        # Keep text safely below the top UI area and centered vertically
-        # inside the panel for 1-3 lines.
-        "y=205:"
-        "borderw=6:"
+        "fontsize=50:"
+        "line_spacing=6:"
+        "x=(w-text_w)/2:"
+        "y=398:"
+        "borderw=4:"
         "bordercolor=black:"
         "shadowx=3:"
         "shadowy=3:"
@@ -3911,7 +3909,7 @@ def build_video_filter(
             "fontsize=62:"
             "line_spacing=6:"
             "x=(w-text_w)/2:"
-            "y=1400:"
+            "y=1600:"
             "borderw=7:"
             "bordercolor=black:"
             "shadowx=3:"
@@ -4208,7 +4206,7 @@ def build_video_filter(
         "fps=30,"
         "scale=1080:1920,"
         "format=rgba,"
-        "eq=brightness='0.045*sin(2*PI*t/1.55)':eval=frame"
+        "eq=brightness='-0.015+0.020*sin(2*PI*t/1.55)':eval=frame"
         "[viralframe]"
     )
 
@@ -4240,7 +4238,7 @@ def build_video_filter(
         "fontcolor=white:"
         "fontsize=31:"
         "x=(w-text_w)/2:"
-        "y=h-82:"
+        "y=h-120:"
         "borderw=3:"
         "bordercolor=black"
         "[finalvideo]"
