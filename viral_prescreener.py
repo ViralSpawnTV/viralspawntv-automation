@@ -1,5 +1,6 @@
 import base64
 import json
+import os
 import re
 import subprocess
 import sys
@@ -15,11 +16,11 @@ OUT = Path("work/v12_prescreened_candidates.json")
 WORK = Path("work/viral_prescreen")
 WORK.mkdir(parents=True, exist_ok=True)
 
-MAX_VISUAL_CANDIDATES = 30
-MAX_PAYOFF_WINDOWS = 36
-PAYOFF_PHASE_SURVIVORS = 12
+MAX_VISUAL_CANDIDATES = 4
+MAX_PAYOFF_WINDOWS = 4
+PAYOFF_PHASE_SURVIVORS = 4
 PROMOTE_COUNT = 4
-MAX_WINDOWS_PER_CLIP = 3
+MAX_WINDOWS_PER_CLIP = 1
 
 PAYOFF_BATCH_SIZE = 10
 PAYOFF_FRAME_WORKERS = 5
@@ -84,7 +85,7 @@ def data_url(path):
     return f"data:image/jpeg;base64,{encoded}"
 
 
-def make_windows(source_seconds):
+def make_windows(source_seconds, preferred_start=None):
     """
     Build up to three 40-58 second windows.
 
@@ -115,6 +116,10 @@ def make_windows(source_seconds):
         0.0,
         seconds - length,
     )
+
+    if preferred_start is not None:
+        start = round(max(0.0, min(float(preferred_start), max_start)), 3)
+        return [{"start": start, "end": round(start + length, 3), "label": "local_action_window"}]
 
     if seconds <= 75:
         starts = [
@@ -219,7 +224,7 @@ def build_window_index(candidates):
 
         for window_index, window in enumerate(
             make_windows(
-                source_seconds
+                source_seconds, candidate.get("local_window_start")
             )
         ):
             items.append(
@@ -732,6 +737,9 @@ def transcribe_parallel(
     items,
     path_key,
 ):
+    if os.getenv("VIRALSPAWN_VISUAL_PRESCREEN_ONLY", "1") == "1":
+        return {}
+
     results = {}
 
     with ThreadPoolExecutor(
@@ -880,6 +888,7 @@ Return ONLY JSON:
                 )
 
     response = client.responses.create(
+        max_output_tokens=3000,
         model="gpt-5.6",
         input=[
             {
@@ -1057,6 +1066,7 @@ Return ONLY JSON:
                 )
 
     response = client.responses.create(
+        max_output_tokens=3000,
         model="gpt-5.6",
         input=[
             {
