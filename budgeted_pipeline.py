@@ -3,6 +3,7 @@ import json
 import os
 import subprocess
 import sys
+import uuid
 from pathlib import Path
 
 from ai_budget import LIMITS
@@ -28,11 +29,14 @@ def main():
     env = os.environ.copy()
     env["VIRALSPAWN_AI_BUDGET_ACTIVE"] = "1"
     env["VIRALSPAWN_AI_LEDGER"] = str(ledger)
+    # A fresh namespace prevents reuse from another workflow invocation.
+    env["VIRALSPAWN_TRANSCRIPT_CACHE"] = str(root / "work" / "transcript_cache" / uuid.uuid4().hex)
     env["PYTHONPATH"] = os.pathsep.join([str(runtime), str(root), env.get("PYTHONPATH", "")])
     result = subprocess.run([sys.executable, "v12_1_pipeline.py"], env=env)
     data = json.loads(ledger.read_text())
     print("SHARED AI BUDGET:", json.dumps({"reserved": data["reserved"],
-                                           "actual_tokens": data["actual_tokens"]}))
+                                           "actual_tokens": data["actual_tokens"],
+                                           "transcript_cache": data.get("transcript_cache", {})}))
     return result.returncode
 
 
