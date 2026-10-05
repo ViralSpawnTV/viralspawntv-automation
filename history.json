@@ -1266,6 +1266,17 @@
       "youtube_video_id": "1WRiK-YzZGA",
       "privacy_status": "public",
       "processed_at_utc": "2026-10-05T16:22:19.609424+00:00"
+    },
+    {
+      "clip_id": "clip_01GX2TADK0BDNBF0TXZ8BHFJJQ",
+      "clip_url": "https://kick.com/slater/clips/clip_01GX2TADK0BDNBF0TXZ8BHFJJQ",
+      "source": "https://kick.com/slater/clips/clip_01GX2TADK0BDNBF0TXZ8BHFJJQ",
+      "creator": "slater",
+      "channel": "slater",
+      "game": "",
+      "youtube_video_id": "OePaVKSxa7s",
+      "privacy_status": "public",
+      "processed_at_utc": "2026-10-05T17:11:49.539576+00:00"
     }
   ]
 }
