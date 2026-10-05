@@ -198,6 +198,9 @@ def wrap(method, kind):
     def guarded(self, *args, **kwargs):
         if args:
             raise BudgetExceeded("Positional API arguments cannot be metered")
+        if kind == "responses":
+            from cost_controls import route_response
+            route_response(kwargs)
         self._client.max_retries = 0
         file = kwargs.get("file") if kind == "transcription" else None
         if isinstance(file, tuple):
@@ -237,7 +240,8 @@ def install():
     from openai.resources.audio.speech import Speech
     from openai.resources.chat.completions.completions import Completions
     Responses.create = wrap(Responses.create, "responses")
-    Transcriptions.create = wrap(Transcriptions.create, "transcription")
+    from cost_controls import cache_transcriptions
+    Transcriptions.create = cache_transcriptions(wrap(Transcriptions.create, "transcription"))
     Speech.create = wrap(Speech.create, "speech")
     Completions.create = wrap(Completions.create, "unsupported_chat")
     openai._viralspawn_budget_installed = True
