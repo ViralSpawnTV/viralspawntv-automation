@@ -1,0 +1,245 @@
+{
+  "version": 1,
+  "entries": {
+    "clip_01M446MTTP9YD2YQ2JWFZHGHFM": {
+      "policy": "direct-gunfight-window-v1",
+      "updated_at": 1791208600.9846647,
+      "expires_at": 1791467800.9846647,
+      "media_url": "https://clips.kick.com/clips/1c/clip_01M446MTTP9YD2YQ2JWFZHGHFM/playlist.m3u8",
+      "passed": false,
+      "verdict": {
+        "id": 0,
+        "firefight_score": 34,
+        "active_samples": 1,
+        "sustained_combat": false,
+        "direct_gunfight": false,
+        "enemy_engagement": 38,
+        "combat_intensity": 42,
+        "dead_time_risk": 56,
+        "content_type": "gaming",
+        "reason": "Kill feed suggests combat, but samples mainly show knife movement, repositioning, and aftermath without visible firearm engagement."
+      },
+      "window_start": 25.0
+    },
+    "clip_01M43M81R1X6PGRZK6674V3VXZ": {
+      "policy": "direct-gunfight-window-v1",
+      "updated_at": 1791208600.9848664,
+      "expires_at": 1791467800.9848664,
+      "media_url": "https://clips.kick.com/clips/50/clip_01M43M81R1X6PGRZK6674V3VXZ/playlist.m3u8",
+      "passed": false,
+      "verdict": {
+        "id": 1,
+        "firefight_score": 49,
+        "active_samples": 1,
+        "sustained_combat": false,
+        "direct_gunfight": false,
+        "enemy_engagement": 52,
+        "combat_intensity": 55,
+        "dead_time_risk": 43,
+        "content_type": "gaming",
+        "reason": "Reloading and multi-kill feed indicate a fight occurred, but sampled frames do not visibly show firing at an exposed enemy."
+      },
+      "window_start": 0.0
+    },
+    "clip_01M3X2JHQM1YNE9Q9KVA3RJ3GC": {
+      "policy": "direct-gunfight-window-v1",
+      "updated_at": 1791208600.9851315,
+      "expires_at": 1791295000.9851315,
+      "media_url": "https://clips.kick.com/clips/a6/clip_01M3X2JHQM1YNE9Q9KVA3RJ3GC/playlist.m3u8",
+      "passed": true,
+      "verdict": {
+        "id": 2,
+        "firefight_score": 91,
+        "active_samples": 3,
+        "sustained_combat": true,
+        "direct_gunfight": true,
+        "enemy_engagement": 94,
+        "combat_intensity": 87,
+        "dead_time_risk": 15,
+        "content_type": "gaming",
+        "reason": "Repeated scoped sniper engagement with visible targets, ammunition use, hit/XP feedback, and kill activity across multiple samples."
+      },
+      "window_start": 40.0
+    },
+    "clip_01M1XT4RVBHFJCPC35WM2EVAYF": {
+      "policy": "direct-gunfight-window-v1",
+      "updated_at": 1791208600.985529,
+      "expires_at": 1791467800.985529,
+      "media_url": "https://clips.kick.com/clips/f7/clip_01M1XT4RVBHFJCPC35WM2EVAYF/playlist.m3u8",
+      "passed": false,
+      "verdict": {
+        "id": 3,
+        "firefight_score": 55,
+        "active_samples": 1,
+        "sustained_combat": false,
+        "direct_gunfight": true,
+        "enemy_engagement": 70,
+        "combat_intensity": 64,
+        "dead_time_risk": 46,
+        "content_type": "gaming",
+        "reason": "Final-kill replay visibly shows an enemy being shot with hit effects, but only one convincing engagement sample is present amid cover movement and replay setup."
+      },
+      "window_start": 5.0
+    },
+    "clip_01GX2TADK0BDNBF0TXZ8BHFJJQ": {
+      "policy": "direct-gunfight-window-v1",
+      "updated_at": 1791208615.448767,
+      "expires_at": 1791295015.448767,
+      "media_url": "https://clips.kick.com/clips/jq/clip_01GX2TADK0BDNBF0TXZ8BHFJJQ/e6e0b522-a78c-4866-9518-68985ef14af2.mp4",
+      "passed": true,
+      "verdict": {
+        "id": 0,
+        "firefight_score": 94,
+        "active_samples": 4,
+        "sustained_combat": true,
+        "direct_gunfight": true,
+        "enemy_engagement": 96,
+        "combat_intensity": 95,
+        "dead_time_risk": 9,
+        "content_type": "gaming",
+        "reason": "Multiple moments show close-range gunfire, incoming damage, a downed enemy, and collateral/elimination activity during one sustained fight."
+      },
+      "window_start": 5.0
+    },
+    "clip_01M43JZTS2TN9NMEFCZJ39QTMZ": {
+      "policy": "direct-gunfight-window-v1",
+      "updated_at": 1791208615.4492621,
+      "expires_at": 1791467815.4492621,
+      "media_url": "https://clips.kick.com/clips/5d/clip_01M43JZTS2TN9NMEFCZJ39QTMZ/playlist.m3u8",
+      "passed": false,
+      "verdict": {
+        "id": 1,
+        "firefight_score": 55,
+        "active_samples": 1,
+        "sustained_combat": false,
+        "direct_gunfight": true,
+        "enemy_engagement": 61,
+        "combat_intensity": 55,
+        "dead_time_risk": 48,
+        "content_type": "gaming",
+        "reason": "One clear exchange shows weapon fire and a visible opponent, but most samples show aftermath, rotation, smoke, or angle-holding rather than repeated direct firefights."
+      },
+      "window_start": 0.0
+    },
+    "clip_01JQ6MW1D9YEK5JQY9N3TC8S4C": {
+      "policy": "direct-gunfight-window-v1",
+      "updated_at": 1791208615.4497354,
+      "expires_at": 1791467815.4497354,
+      "media_url": "https://clips.kick.com/clips/d8/clip_01JQ6MW1D9YEK5JQY9N3TC8S4C/playlist.m3u8",
+      "passed": false,
+      "verdict": {
+        "id": 2,
+        "firefight_score": 5,
+        "active_samples": 0,
+        "sustained_combat": false,
+        "direct_gunfight": false,
+        "enemy_engagement": 3,
+        "combat_intensity": 5,
+        "dead_time_risk": 96,
+        "content_type": "gaming",
+        "reason": "Samples are overwhelmingly from the buy phase with menus, teammates, knife movement, and ability handling; no enemy-directed weapon engagement is visible."
+      },
+      "window_start": 15.0
+    },
+    "clip_01M460CS6AHYRPX5GVQAM4TRRH": {
+      "policy": "direct-gunfight-window-v1",
+      "updated_at": 1791208615.4502048,
+      "expires_at": 1791467815.4502048,
+      "media_url": "https://clips.kick.com/clips/fd/clip_01M460CS6AHYRPX5GVQAM4TRRH/playlist.m3u8",
+      "passed": false,
+      "verdict": {
+        "id": 3,
+        "firefight_score": 12,
+        "active_samples": 0,
+        "sustained_combat": false,
+        "direct_gunfight": false,
+        "enemy_engagement": 6,
+        "combat_intensity": 10,
+        "dead_time_risk": 90,
+        "content_type": "gaming",
+        "reason": "The player runs through corridors and holds angles with a rifle, but no visible enemy, weapon fire, hit confirmation, or direct exchange appears."
+      },
+      "window_start": 0.0
+    },
+    "clip_01K5FKREJQTT6EEFW4DEPWKK79": {
+      "policy": "direct-gunfight-window-v1",
+      "updated_at": 1791208622.4109547,
+      "expires_at": 1791467822.4109547,
+      "media_url": "https://clips.kick.com/clips/a0/clip_01K5FKREJQTT6EEFW4DEPWKK79/playlist.m3u8",
+      "passed": false,
+      "verdict": {
+        "id": 0,
+        "firefight_score": 18,
+        "active_samples": 0,
+        "sustained_combat": false,
+        "direct_gunfight": false,
+        "enemy_engagement": 15,
+        "combat_intensity": 18,
+        "dead_time_risk": 78,
+        "content_type": "gaming",
+        "reason": "Mostly traversal, reloading, and a final held aim; no visible enemy or weapon-fire exchange."
+      },
+      "window_start": 0.0
+    },
+    "clip_01H4FE0XDGMRZBMH2KJMZ1YY3G": {
+      "policy": "direct-gunfight-window-v1",
+      "updated_at": 1791208622.4115143,
+      "expires_at": 1791467822.4115143,
+      "media_url": "https://clips.kick.com/clips/3g/clip_01H4FE0XDGMRZBMH2KJMZ1YY3G/a88c7562-16d9-472b-94d0-eb99625363ba.mp4",
+      "passed": false,
+      "verdict": {
+        "id": 1,
+        "firefight_score": 2,
+        "active_samples": 0,
+        "sustained_combat": false,
+        "direct_gunfight": false,
+        "enemy_engagement": 0,
+        "combat_intensity": 3,
+        "dead_time_risk": 96,
+        "content_type": "gaming",
+        "reason": "Traversal, death screen, map, and respawn footage with no direct ranged engagement."
+      },
+      "window_start": 20.0
+    },
+    "clip_01HMCQD2996GPBDTM59PCJ30J1": {
+      "policy": "direct-gunfight-window-v1",
+      "updated_at": 1791208622.412143,
+      "expires_at": 1791467822.412143,
+      "media_url": "https://clips.kick.com/clips/87/clip_01HMCQD2996GPBDTM59PCJ30J1/playlist.m3u8",
+      "passed": false,
+      "verdict": {
+        "id": 2,
+        "firefight_score": 12,
+        "active_samples": 0,
+        "sustained_combat": false,
+        "direct_gunfight": false,
+        "enemy_engagement": 8,
+        "combat_intensity": 10,
+        "dead_time_risk": 87,
+        "content_type": "gaming",
+        "reason": "A corpse is visible initially, but sampled moments only show movement and holding angles without firing or enemies."
+      },
+      "window_start": 15.0
+    },
+    "clip_01H6SDR672AHVR3V1RD1AACQ2A": {
+      "policy": "direct-gunfight-window-v1",
+      "updated_at": 1791208622.4127684,
+      "expires_at": 1791467822.4127684,
+      "media_url": "https://clips.kick.com/clips/2a/clip_01H6SDR672AHVR3V1RD1AACQ2A/playlist.m3u8",
+      "passed": false,
+      "verdict": {
+        "id": 3,
+        "firefight_score": 9,
+        "active_samples": 0,
+        "sustained_combat": false,
+        "direct_gunfight": false,
+        "enemy_engagement": 5,
+        "combat_intensity": 8,
+        "dead_time_risk": 89,
+        "content_type": "gaming",
+        "reason": "Spectating/holding an angle with a combat report displayed, followed by an ability; no direct weapon exchange is visible."
+      },
+      "window_start": 15.0
+    }
+  }
+}
