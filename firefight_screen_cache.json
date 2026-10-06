@@ -43,21 +43,21 @@
     },
     "clip_01M3X2JHQM1YNE9Q9KVA3RJ3GC": {
       "policy": "direct-gunfight-window-v1",
-      "updated_at": 1791208600.9851315,
-      "expires_at": 1791295000.9851315,
+      "updated_at": 1791296726.1589782,
+      "expires_at": 1791383126.1589782,
       "media_url": "https://clips.kick.com/clips/a6/clip_01M3X2JHQM1YNE9Q9KVA3RJ3GC/playlist.m3u8",
       "passed": true,
       "verdict": {
-        "id": 2,
-        "firefight_score": 91,
+        "id": 0,
+        "firefight_score": 90,
         "active_samples": 3,
         "sustained_combat": true,
         "direct_gunfight": true,
-        "enemy_engagement": 94,
-        "combat_intensity": 87,
-        "dead_time_risk": 15,
+        "enemy_engagement": 96,
+        "combat_intensity": 88,
+        "dead_time_risk": 20,
         "content_type": "gaming",
-        "reason": "Repeated scoped sniper engagement with visible targets, ammunition use, hit/XP feedback, and kill activity across multiple samples."
+        "reason": "Multiple sampled moments show scoped rifle engagement against visible enemies, with active firing and apparent downs/finishes in Warzone."
       },
       "window_start": 40.0
     },
@@ -78,26 +78,6 @@
         "dead_time_risk": 46,
         "content_type": "gaming",
         "reason": "Final-kill replay visibly shows an enemy being shot with hit effects, but only one convincing engagement sample is present amid cover movement and replay setup."
-      },
-      "window_start": 5.0
-    },
-    "clip_01GX2TADK0BDNBF0TXZ8BHFJJQ": {
-      "policy": "direct-gunfight-window-v1",
-      "updated_at": 1791208615.448767,
-      "expires_at": 1791295015.448767,
-      "media_url": "https://clips.kick.com/clips/jq/clip_01GX2TADK0BDNBF0TXZ8BHFJJQ/e6e0b522-a78c-4866-9518-68985ef14af2.mp4",
-      "passed": true,
-      "verdict": {
-        "id": 0,
-        "firefight_score": 94,
-        "active_samples": 4,
-        "sustained_combat": true,
-        "direct_gunfight": true,
-        "enemy_engagement": 96,
-        "combat_intensity": 95,
-        "dead_time_risk": 9,
-        "content_type": "gaming",
-        "reason": "Multiple moments show close-range gunfire, incoming damage, a downed enemy, and collateral/elimination activity during one sustained fight."
       },
       "window_start": 5.0
     },
@@ -241,26 +221,6 @@
       },
       "window_start": 15.0
     },
-    "clip_01M3WM3Y9VCQ1FGD52BM6BAHD2": {
-      "policy": "direct-gunfight-window-v1",
-      "updated_at": 1791210317.9776244,
-      "expires_at": 1791296717.9776244,
-      "media_url": "https://clips.kick.com/clips/b6/clip_01M3WM3Y9VCQ1FGD52BM6BAHD2/playlist.m3u8",
-      "passed": true,
-      "verdict": {
-        "id": 0,
-        "firefight_score": 92,
-        "active_samples": 4,
-        "sustained_combat": true,
-        "direct_gunfight": true,
-        "enemy_engagement": 94,
-        "combat_intensity": 90,
-        "dead_time_risk": 10,
-        "content_type": "gaming",
-        "reason": "Multiple Valorant fight moments show enemy engagement, incoming damage, kill indicators, and continued weapon use."
-      },
-      "window_start": 0.0
-    },
     "clip_01H0VK33YRVWCME02M4XRWAT4M": {
       "policy": "direct-gunfight-window-v1",
       "updated_at": 1791210317.978585,
@@ -300,26 +260,6 @@
         "reason": "Mostly esports player reactions; only one brief scoped gameplay moment and no repeated visible weapon engagement."
       },
       "window_start": 0.0
-    },
-    "clip_01M462PAZMFFZPS32JYT8XRYEG": {
-      "policy": "direct-gunfight-window-v1",
-      "updated_at": 1791210317.9802997,
-      "expires_at": 1791296717.9802997,
-      "media_url": "https://clips.kick.com/clips/db/clip_01M462PAZMFFZPS32JYT8XRYEG/playlist.m3u8",
-      "passed": true,
-      "verdict": {
-        "id": 3,
-        "firefight_score": 84,
-        "active_samples": 4,
-        "sustained_combat": true,
-        "direct_gunfight": true,
-        "enemy_engagement": 87,
-        "combat_intensity": 82,
-        "dead_time_risk": 16,
-        "content_type": "gaming",
-        "reason": "Multiple active CS2 combat samples show visible opponents, muzzle fire, damage, kill-feed activity, and continued engagement."
-      },
-      "window_start": 75.0
     },
     "clip_01M3PW82D0WG4JSEMEHZ3RWFW5": {
       "policy": "direct-gunfight-window-v1",
@@ -638,6 +578,66 @@
         "dead_time_risk": 16,
         "content_type": "gaming",
         "reason": "Clear automatic weapon fire, continued combat movement, elimination feedback, reloading, and renewed aiming toward enemy positions."
+      },
+      "window_start": 0.0
+    },
+    "clip_01M48EBS9J17RPG7MD5PAB6BDQ": {
+      "policy": "direct-gunfight-window-v1",
+      "updated_at": 1791296726.1600769,
+      "expires_at": 1791383126.1600769,
+      "media_url": "https://clips.kick.com/clips/bb/clip_01M48EBS9J17RPG7MD5PAB6BDQ/playlist.m3u8",
+      "passed": true,
+      "verdict": {
+        "id": 1,
+        "firefight_score": 97,
+        "active_samples": 4,
+        "sustained_combat": true,
+        "direct_gunfight": true,
+        "enemy_engagement": 98,
+        "combat_intensity": 92,
+        "dead_time_risk": 10,
+        "content_type": "gaming",
+        "reason": "Clear sustained Warzone gunfight with repeated aiming and firing at visible opponents across several samples, including close-range exchanges and likely eliminations."
+      },
+      "window_start": 0.0
+    },
+    "clip_01M3QX6H5KEAX9SBXCBVF1EYQT": {
+      "policy": "direct-gunfight-window-v1",
+      "updated_at": 1791296726.1610692,
+      "expires_at": 1791383126.1610692,
+      "media_url": "https://clips.kick.com/clips/f2/clip_01M3QX6H5KEAX9SBXCBVF1EYQT/playlist.m3u8",
+      "passed": true,
+      "verdict": {
+        "id": 2,
+        "firefight_score": 85,
+        "active_samples": 3,
+        "sustained_combat": true,
+        "direct_gunfight": true,
+        "enemy_engagement": 90,
+        "combat_intensity": 84,
+        "dead_time_risk": 18,
+        "content_type": "gaming",
+        "reason": "Fortnite clip shows direct ranged combat with visible enemy contact, muzzle flashes, and active engagement over multiple samples before the match ends."
+      },
+      "window_start": 20.0
+    },
+    "clip_01M3PYKFCNR6E8XB5WQ927XBNG": {
+      "policy": "direct-gunfight-window-v1",
+      "updated_at": 1791296726.1620862,
+      "expires_at": 1791555926.1620862,
+      "media_url": "https://clips.kick.com/clips/0d/clip_01M3PYKFCNR6E8XB5WQ927XBNG/playlist.m3u8",
+      "passed": false,
+      "verdict": {
+        "id": 3,
+        "firefight_score": 28,
+        "active_samples": 0,
+        "sustained_combat": false,
+        "direct_gunfight": false,
+        "enemy_engagement": 12,
+        "combat_intensity": 20,
+        "dead_time_risk": 78,
+        "content_type": "gaming",
+        "reason": "Samples show movement/positioning through smoke in CS2, but no convincing weapon fire, hit feedback, or visible direct firefight."
       },
       "window_start": 0.0
     }
