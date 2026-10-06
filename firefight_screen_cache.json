@@ -381,46 +381,6 @@
       },
       "window_start": 70.0
     },
-    "clip_01M469DCN23P4GJ37EQRAFKB80": {
-      "policy": "direct-gunfight-window-v1",
-      "updated_at": 1791216937.7894118,
-      "expires_at": 1791303337.7894118,
-      "media_url": "https://clips.kick.com/clips/62/clip_01M469DCN23P4GJ37EQRAFKB80/playlist.m3u8",
-      "passed": true,
-      "verdict": {
-        "id": 3,
-        "firefight_score": 78,
-        "active_samples": 3,
-        "sustained_combat": true,
-        "direct_gunfight": true,
-        "enemy_engagement": 82,
-        "combat_intensity": 74,
-        "dead_time_risk": 20,
-        "content_type": "gaming",
-        "reason": "Multiple consecutive broadcast gameplay samples show rifles trained on nearby outlined opponents, active team damage and deaths, and continued engagement across the same fight."
-      },
-      "window_start": 60.0
-    },
-    "clip_01M46C75MSES0RKKBJ69RX11XJ": {
-      "policy": "direct-gunfight-window-v1",
-      "updated_at": 1791219838.8297052,
-      "expires_at": 1791306238.8297052,
-      "media_url": "https://clips.kick.com/clips/9d/clip_01M46C75MSES0RKKBJ69RX11XJ/playlist.m3u8",
-      "passed": true,
-      "verdict": {
-        "id": 0,
-        "firefight_score": 68,
-        "active_samples": 2,
-        "sustained_combat": true,
-        "direct_gunfight": true,
-        "enemy_engagement": 72,
-        "combat_intensity": 65,
-        "dead_time_risk": 38,
-        "content_type": "gaming",
-        "reason": "Two separate elimination indicators within the same clutch sequence, including a scoped rifle shot/ammo change, support direct ranged engagement despite planting and angle-holding downtime."
-      },
-      "window_start": 25.0
-    },
     "clip_01M22H2DN3C3HCNREWY6YY9Z94": {
       "policy": "direct-gunfight-window-v1",
       "updated_at": 1791219838.830611,
