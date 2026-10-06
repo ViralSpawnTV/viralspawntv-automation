@@ -281,26 +281,6 @@
       },
       "window_start": 0.0
     },
-    "clip_01M41FHKVAQSGSF1R9P0SREH4A": {
-      "policy": "direct-gunfight-window-v1",
-      "updated_at": 1791213694.2039895,
-      "expires_at": 1791300094.2039895,
-      "media_url": "https://clips.kick.com/clips/df/clip_01M41FHKVAQSGSF1R9P0SREH4A/playlist.m3u8",
-      "passed": true,
-      "verdict": {
-        "id": 1,
-        "firefight_score": 94,
-        "active_samples": 4,
-        "sustained_combat": true,
-        "direct_gunfight": true,
-        "enemy_engagement": 95,
-        "combat_intensity": 92,
-        "dead_time_risk": 8,
-        "content_type": "gaming",
-        "reason": "Multiple direct ranged engagements with aimed weapon fire, damage feedback, enemy down, eliminations, and a victory finish."
-      },
-      "window_start": 10.0
-    },
     "clip_01HN33D0N0THC2703YY3PTM155": {
       "policy": "direct-gunfight-window-v1",
       "updated_at": 1791213694.2046962,
