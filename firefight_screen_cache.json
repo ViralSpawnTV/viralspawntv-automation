@@ -41,26 +41,6 @@
       },
       "window_start": 0.0
     },
-    "clip_01M3X2JHQM1YNE9Q9KVA3RJ3GC": {
-      "policy": "direct-gunfight-window-v1",
-      "updated_at": 1791296726.1589782,
-      "expires_at": 1791383126.1589782,
-      "media_url": "https://clips.kick.com/clips/a6/clip_01M3X2JHQM1YNE9Q9KVA3RJ3GC/playlist.m3u8",
-      "passed": true,
-      "verdict": {
-        "id": 0,
-        "firefight_score": 90,
-        "active_samples": 3,
-        "sustained_combat": true,
-        "direct_gunfight": true,
-        "enemy_engagement": 96,
-        "combat_intensity": 88,
-        "dead_time_risk": 20,
-        "content_type": "gaming",
-        "reason": "Multiple sampled moments show scoped rifle engagement against visible enemies, with active firing and apparent downs/finishes in Warzone."
-      },
-      "window_start": 40.0
-    },
     "clip_01M1XT4RVBHFJCPC35WM2EVAYF": {
       "policy": "direct-gunfight-window-v1",
       "updated_at": 1791208600.985529,
@@ -500,46 +480,6 @@
         "reason": "Warzone clip shows repeated direct ranged engagement with a bow, visible enemy contact, aiming/firing, and combat resolution."
       },
       "window_start": 60.0
-    },
-    "clip_01M48EBS9J17RPG7MD5PAB6BDQ": {
-      "policy": "direct-gunfight-window-v1",
-      "updated_at": 1791296726.1600769,
-      "expires_at": 1791383126.1600769,
-      "media_url": "https://clips.kick.com/clips/bb/clip_01M48EBS9J17RPG7MD5PAB6BDQ/playlist.m3u8",
-      "passed": true,
-      "verdict": {
-        "id": 1,
-        "firefight_score": 97,
-        "active_samples": 4,
-        "sustained_combat": true,
-        "direct_gunfight": true,
-        "enemy_engagement": 98,
-        "combat_intensity": 92,
-        "dead_time_risk": 10,
-        "content_type": "gaming",
-        "reason": "Clear sustained Warzone gunfight with repeated aiming and firing at visible opponents across several samples, including close-range exchanges and likely eliminations."
-      },
-      "window_start": 0.0
-    },
-    "clip_01M3QX6H5KEAX9SBXCBVF1EYQT": {
-      "policy": "direct-gunfight-window-v1",
-      "updated_at": 1791296726.1610692,
-      "expires_at": 1791383126.1610692,
-      "media_url": "https://clips.kick.com/clips/f2/clip_01M3QX6H5KEAX9SBXCBVF1EYQT/playlist.m3u8",
-      "passed": true,
-      "verdict": {
-        "id": 2,
-        "firefight_score": 85,
-        "active_samples": 3,
-        "sustained_combat": true,
-        "direct_gunfight": true,
-        "enemy_engagement": 90,
-        "combat_intensity": 84,
-        "dead_time_risk": 18,
-        "content_type": "gaming",
-        "reason": "Fortnite clip shows direct ranged combat with visible enemy contact, muzzle flashes, and active engagement over multiple samples before the match ends."
-      },
-      "window_start": 20.0
     },
     "clip_01M3PYKFCNR6E8XB5WQ927XBNG": {
       "policy": "direct-gunfight-window-v1",
