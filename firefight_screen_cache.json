@@ -600,6 +600,86 @@
         "reason": "Warzone samples show active gunplay, enemy proximity, and post-engagement loot/body evidence consistent with an ongoing firefight sequence."
       },
       "window_start": 60.0
+    },
+    "clip_01M3R9SWMWNJ42TW9K8T5W4XJ4": {
+      "policy": "direct-gunfight-window-v1",
+      "updated_at": 1791360898.0175793,
+      "expires_at": 1791447298.0175793,
+      "media_url": "https://clips.kick.com/clips/bc/clip_01M3R9SWMWNJ42TW9K8T5W4XJ4/playlist.m3u8",
+      "passed": true,
+      "verdict": {
+        "id": 0,
+        "firefight_score": 97,
+        "active_samples": 5,
+        "sustained_combat": true,
+        "direct_gunfight": true,
+        "enemy_engagement": 96,
+        "combat_intensity": 88,
+        "dead_time_risk": 5,
+        "content_type": "gaming",
+        "reason": "CS2 clip shows repeated pistol engagement with visible combat, kill feed activity, and multiple sampled moments from the same active firefight."
+      },
+      "window_start": 5.0
+    },
+    "clip_01M20X038Q8R3P0QN2BJJNQJJ7": {
+      "policy": "direct-gunfight-window-v1",
+      "updated_at": 1791360898.0187945,
+      "expires_at": 1791447298.0187945,
+      "media_url": "https://clips.kick.com/clips/f8/clip_01M20X038Q8R3P0QN2BJJNQJJ7/playlist.m3u8",
+      "passed": true,
+      "verdict": {
+        "id": 1,
+        "firefight_score": 90,
+        "active_samples": 4,
+        "sustained_combat": true,
+        "direct_gunfight": true,
+        "enemy_engagement": 92,
+        "combat_intensity": 84,
+        "dead_time_risk": 8,
+        "content_type": "gaming",
+        "reason": "Valorant clip contains direct weapon engagement with visible aiming, firing, combat effects, and elimination activity across several sampled moments."
+      },
+      "window_start": 0.0
+    },
+    "clip_01M2SB5M286AQB18S13NPC8Z0X": {
+      "policy": "direct-gunfight-window-v1",
+      "updated_at": 1791360898.0198236,
+      "expires_at": 1791447298.0198236,
+      "media_url": "https://clips.kick.com/clips/f2/clip_01M2SB5M286AQB18S13NPC8Z0X/playlist.m3u8",
+      "passed": true,
+      "verdict": {
+        "id": 2,
+        "firefight_score": 96,
+        "active_samples": 5,
+        "sustained_combat": true,
+        "direct_gunfight": true,
+        "enemy_engagement": 95,
+        "combat_intensity": 90,
+        "dead_time_risk": 4,
+        "content_type": "gaming",
+        "reason": "Warzone clip clearly shows active ranged combat with weapon fire, engagement movement, hit/elimination feedback, and sustained firefight presence."
+      },
+      "window_start": 70.0
+    },
+    "clip_01M3T139RSGDKNMWH0J7Z6DNMZ": {
+      "policy": "direct-gunfight-window-v1",
+      "updated_at": 1791360898.020798,
+      "expires_at": 1791620098.020798,
+      "media_url": "https://clips.kick.com/clips/a7/clip_01M3T139RSGDKNMWH0J7Z6DNMZ/playlist.m3u8",
+      "passed": false,
+      "verdict": {
+        "id": 3,
+        "firefight_score": 5,
+        "active_samples": 0,
+        "sustained_combat": false,
+        "direct_gunfight": false,
+        "enemy_engagement": 0,
+        "combat_intensity": 2,
+        "dead_time_risk": 98,
+        "content_type": "gaming",
+        "reason": "Sampled frames show utility, movement, and end-of-match victory rather than visible direct firefight or enemy weapon engagement."
+      },
+      "window_start": 5.0
     }
   }
 }
