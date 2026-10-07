@@ -1277,6 +1277,17 @@
       "youtube_video_id": "OePaVKSxa7s",
       "privacy_status": "public",
       "processed_at_utc": "2026-10-05T17:11:49.539576+00:00"
+    },
+    {
+      "clip_id": "clip_01M48EBS9J17RPG7MD5PAB6BDQ",
+      "clip_url": "https://kick.com/pichin-rd/clips/clip_01M48EBS9J17RPG7MD5PAB6BDQ",
+      "source": "https://kick.com/pichin-rd/clips/clip_01M48EBS9J17RPG7MD5PAB6BDQ",
+      "creator": "pichin-rd",
+      "channel": "pichin-rd",
+      "game": "",
+      "youtube_video_id": "fu4OpDXH6CE",
+      "privacy_status": "public",
+      "processed_at_utc": "2026-10-07T10:13:28.992365+00:00"
     }
   ]
 }
