@@ -10,7 +10,7 @@ on:
         type: string
       max_scans:
         description: 'Maximum new local scans this run'
-        default: '1000'
+        default: '250'
         required: true
         type: string
   schedule:
@@ -29,9 +29,12 @@ jobs:
     timeout-minutes: 270
     env:
       OPENAI_API_KEY: ''
+      OMP_NUM_THREADS: '2'
+      OPENBLAS_NUM_THREADS: '2'
+      MKL_NUM_THREADS: '2'
       TARGET_BRANCH: ${{ github.event.repository.default_branch }}
       SCAN_MINUTES: ${{ inputs.minutes || '120' }}
-      MAX_SCANS: ${{ inputs.max_scans || '1000' }}
+      MAX_SCANS: ${{ inputs.max_scans || '250' }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -40,11 +43,23 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/viralspawntv-ffmpeg
+            ~/.cache/viralspawntv-models
+          key: viralspawntv-local-models-v2-${{ runner.os }}
+      - name: Reuse FFmpeg or install cached binaries
+        timeout-minutes: 6
+        run: bash ensure_ffmpeg.sh
       - name: Install local scanning dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y ffmpeg
-          python -m pip install playwright
+        run: python -m pip install -r requirements_local_screen.txt playwright
+      - name: Validate local models before scanning
+        timeout-minutes: 12
+        env:
+          HF_HUB_DOWNLOAD_TIMEOUT: '60'
+          HF_HUB_ETAG_TIMEOUT: '30'
+        run: python local_combat_screen.py --prepare
       - name: Build or resume locally screened library
         run: python build_clip_library.py --target 5000 --minutes "$SCAN_MINUTES" --max-scans "$MAX_SCANS"
       - name: Snapshot progress
@@ -90,3 +105,5 @@ jobs:
             /tmp/viralspawntv-library-save/library.json
             /tmp/viralspawntv-library-save/state.json
             work/clip_library_summary.json
+            work/clip_library_evidence.json
+            work/local_model_setup_result.json
