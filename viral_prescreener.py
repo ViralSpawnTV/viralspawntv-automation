@@ -29,7 +29,7 @@ STORY_FRAME_WORKERS = 4
 AUDIO_TRANSCRIBE_WORKERS = 4
 
 MIN_SOURCE_SECONDS = 40.0
-MIN_WINDOW_SECONDS = 40.0
+MIN_WINDOW_SECONDS = 19.0
 TARGET_WINDOW_SECONDS = 55.0
 MAX_WINDOW_SECONDS = 58.0
 
@@ -85,9 +85,9 @@ def data_url(path):
     return f"data:image/jpeg;base64,{encoded}"
 
 
-def make_windows(source_seconds, preferred_start=None):
+def make_windows(source_seconds, preferred_start=None, preferred_seconds=None):
     """
-    Build up to three 40-58 second windows.
+    Build up to three 19-58 second windows.
 
     V12.14.6 judges the ENDING/PAYOFF first. The window itself is still
     continuous, but later ranking starts from "is the ending worth waiting
@@ -97,6 +97,12 @@ def make_windows(source_seconds, preferred_start=None):
 
     if seconds < MIN_SOURCE_SECONDS:
         return []
+
+    # Preserve the locally selected combat window, including short clips.
+    if preferred_start is not None and preferred_seconds is not None:
+        length=max(MIN_WINDOW_SECONDS,min(float(preferred_seconds),MAX_WINDOW_SECONDS,seconds))
+        start=max(0.0,min(float(preferred_start),seconds-length))
+        return [{"start":round(start,3),"end":round(start+length,3),"label":"local_combat_window"}]
 
     if seconds <= MAX_WINDOW_SECONDS:
         return [
@@ -224,7 +230,7 @@ def build_window_index(candidates):
 
         for window_index, window in enumerate(
             make_windows(
-                source_seconds, candidate.get("local_window_start")
+                source_seconds, candidate.get("local_window_start"), candidate.get("local_window_seconds")
             )
         ):
             items.append(
@@ -789,7 +795,7 @@ You are Phase 1 of ViralSpawnTV V12.14.6.
 
 This is PAYOFF-FIRST source selection.
 
-Each item is a proposed 40-58 second gaming window. You are shown only
+Each item is a proposed 19-58 second gaming window. You are shown only
 evidence from its FINAL ~7 seconds plus any transcript from those seconds.
 
 Judge whether the ending contains something worth building a Short around.
@@ -1153,7 +1159,7 @@ def main():
 
     if not windows:
         raise RuntimeError(
-            "No eligible 40-58 second windows."
+            "No eligible 19-58 second windows."
         )
 
     raw_window_count = len(
