@@ -468,23 +468,26 @@
     },
     "clip_01M3W9044TK1AXNERX257YQXVN": {
       "policy": "direct-gunfight-window-v1",
-      "updated_at": 1791411660.6374648,
-      "expires_at": 1791498060.6374648,
+      "updated_at": 1791456580.293587,
+      "expires_at": null,
       "media_url": "https://clips.kick.com/clips/96/clip_01M3W9044TK1AXNERX257YQXVN/playlist.m3u8",
-      "passed": true,
+      "passed": false,
+      "permanent_exclusion": true,
+      "window_start": 0.0,
+      "exclusion_basis": "completed_source_quality_rejection",
+      "reviewed_windows": [
+        {
+          "stage": "viral_gate.py",
+          "start_original": 0.0,
+          "end_original": 42.0,
+          "source_score": 36,
+          "payoff": 20
+        }
+      ],
       "verdict": {
-        "id": 1,
-        "firefight_score": 82,
-        "active_samples": 4,
-        "sustained_combat": true,
-        "direct_gunfight": true,
-        "enemy_engagement": 88,
-        "combat_intensity": 80,
-        "dead_time_risk": 20,
-        "content_type": "gaming",
-        "reason": "Counter-Strike 2 round with visible shooting context, weapon up, and kill feed updates across multiple sampled moments; looks like active engagement rather than downtime."
+        "reason": "The round has several eliminations and a developing late-round situation, but the window ends with roughly 30 seconds remaining and no confirmed round result, clutch, or strong reaction. The unresolved ending leaves insufficient payoff for a strong standalone Short."
       },
-      "window_start": 0.0
+      "limitation": "Automatic spending exclusion; not proof that every source frame lacks combat."
     },
     "clip_01M44YP9YF8M055N1B2KCJGH2X": {
       "policy": "direct-gunfight-window-v1",
@@ -530,23 +533,26 @@
     },
     "clip_01M28CV510E2K9ZG9BXY52W4PJ": {
       "policy": "direct-gunfight-window-v1",
-      "updated_at": 1791425786.606269,
-      "expires_at": 1791512186.606269,
+      "updated_at": 1791456561.622788,
+      "expires_at": null,
       "media_url": "https://clips.kick.com/clips/20/clip_01M28CV510E2K9ZG9BXY52W4PJ/playlist.m3u8",
-      "passed": true,
+      "passed": false,
+      "permanent_exclusion": true,
+      "window_start": 60.0,
+      "exclusion_basis": "completed_source_quality_rejection",
+      "reviewed_windows": [
+        {
+          "stage": "viral_gate.py",
+          "start_original": 60.0,
+          "end_original": 115.0,
+          "source_score": 42,
+          "payoff": 28
+        }
+      ],
       "verdict": {
-        "id": 2,
-        "firefight_score": 81,
-        "active_samples": 4,
-        "sustained_combat": true,
-        "direct_gunfight": true,
-        "enemy_engagement": 85,
-        "combat_intensity": 82,
-        "dead_time_risk": 18,
-        "content_type": "gaming",
-        "reason": "Sampled moments show active weapon handling in combat areas with kill/loot aftermath and multiple engagement phases, consistent with a real sustained firefight."
+        "reason": "The window includes movement, one readable combat exchange, and a possible elimination, but much of it is repositioning through buildings. Stakes are unclear, the result is modest, and the footage ends behind cover without a decisive resolution or reaction."
       },
-      "window_start": 60.0
+      "limitation": "Automatic spending exclusion; not proof that every source frame lacks combat."
     },
     "clip_01M2BQ5ZBBDRBDFR6FVYD0TD67": {
       "policy": "direct-gunfight-window-v1",
