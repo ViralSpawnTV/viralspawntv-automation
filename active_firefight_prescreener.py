@@ -11,7 +11,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 from openai import OpenAI
-from firefight_cache import load as load_cache, current as cached_verdict, remember
+from firefight_cache import load as load_cache, current as cached_verdict, remember, exclude
 
 
 INPUT = Path("work/v12_ranked_candidates.json")
@@ -889,13 +889,21 @@ def main():
     uncached = []
     for row in rows:
         entry = cached_verdict(row, cache)
-        if entry:
-            checked = apply_verdict(dict(row, local_shooter_game=True, local_window_start=entry.get("window_start")), entry["verdict"])
-            if entry["passed"] and confirmed_gunfight(checked):
+        if entry and entry.get("passed") is not True:
+            report["cached_rejects"] += 1
+            if entry.get("permanent_exclusion"):
+                report["decisions"].append({"clip_id": row.get("clip_id"), "passed": False,
+                    "paid": False, "permanent_exclusion": True,
+                    "reason": entry.get("verdict", {}).get("reason", "Saved rejection")})
+            continue
+        if entry and valid_verdict(entry.get("verdict")):
+            checked = apply_verdict(dict(row, local_shooter_game=True,
+                                        local_window_start=entry.get("window_start")), entry["verdict"])
+            if confirmed_gunfight(checked):
                 survivors.append(checked)
                 report["cached_passes"] += 1
             else:
-                report["cached_rejects"] += 1
+                uncached.append(row)
         else:
             uncached.append(row)
     print(f"FREE SCREEN: {len(rows)} unique shooter clips; "
@@ -905,6 +913,15 @@ def main():
         if len(survivors) < TARGET_SURVIVORS:
             local_rows = local_scan_parallel(uncached)
             # A loose motion threshold removes static footage; it never confirms combat.
+            for row in local_rows:
+                # Only a successfully decoded preview can become a spending skip.
+                # Download/FFmpeg failures never appear here as qualified rows.
+                if row.get("local_frame_count", 0) >= 5 and row.get("local_motion_score", 0) < 12:
+                    exclude(row, "local_preview_no_promising_window",
+                            "No promising motion window in the bounded local preview; no AI review purchased")
+                    report["decisions"].append({"clip_id": row.get("clip_id"),
+                        "passed": False, "paid": False, "permanent_exclusion": True,
+                        "reason": "No promising local preview window"})
             shortlist = [row for row in local_rows if row.get("local_shooter_game") is True
                          and row.get("local_frame_count", 0) >= 5
                          and row.get("local_motion_score", 0) >= 12][:LOCAL_AI_CANDIDATES]
@@ -951,7 +968,8 @@ def main():
                     passed = confirmed_gunfight(checked)
                     remember(row, result, passed)
                     decision = {"clip_id": row.get("clip_id"), "passed": passed,
-                                "window_start": row.get("local_window_start"), "verdict": result}
+                                "window_start": row.get("local_window_start"), "verdict": result,
+                                "permanent_exclusion": not passed}
                     report["decisions"].append(decision)
                     print(f"PAID SCREEN {'PASS' if passed else 'REJECT'} {row.get('clip_id')}: "
                           f"gunfight={result['direct_gunfight']} score={result['firefight_score']} "
