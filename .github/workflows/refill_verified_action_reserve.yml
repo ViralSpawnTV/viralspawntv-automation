@@ -1,0 +1,109 @@
+name: ViralSpawnTV - Refill Verified Action Reserve
+on:
+  workflow_dispatch:
+    inputs:
+      paid_reviews:
+        description: 'Maximum paid window reviews this run (0-6); daily cap also applies'
+        default: '3'
+        required: true
+        type: string
+      max_scans:
+        description: 'Maximum local source scans (1-100)'
+        default: '25'
+        required: true
+        type: string
+      minutes:
+        description: 'Scan and review time budget (3-120 minutes)'
+        default: '45'
+        required: true
+        type: string
+  schedule:
+    - cron: '15 */6 * * *'
+permissions:
+  contents: write
+  actions: read
+concurrency:
+  group: viralspawntv-production
+  cancel-in-progress: false
+jobs:
+  refill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    env:
+      TARGET_BRANCH: ${{ github.event.repository.default_branch }}
+      READY_REVIEW_LIMIT: ${{ inputs.paid_reviews || vars.READY_REVIEW_LIMIT || '3' }}
+      READY_DAILY_REVIEW_LIMIT: ${{ vars.READY_DAILY_REVIEW_LIMIT || '12' }}
+      READY_TARGET: ${{ vars.READY_TARGET || '30' }}
+      READY_MAX_SCANS: ${{ inputs.max_scans || '25' }}
+      READY_SCAN_MINUTES: ${{ inputs.minutes || '45' }}
+      OMP_NUM_THREADS: '2'
+      OPENBLAS_NUM_THREADS: '2'
+      MKL_NUM_THREADS: '2'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Reserve capped review allowance before paid work
+        run: |
+          set -euo pipefail
+          git config user.name 'ViralSpawnTV Verified Reserve'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          python verified_clip_queue.py claim --limit "$READY_REVIEW_LIMIT" --daily-limit "$READY_DAILY_REVIEW_LIMIT"
+          python verified_clip_queue.py persist data/verified_discovery_state.json
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/viralspawntv-ffmpeg
+            ~/.cache/viralspawntv-models
+          key: viralspawntv-local-models-v2-${{ runner.os }}
+      - name: Reuse FFmpeg or install cached binaries
+        timeout-minutes: 6
+        run: bash ensure_ffmpeg.sh
+      - name: Install scanning and review dependencies
+        run: python -m pip install -r requirements.txt -r requirements_local_screen.txt
+      - name: Discover and verify exact action windows
+        id: discover
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        run: python verified_refill_budget.py
+      - name: Save exact reviewed media
+        if: always() && steps.discover.outcome != 'skipped'
+        id: media
+        uses: actions/upload-artifact@v4
+        with:
+          name: verified-action-media-${{ github.run_id }}-${{ github.run_attempt }}
+          path: work/verified_media/*.mp4
+          retention-days: 30
+          if-no-files-found: ignore
+      - name: Promote only media saved successfully
+        if: always() && steps.media.outputs.artifact-id != ''
+        env:
+          ARTIFACT_ID: ${{ steps.media.outputs.artifact-id }}
+        run: python verified_clip_queue.py promote "$ARTIFACT_ID"
+      - name: Save recovery snapshots
+        if: always()
+        run: |
+          mkdir -p work/verified_queue_recovery
+          if [ -f data/verified_clip_queue.json ]; then cp data/verified_clip_queue.json work/verified_queue_recovery/queue.json; fi
+          if [ -f data/verified_discovery_state.json ]; then cp data/verified_discovery_state.json work/verified_queue_recovery/state.json; fi
+      - name: Persist verification results without changing existing histories
+        if: always()
+        run: |
+          git config user.name 'ViralSpawnTV Verified Reserve'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          python verified_clip_queue.py persist data/verified_clip_queue.json data/verified_discovery_state.json
+      - name: Save refill diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: viralspawntv-verified-reserve-report
+          retention-days: 7
+          if-no-files-found: ignore
+          path: |
+            work/verified_discovery
+            work/verified_queue_recovery
+            work/verified_review_lease.json
