@@ -46,15 +46,21 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements_local_screen.txt
 
-      - name: Install FFmpeg
-        run: sudo apt-get update && sudo apt-get install -y ffmpeg
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/viralspawntv-ffmpeg
+          key: viralspawntv-ffmpeg-v2-${{ runner.os }}
+      - name: Reuse FFmpeg or install cached binaries
+        timeout-minutes: 6
+        run: bash ensure_ffmpeg.sh
 
       - name: Install Python dependencies
-        run: pip install -r requirements.txt
-
-      - name: Install Playwright Chromium
-        run: python -m playwright install --with-deps chromium
+        run: pip install -r requirements.txt -r requirements_local_screen.txt
 
       - name: Produce V12.1 Short
         env:
@@ -65,7 +71,7 @@ jobs:
           DISCOVERY_TARGET_ELIGIBLE: "100"
           DISCOVERY_MAX_ELIGIBLE_PER_GAME: "24"
           DISCOVERY_API_PAGES_PER_QUERY: "6"
-          FIREFIGHT_MAX_PAID_CLIPS: "12"
+          FIREFIGHT_MAX_PAID_CLIPS: "6"
           VIRALSPAWN_VISUAL_PRESCREEN_ONLY: "1"
         run: python budgeted_pipeline.py
 
@@ -666,6 +672,8 @@ jobs:
             work/firefight_prescreen/screening_report.json
             work/v12_firefight_candidates.json
             work/v11_candidate_manifest.json
+            data/clip_library.json
+            work/clip_library_summary.json
             work/v12_ranked_candidates.json
             work/v12_attempt_log.json
             work/kick_gaming/acquisition_result.json
