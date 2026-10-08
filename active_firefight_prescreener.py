@@ -660,9 +660,14 @@ For shooter games, require convincing evidence such as:
 - kill/knock/elimination activity
 - multiple sampled moments from the same active fight
 
-You see the most promising window, not the entire source. Accept a source
-with at least two convincing direct gunfight samples, even if the entire
-source has downtime. A separate mandatory gate verifies the exact final edit.
+You see five samples from the most promising continuous window, not the entire
+source. We need HIGH-INTENSITY combat, not merely a strong match result.
+Require direct weapon engagement in at least FOUR of the FIVE sampled moments,
+sustained_combat=true, firefight_score at least 80, and dead_time_risk at most 20.
+Count only samples with visible firing/weapon exchange, not kill banners or aiming.
+A victory, ace or clutch narrative cannot compensate for sparse combat or long
+pauses. Blind firing without evidence of an actual engagement is not sufficient.
+When uncertain, reject. The strict final action gate still verifies the exact edit.
 Set direct_gunfight true ONLY when direct weapon engagement is visible.
 Aiming, running, melee, camera motion or celebration alone must be false.
 
@@ -825,11 +830,14 @@ def local_only_survivors(local_rows):
 
 
 def confirmed_gunfight(row):
-    # Broad source eligibility; the exact edit still faces the strict final gate.
+    # Spending filter: prefer dense combat before paying to plan a victory story.
+    # Five sparse samples cannot guarantee the final edit, which keeps its gate.
     return (row.get("local_shooter_game") is True
             and row.get("active_direct_gunfight") is True
-            and row.get("active_firefight_score", 0) >= 60
-            and row.get("active_firefight_samples", 0) >= 2)
+            and row.get("active_sustained_combat") is True
+            and row.get("active_firefight_score", 0) >= 80
+            and row.get("active_firefight_samples", 0) >= 4
+            and row.get("active_dead_time_risk", 100) <= 20)
 
 
 def valid_verdict(result):
@@ -903,7 +911,14 @@ def main():
                 survivors.append(checked)
                 report["cached_passes"] += 1
             else:
-                uncached.append(row)
+                # Reuse the completed old screen as a spending decision, not a
+                # fresh paid review of the same low-density candidate.
+                exclude(row, "cached_action_evidence_below_density_requirement",
+                        "Prior paid screen did not meet the high-intensity action requirement")
+                report["cached_rejects"] += 1
+                report["decisions"].append({"clip_id": row.get("clip_id"),
+                    "passed": False, "paid": False, "permanent_exclusion": True,
+                    "reason": "Prior paid evidence below action-density requirement"})
         else:
             uncached.append(row)
     print(f"FREE SCREEN: {len(rows)} unique shooter clips; "
