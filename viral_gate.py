@@ -49,40 +49,22 @@ def extract_audio():
 
 
 def extract_frames():
-    for old in WORK.glob(
-        "frame_*.jpg"
-    ):
+    for old in WORK.glob("frame_*.jpg"):
         old.unlink()
-
-    pattern = str(
-        WORK
-        /
-        "frame_%02d.jpg"
-    )
-
-    run(
-        [
-            "ffmpeg",
-            "-y",
-            "-loglevel",
-            "error",
-            "-i",
-            str(SOURCE),
-            "-vf",
-            "fps=1/7,scale=640:-2",
-            "-frames:v",
-            "9",
-            "-q:v",
-            "4",
-            pattern,
-        ]
-    )
-
-    return sorted(
-        WORK.glob(
-            "frame_*.jpg"
-        )
-    )[:9]
+    probe = subprocess.run(["ffprobe","-v","error","-show_entries","format=duration",
+                            "-of","json",str(SOURCE)], check=True,capture_output=True,text=True)
+    seconds = float(json.loads(probe.stdout)["format"]["duration"])
+    if seconds < 19:
+        raise RuntimeError("Source window is below the 19-second core minimum")
+    paths = []
+    for i,fraction in enumerate((0.04,0.15,0.27,0.39,0.51,0.63,0.75,0.87,0.97)):
+        path = WORK/f"frame_{i:02d}.jpg"
+        run(["ffmpeg","-y","-v","error","-ss",f"{seconds*fraction:.3f}",
+             "-i",str(SOURCE),"-frames:v","1","-vf","scale=640:-2","-q:v","4",str(path)])
+        if not path.exists() or path.stat().st_size < 1000:
+            raise RuntimeError("Incomplete source-quality visual evidence")
+        paths.append(path)
+    return paths
 
 
 def transcribe(client):
@@ -138,7 +120,7 @@ Therefore DO NOT reject a source merely because its raw first second is
 slow or because it does not already look like a finished viral Short.
 
 Question:
-DOES THIS RAW 40-58 SECOND GAMING WINDOW CONTAIN ENOUGH QUALITY MATERIAL
+DOES THIS RAW 19-58 SECOND GAMING WINDOW CONTAIN ENOUGH QUALITY MATERIAL
 FOR OUR EDITOR TO MAKE A STRONG SHORT?
 
 Score:
