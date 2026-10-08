@@ -6,7 +6,7 @@ import sys
 import time
 from pathlib import Path
 
-from firefight_cache import defer_failed_edit
+from firefight_cache import defer_failed_edit, exclude
 
 
 LOG = Path("work/v12_attempt_log.json")
@@ -599,6 +599,9 @@ def main():
             )
             continue
 
+        # Prevent a failed API request from reusing a previous source's verdict.
+        Path("work/source_quality_gate/source_quality_gate_result.json").unlink(missing_ok=True)
+
         source_code = run_timed(
             f"source_quality_gate_{index}",
             "viral_gate.py",
@@ -608,6 +611,25 @@ def main():
             "work/source_quality_gate/source_quality_gate_result.json",
             {},
         )
+
+        # A completed negative source review is also an automatic spending skip.
+        # Extraction/API/budget failures must stay retryable.
+        ledger = load_json(os.environ.get("VIRALSPAWN_AI_LEDGER", "work/ai_budget.json"), {})
+        calls = ledger.get("calls", [])
+        latest_call = calls[-1] if calls else {}
+        ai_error = bool(ledger.get("exhausted")) or latest_call.get("status") == "failed"
+        scores_valid = all(type(source_result.get(key)) in (int, float)
+                           and 0 <= source_result[key] <= 100
+                           for key in ("source_score", "payoff"))
+        if (source_code != 0 and not ai_error and scores_valid
+                and isinstance(source_result.get("reason"), str) and source_result["reason"].strip()):
+            acquisition = load_json("work/kick_gaming/acquisition_result.json", {})
+            exclude(candidate, "completed_source_quality_rejection", source_result["reason"],
+                    [{"stage": "viral_gate.py",
+                      "start_original": acquisition.get("proposed_window_start_original"),
+                      "end_original": acquisition.get("proposed_window_end_original"),
+                      "source_score": source_result["source_score"], "payoff": source_result["payoff"]}])
+            row["permanent_spending_exclusion"] = True
 
         row.update(
             {
@@ -756,7 +778,10 @@ def main():
             "pre_render_validation": load_json("work/production/pre_render_plan_gate.json", {}),
         }
         if production_code != 0:
-            production_attempt["temporary_edit_cooldown"] = defer_failed_edit(candidate, action_result)
+            acquisition = load_json("work/kick_gaming/acquisition_result.json", {})
+            source_offset = acquisition.get("proposed_window_start_original", 0) if acquisition.get("local_source_is_selected_window") else 0
+            production_attempt["permanent_spending_exclusion"] = defer_failed_edit(
+                candidate, action_result, source_offset=source_offset)
         attempts.append(production_attempt)
         save_log(attempts)
 
@@ -765,10 +790,10 @@ def main():
                 f"V12.14.6 production failed for "
                 f"{clip_id}; trying next source."
             )
-            if production_attempt.get("temporary_edit_cooldown"):
-                print("Valid gunfight rejection: source cooled down for six hours; no permanent rejection.")
+            if production_attempt.get("permanent_spending_exclusion"):
+                print("Valid action rejection: reviewed candidate permanently excluded from automatic spending.")
             else:
-                print("Edit/render/API failure: no action cooldown or permanent rejection.")
+                print("Edit/render/API failure: no permanent action exclusion.")
             continue
 
         # Gambling/content safety remains a hard gate.
