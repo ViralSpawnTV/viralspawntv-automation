@@ -7,7 +7,7 @@ from pathlib import Path
 
 LIBRARY = Path('data/clip_library.json')
 STATE = Path('data/clip_library_state.json')
-LOCAL_POLICY = 'free-motion-window-v1'
+LOCAL_POLICY = 'local-gameplay-gunfire-v2'
 
 
 def read(path, default):
@@ -52,9 +52,10 @@ def blocked_ids():
 
 
 def ready(library, blocked=None):
+    from local_combat_screen import verified
     blocked = blocked_ids() if blocked is None else blocked
     return [row for cid, row in library.get('clips', {}).items()
-            if cid not in blocked and row.get('library_screen_tag') == LOCAL_POLICY]
+            if cid not in blocked and verified(row)]
 
 
 def merge(source_library, source_state):
