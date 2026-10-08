@@ -963,6 +963,389 @@
         "reason": "Contains some visible shooter engagement, but direct weapon combat is only clear in a couple samples; too much inactive movement/pause for a strict firefight gate."
       },
       "limitation": "Automatic spending exclusion; not proof that every source frame lacks combat."
+    },
+    "clip_01M4D5V42377HW995XJAXKGRDE": {
+      "policy": "direct-gunfight-window-v1",
+      "updated_at": 1791461173.4939566,
+      "expires_at": null,
+      "media_url": "https://clips.kick.com/clips/40/clip_01M4D5V42377HW995XJAXKGRDE/playlist.m3u8",
+      "passed": false,
+      "permanent_exclusion": true,
+      "window_start": 34.0,
+      "exclusion_basis": "strongest_preview_window_failed_paid_action_screen",
+      "reviewed_windows": [
+        {
+          "stage": "active_firefight_prescreener.py",
+          "start_original": 34.0,
+          "nominal_window_seconds": 35,
+          "verdict": {
+            "id": 0,
+            "firefight_score": 58,
+            "active_samples": 2,
+            "sustained_combat": false,
+            "direct_gunfight": false,
+            "enemy_engagement": 62,
+            "combat_intensity": 68,
+            "dead_time_risk": 45,
+            "content_type": "gaming",
+            "reason": "Some CS2 engagement is visible, but only a couple sampled moments clearly show weapon exchange; several samples are just movement/aiming or low-evidence states."
+          }
+        }
+      ],
+      "verdict": {
+        "reason": "Some CS2 engagement is visible, but only a couple sampled moments clearly show weapon exchange; several samples are just movement/aiming or low-evidence states."
+      },
+      "limitation": "Automatic spending exclusion; not proof that every source frame lacks combat."
+    },
+    "clip_01M4DB3JCJGEA6877W88HBFHB3": {
+      "policy": "direct-gunfight-window-v1",
+      "updated_at": 1791461173.4952846,
+      "expires_at": null,
+      "media_url": "https://clips.kick.com/clips/b1/clip_01M4DB3JCJGEA6877W88HBFHB3/playlist.m3u8",
+      "passed": false,
+      "permanent_exclusion": true,
+      "window_start": 8.0,
+      "exclusion_basis": "strongest_preview_window_failed_paid_action_screen",
+      "reviewed_windows": [
+        {
+          "stage": "active_firefight_prescreener.py",
+          "start_original": 8.0,
+          "nominal_window_seconds": 35,
+          "verdict": {
+            "id": 1,
+            "firefight_score": 34,
+            "active_samples": 1,
+            "sustained_combat": false,
+            "direct_gunfight": false,
+            "enemy_engagement": 40,
+            "combat_intensity": 42,
+            "dead_time_risk": 70,
+            "content_type": "gaming",
+            "reason": "Brief enemy contact appears in one sample, but most frames are movement, knife use, or inactive downtime; not a sustained firefight."
+          }
+        }
+      ],
+      "verdict": {
+        "reason": "Brief enemy contact appears in one sample, but most frames are movement, knife use, or inactive downtime; not a sustained firefight."
+      },
+      "limitation": "Automatic spending exclusion; not proof that every source frame lacks combat."
+    },
+    "clip_01M4CFDDRZQE68R5J5RNE6EJC9": {
+      "policy": "direct-gunfight-window-v1",
+      "updated_at": 1791461173.4964466,
+      "expires_at": null,
+      "media_url": "https://clips.kick.com/clips/14/clip_01M4CFDDRZQE68R5J5RNE6EJC9/playlist.m3u8",
+      "passed": false,
+      "permanent_exclusion": true,
+      "window_start": 84.0,
+      "exclusion_basis": "strongest_preview_window_failed_paid_action_screen",
+      "reviewed_windows": [
+        {
+          "stage": "active_firefight_prescreener.py",
+          "start_original": 84.0,
+          "nominal_window_seconds": 35,
+          "verdict": {
+            "id": 2,
+            "firefight_score": 18,
+            "active_samples": 0,
+            "sustained_combat": false,
+            "direct_gunfight": false,
+            "enemy_engagement": 20,
+            "combat_intensity": 22,
+            "dead_time_risk": 85,
+            "content_type": "gaming",
+            "reason": "No convincing visible direct weapon exchange in the sampled moments; mostly traversal, reloads, and positioning."
+          }
+        }
+      ],
+      "verdict": {
+        "reason": "No convincing visible direct weapon exchange in the sampled moments; mostly traversal, reloads, and positioning."
+      },
+      "limitation": "Automatic spending exclusion; not proof that every source frame lacks combat."
+    },
+    "clip_01M24N523EK8W65NZS1R281CD1": {
+      "policy": "direct-gunfight-window-v1",
+      "updated_at": 1791461173.4976418,
+      "expires_at": null,
+      "media_url": "https://clips.kick.com/clips/57/clip_01M24N523EK8W65NZS1R281CD1/playlist.m3u8",
+      "passed": false,
+      "permanent_exclusion": true,
+      "window_start": 28.0,
+      "exclusion_basis": "strongest_preview_window_failed_paid_action_screen",
+      "reviewed_windows": [
+        {
+          "stage": "active_firefight_prescreener.py",
+          "start_original": 28.0,
+          "nominal_window_seconds": 35,
+          "verdict": {
+            "id": 3,
+            "firefight_score": 22,
+            "active_samples": 1,
+            "sustained_combat": false,
+            "direct_gunfight": false,
+            "enemy_engagement": 28,
+            "combat_intensity": 30,
+            "dead_time_risk": 78,
+            "content_type": "gaming",
+            "reason": "One sample shows direct shooting at an enemy, but the rest are post-fight/victory or non-combat frames, so it fails the sustained firefight requirement."
+          }
+        }
+      ],
+      "verdict": {
+        "reason": "One sample shows direct shooting at an enemy, but the rest are post-fight/victory or non-combat frames, so it fails the sustained firefight requirement."
+      },
+      "limitation": "Automatic spending exclusion; not proof that every source frame lacks combat."
+    },
+    "clip_01M4D9QH91T6RHSV54HFYTY6T1": {
+      "policy": "direct-gunfight-window-v1",
+      "updated_at": 1791461225.5708914,
+      "expires_at": null,
+      "media_url": "https://clips.kick.com/clips/fc/clip_01M4D9QH91T6RHSV54HFYTY6T1/playlist.m3u8",
+      "passed": false,
+      "permanent_exclusion": true,
+      "window_start": 36.0,
+      "exclusion_basis": "strongest_preview_window_failed_paid_action_screen",
+      "reviewed_windows": [
+        {
+          "stage": "active_firefight_prescreener.py",
+          "start_original": 36.0,
+          "nominal_window_seconds": 35,
+          "verdict": {
+            "id": 0,
+            "firefight_score": 18,
+            "active_samples": 1,
+            "sustained_combat": false,
+            "direct_gunfight": false,
+            "enemy_engagement": 12,
+            "combat_intensity": 15,
+            "dead_time_risk": 82,
+            "content_type": "gaming",
+            "reason": "Counter-Strike view shows weapon held during movement, but no visible enemy exchange or firing in the sampled frames."
+          }
+        }
+      ],
+      "verdict": {
+        "reason": "Counter-Strike view shows weapon held during movement, but no visible enemy exchange or firing in the sampled frames."
+      },
+      "limitation": "Automatic spending exclusion; not proof that every source frame lacks combat."
+    },
+    "clip_01M4D3V0H5GJ9HNGNAYXDYG2CV": {
+      "policy": "direct-gunfight-window-v1",
+      "updated_at": 1791461225.5722709,
+      "expires_at": null,
+      "media_url": "https://clips.kick.com/clips/39/clip_01M4D3V0H5GJ9HNGNAYXDYG2CV/playlist.m3u8",
+      "passed": false,
+      "permanent_exclusion": true,
+      "window_start": 22.0,
+      "exclusion_basis": "strongest_preview_window_failed_paid_action_screen",
+      "reviewed_windows": [
+        {
+          "stage": "active_firefight_prescreener.py",
+          "start_original": 22.0,
+          "nominal_window_seconds": 35,
+          "verdict": {
+            "id": 1,
+            "firefight_score": 0,
+            "active_samples": 0,
+            "sustained_combat": false,
+            "direct_gunfight": false,
+            "enemy_engagement": 0,
+            "combat_intensity": 0,
+            "dead_time_risk": 100,
+            "content_type": "gaming",
+            "reason": "Samples are a music-video style scene, not gameplay combat."
+          }
+        }
+      ],
+      "verdict": {
+        "reason": "Samples are a music-video style scene, not gameplay combat."
+      },
+      "limitation": "Automatic spending exclusion; not proof that every source frame lacks combat."
+    },
+    "clip_01M4D69R1Q1BTE01CGPYPRM9EP": {
+      "policy": "direct-gunfight-window-v1",
+      "updated_at": 1791461225.573548,
+      "expires_at": null,
+      "media_url": "https://clips.kick.com/clips/b3/clip_01M4D69R1Q1BTE01CGPYPRM9EP/playlist.m3u8",
+      "passed": false,
+      "permanent_exclusion": true,
+      "window_start": 84.0,
+      "exclusion_basis": "strongest_preview_window_failed_paid_action_screen",
+      "reviewed_windows": [
+        {
+          "stage": "active_firefight_prescreener.py",
+          "start_original": 84.0,
+          "nominal_window_seconds": 35,
+          "verdict": {
+            "id": 2,
+            "firefight_score": 0,
+            "active_samples": 0,
+            "sustained_combat": false,
+            "direct_gunfight": false,
+            "enemy_engagement": 0,
+            "combat_intensity": 0,
+            "dead_time_risk": 100,
+            "content_type": "gaming",
+            "reason": "Samples show driving in GTA with no visible firefight or ranged combat."
+          }
+        }
+      ],
+      "verdict": {
+        "reason": "Samples show driving in GTA with no visible firefight or ranged combat."
+      },
+      "limitation": "Automatic spending exclusion; not proof that every source frame lacks combat."
+    },
+    "clip_01M4D2YVCHMMYDN04NVVWDGQCH": {
+      "policy": "direct-gunfight-window-v1",
+      "updated_at": 1791461225.5748382,
+      "expires_at": 1791547625.5748382,
+      "media_url": "https://clips.kick.com/clips/2a/clip_01M4D2YVCHMMYDN04NVVWDGQCH/playlist.m3u8",
+      "passed": true,
+      "verdict": {
+        "id": 3,
+        "firefight_score": 93,
+        "active_samples": 5,
+        "sustained_combat": true,
+        "direct_gunfight": true,
+        "enemy_engagement": 95,
+        "combat_intensity": 92,
+        "dead_time_risk": 5,
+        "content_type": "gaming",
+        "reason": "Fortnite sample window shows repeated direct weapon fire with visible combat exchange, hit effects, and sustained engagement across nearly all sampled moments."
+      },
+      "window_start": 26.0
+    },
+    "clip_01H6SAFFF2C3CVS6MY4TP61FX6": {
+      "policy": "direct-gunfight-window-v1",
+      "updated_at": 1791461264.5080287,
+      "expires_at": null,
+      "media_url": "https://clips.kick.com/clips/x6/clip_01H6SAFFF2C3CVS6MY4TP61FX6/playlist.m3u8",
+      "passed": false,
+      "permanent_exclusion": true,
+      "window_start": 0.0,
+      "exclusion_basis": "strongest_preview_window_failed_paid_action_screen",
+      "reviewed_windows": [
+        {
+          "stage": "active_firefight_prescreener.py",
+          "start_original": 0.0,
+          "nominal_window_seconds": 35,
+          "verdict": {
+            "id": 0,
+            "firefight_score": 38,
+            "active_samples": 1,
+            "sustained_combat": false,
+            "direct_gunfight": false,
+            "enemy_engagement": 45,
+            "combat_intensity": 42,
+            "dead_time_risk": 62,
+            "content_type": "gaming",
+            "reason": "Valorant clip shows one visible firing exchange, but most sampled moments are aim/reload/ACE banner with no sustained direct weapon combat across 4 of 5 samples."
+          }
+        }
+      ],
+      "verdict": {
+        "reason": "Valorant clip shows one visible firing exchange, but most sampled moments are aim/reload/ACE banner with no sustained direct weapon combat across 4 of 5 samples."
+      },
+      "limitation": "Automatic spending exclusion; not proof that every source frame lacks combat."
+    },
+    "clip_01M4DBF1YPM9GRBVYNQZRFGHXN": {
+      "policy": "direct-gunfight-window-v1",
+      "updated_at": 1791461264.5094981,
+      "expires_at": null,
+      "media_url": "https://clips.kick.com/clips/3e/clip_01M4DBF1YPM9GRBVYNQZRFGHXN/playlist.m3u8",
+      "passed": false,
+      "permanent_exclusion": true,
+      "window_start": 30.0,
+      "exclusion_basis": "strongest_preview_window_failed_paid_action_screen",
+      "reviewed_windows": [
+        {
+          "stage": "active_firefight_prescreener.py",
+          "start_original": 30.0,
+          "nominal_window_seconds": 35,
+          "verdict": {
+            "id": 1,
+            "firefight_score": 22,
+            "active_samples": 1,
+            "sustained_combat": false,
+            "direct_gunfight": false,
+            "enemy_engagement": 25,
+            "combat_intensity": 28,
+            "dead_time_risk": 78,
+            "content_type": "gaming",
+            "reason": "CS2 samples are mostly knife movement and holding angles; only one frame suggests active gun use, which is not enough for a real sustained firefight."
+          }
+        }
+      ],
+      "verdict": {
+        "reason": "CS2 samples are mostly knife movement and holding angles; only one frame suggests active gun use, which is not enough for a real sustained firefight."
+      },
+      "limitation": "Automatic spending exclusion; not proof that every source frame lacks combat."
+    },
+    "clip_01M4D9AJ6N7QHV1ZNCG3WKKEY0": {
+      "policy": "direct-gunfight-window-v1",
+      "updated_at": 1791461264.5108833,
+      "expires_at": null,
+      "media_url": "https://clips.kick.com/clips/8b/clip_01M4D9AJ6N7QHV1ZNCG3WKKEY0/playlist.m3u8",
+      "passed": false,
+      "permanent_exclusion": true,
+      "window_start": 22.0,
+      "exclusion_basis": "strongest_preview_window_failed_paid_action_screen",
+      "reviewed_windows": [
+        {
+          "stage": "active_firefight_prescreener.py",
+          "start_original": 22.0,
+          "nominal_window_seconds": 35,
+          "verdict": {
+            "id": 2,
+            "firefight_score": 12,
+            "active_samples": 0,
+            "sustained_combat": false,
+            "direct_gunfight": false,
+            "enemy_engagement": 10,
+            "combat_intensity": 12,
+            "dead_time_risk": 90,
+            "content_type": "gaming",
+            "reason": "No visible direct weapon exchange in the sampled frames; mostly movement, then post-fight/menu state."
+          }
+        }
+      ],
+      "verdict": {
+        "reason": "No visible direct weapon exchange in the sampled frames; mostly movement, then post-fight/menu state."
+      },
+      "limitation": "Automatic spending exclusion; not proof that every source frame lacks combat."
+    },
+    "clip_01M4D94EN9RKHA33ZFVM5BPD8A": {
+      "policy": "direct-gunfight-window-v1",
+      "updated_at": 1791461264.5122795,
+      "expires_at": null,
+      "media_url": "https://clips.kick.com/clips/27/clip_01M4D94EN9RKHA33ZFVM5BPD8A/playlist.m3u8",
+      "passed": false,
+      "permanent_exclusion": true,
+      "window_start": 48.0,
+      "exclusion_basis": "strongest_preview_window_failed_paid_action_screen",
+      "reviewed_windows": [
+        {
+          "stage": "active_firefight_prescreener.py",
+          "start_original": 48.0,
+          "nominal_window_seconds": 35,
+          "verdict": {
+            "id": 3,
+            "firefight_score": 18,
+            "active_samples": 0,
+            "sustained_combat": false,
+            "direct_gunfight": false,
+            "enemy_engagement": 15,
+            "combat_intensity": 20,
+            "dead_time_risk": 85,
+            "content_type": "gaming",
+            "reason": "Samples show knife movement and cautious rifle positioning, but no clear firing or enemy engagement visible in the sampled window."
+          }
+        }
+      ],
+      "verdict": {
+        "reason": "Samples show knife movement and cautious rifle positioning, but no clear firing or enemy engagement visible in the sampled window."
+      },
+      "limitation": "Automatic spending exclusion; not proof that every source frame lacks combat."
     }
   }
 }
