@@ -1,4 +1,4 @@
-"""Verify the actual fight edit, with one bounded attempt to trim idle edges."""
+"""Verify live combat, with one bounded attempt to isolate a tighter fight window."""
 import base64
 import copy
 import json
@@ -70,25 +70,30 @@ def judge_samples(data, seconds):
         return invalid("Incomplete/invalid visual verdicts", missing_ids=missing,
                        unexpected_ids=unexpected, invalid_rows=invalid_rows,
                        invalid_fields=invalid_fields, returned_rows=len(rows))
-    direct = [by_id[i]["direct_gunfight"] for i in range(SAMPLES)]
-    positions = [i for i, value in enumerate(direct) if value]
     width = seconds / SAMPLES
+    raw_positions = [i for i in range(SAMPLES) if by_id[i]["direct_gunfight"]]
+    # A live terminal result remains valid when a replay appears afterward.
+    # Persistent banners (context none) cannot establish a terminal result.
+    terminal = [i for i in range(SAMPLES)
+                if by_id[i]["terminal_payoff"] and by_id[i]["context_type"] == "outcome"
+                and any(j <= i and (i - j) * width <= CONTEXT_LIMITS["outcome"]
+                        for j in raw_positions)]
+    terminal = terminal[:1]
+    cutoff = terminal[0] if terminal else SAMPLES - 1
+    direct = [by_id[i]["direct_gunfight"] and i <= cutoff for i in range(SAMPLES)]
+    positions = [i for i, value in enumerate(direct) if value]
     meaningful = direct.copy()
     outcomes = []
-    terminal = []
-    for i in range(SAMPLES):
+    for i in range(cutoff + 1):
         kind = by_id[i].get("context_type", "none")
         if kind not in CONTEXT_LIMITS or not positions:
             continue
-        # A result cannot validate earlier idle footage or unrelated future combat.
         nearby = [j for j in positions if j <= i] if kind == "outcome" else positions
         distance = min((abs(i - j) * width for j in nearby), default=math.inf)
         if distance <= CONTEXT_LIMITS[kind]:
             meaningful[i] = True
             if kind == "outcome":
                 outcomes.append(i)
-                if by_id[i].get("terminal_payoff") is True and not any(j > i for j in positions):
-                    terminal.append(i)
     inactive_run = longest = 0
     for value in meaningful:
         inactive_run = 0 if value else inactive_run + 1
@@ -118,7 +123,7 @@ def judge_samples(data, seconds):
 
 
 def propose_trim(result, start, end, payoff_time=None):
-    """Propose only an edge trim; approval always requires new exact-frame evidence."""
+    """Propose one continuous window; exact fresh visual evidence must approve it."""
     if not result.get("valid_evidence") or result.get("active_samples", 0) < 3:
         return None
     if result.get("model_evidence", {}).get("ranged_shooter_gameplay") is not True:
@@ -127,16 +132,26 @@ def propose_trim(result, start, end, payoff_time=None):
     if not useful:
         return None
     width = (end - start) / SAMPLES
+    terminal = result.get("terminal_payoff_sample_ids", [])
+    if terminal:
+        # Finish at the first confirmed live result, rather than waiting for replay.
+        last = start + (terminal[0] + 0.5) * width
+        new_end = min(end, last + 1.75)
+    else:
+        last = start + (useful[-1] + 0.5) * width
+        new_end = min(end, last + min(1.75, width / 2 + 0.4))
     first = float(result["estimated_first_combat_seconds"])
     new_start = start + max(0.0, first - width / 2 - 0.4) if first > 4 else start
-    last = start + (useful[-1] + 0.5) * width
-    new_end = min(end, last + min(1.75, width / 2 + 0.4))
+    if result.get("estimated_longest_inactive_seconds", 0) > 6:
+        # With internal gaps, isolate the final 19s fight instead of retaining
+        # all earlier engagements. This is only a proposal, never an approval.
+        new_start = max(new_start, new_end - MIN_CORE_SECONDS)
+    if new_end - new_start < MIN_CORE_SECONDS:
+        new_start = max(start, new_end - MIN_CORE_SECONDS)
     if new_end - new_start < MIN_CORE_SECONDS or end - new_end + new_start - start < 2:
         return None
-    if payoff_time is not None and math.isfinite(payoff_time) and payoff_time > new_end:
-        # Replace a later estimated payoff only with explicit visible fight resolution.
-        if not result.get("terminal_payoff_sample_ids"):
-            return None
+    if payoff_time is not None and math.isfinite(payoff_time) and payoff_time > new_end and not terminal:
+        return None
     return new_start, new_end
 
 
@@ -156,6 +171,24 @@ def trimmed_plan(plan, start, end):
                 beat["time"] = timestamp
                 beats.append(beat)
         updated[key] = beats
+    if "english_caption_segments" in updated:
+        captions = []
+        for item in updated["english_caption_segments"]:
+            item = dict(item)
+            left = max(0.0, float(item.get("start", 0)) - delta)
+            right = min(end - start, float(item.get("end", 0)) - delta)
+            if right > left:
+                item.update(start=left, end=right)
+                captions.append(item)
+        updated["english_caption_segments"] = captions
+    # Opening-specific hooks may become false after shifting to a later fight.
+    if delta > 0.05:
+        updated["headline"] = "CAN HE FINISH THIS FIGHT?"
+        updated["hook_reason"] = "Neutral hook after a visually verified fight-window repair."
+        updated["commentary"] = [{"time": 0.15, "text": "Can he finish this fight?", "delivery": "serious"}]
+    if isinstance(updated.get("pre_render_validation"), dict):
+        updated["pre_render_validation"].update(segment_start=start, segment_end=end,
+            action_window_repaired=True)
     return updated
 
 
@@ -176,6 +209,9 @@ def inspect_segment(client, video, start, end, folder):
         "Also set terminal_payoff boolean: true only for a visible result that resolves the "
         "shown fight, such as a confirmed team wipe or final elimination. Intermediate knocks "
         "and a persistent banner alone are not terminal payoff. "
+        "A final-kill replay is NOT new live combat or a later terminal payoff: "
+        "mark replay intervals direct_gunfight=false, context_type=none, terminal_payoff=false. "
+        "Prefer the first visible live final elimination or victory transition. "
         "Return JSON only: ranged_shooter_gameplay boolean and samples, exactly 16 objects with "
         "integer id 0-15, direct_gunfight boolean, context_type, terminal_payoff boolean, "
         "and an evidence STRING (field name exactly evidence, not visible_evidence). "
@@ -252,9 +288,14 @@ def validate_action_segment(client, video, plan, work):
             result = repaired
             if repaired["passed"]:
                 plan.update(trimmed_plan(plan, *proposed))
-                terminal = first.get("terminal_payoff_sample_ids", [])
-                if payoff is not None and payoff > proposed[1] and terminal:
-                    plan["payoff_time"] = start + (terminal[-1] + 0.5) * (end - start) / SAMPLES
+                terminal = repaired.get("terminal_payoff_sample_ids", [])
+                if terminal:
+                    plan["payoff_time"] = proposed[0] + (terminal[0] + 0.5) * (proposed[1] - proposed[0]) / SAMPLES
+                elif first.get("terminal_payoff_sample_ids"):
+                    terminal = first["terminal_payoff_sample_ids"]
+                    plan["payoff_time"] = start + (terminal[0] + 0.5) * (end - start) / SAMPLES
+                if isinstance(plan.get("pre_render_validation"), dict):
+                    plan["pre_render_validation"]["verified_payoff_time"] = plan.get("payoff_time")
                 plan["action_edit_repair"] = {"original_start": start, "original_end": end,
                                              "trimmed_start": proposed[0], "trimmed_end": proposed[1]}
     result = dict(result, attempts=attempts)
