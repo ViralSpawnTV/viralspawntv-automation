@@ -1,0 +1,67 @@
+name: ViralSpawnTV - Review Library Windows (No OpenAI)
+
+on:
+  workflow_dispatch:
+    inputs:
+      max_clips:
+        description: 'Review clips, including known failed controls (1-25)'
+        default: '25'
+        required: true
+        type: string
+      minutes:
+        description: 'Review time budget (3-120)'
+        default: '60'
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: viralspawntv-library-review
+  cancel-in-progress: false
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    env:
+      OPENAI_API_KEY: ''
+      OMP_NUM_THREADS: '2'
+      OPENBLAS_NUM_THREADS: '2'
+      MKL_NUM_THREADS: '2'
+      MAX_CLIPS: ${{ inputs.max_clips }}
+      REVIEW_MINUTES: ${{ inputs.minutes }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/viralspawntv-ffmpeg
+            ~/.cache/viralspawntv-models
+          key: viralspawntv-local-models-v2-${{ runner.os }}
+      - name: Prepare FFmpeg
+        timeout-minutes: 6
+        run: bash ensure_ffmpeg.sh
+      - name: Install local dependencies
+        run: python -m pip install -r requirements_local_screen.txt
+      - name: Validate local models
+        timeout-minutes: 12
+        env:
+          HF_HUB_DOWNLOAD_TIMEOUT: '60'
+          HF_HUB_ETAG_TIMEOUT: '30'
+        run: python local_combat_screen.py --prepare
+      - name: Export footage and compare experimental combat evidence
+        run: python review_clip_library.py --limit "$MAX_CLIPS" --minutes "$REVIEW_MINUTES"
+      - name: Save review footage, contact sheets and evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: viralspawntv-library-window-review
+          retention-days: 7
+          if-no-files-found: warn
+          path: |
+            work/library_review/
+            work/local_model_setup_result.json
