@@ -11,6 +11,7 @@ concurrency:
 
 permissions:
   contents: write
+  actions: read
 
 jobs:
   short:
@@ -65,6 +66,8 @@ jobs:
       - name: Produce V12.1 Short
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          GH_TOKEN: ${{ github.token }}
+          READY_MAX_PRODUCTION_ATTEMPTS: "3"
           NARRATION_MAX_BEATS: "1"
           MUSIC_VOLUME: "0.12"
           MUSIC_DIR: "assets/music/assets/music"
@@ -84,6 +87,7 @@ jobs:
           fi
 
       - name: Upload public Short
+        id: publish_short
         env:
           YOUTUBE_TOKEN_JSON: ${{ secrets.YOUTUBE_TOKEN_JSON }}
         run: python youtube_upload.py
@@ -101,6 +105,31 @@ jobs:
           retention-days: 2
           if-no-files-found: error
           path: work/production/ViralSpawnTV_Short_V4.mp4
+
+      - name: Mark and persist verified reserve consumption
+        if: always()
+        env:
+          TARGET_BRANCH: ${{ github.event.repository.default_branch }}
+          PUBLISHED: ${{ steps.publish_short.outcome }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "$PUBLISHED" = "success" ]; then
+            python verified_clip_queue.py publish --succeeded
+          fi
+          mkdir -p work/verified_queue_recovery
+          for file in history.json music_rotation_state.json shorts_rejected_history.json; do
+            if [ -f "$file" ]; then cp "$file" "/tmp/verified_$file"; fi
+          done
+          if [ -f data/verified_clip_queue.json ]; then
+            cp data/verified_clip_queue.json work/verified_queue_recovery/queue.json
+          fi
+          git config user.name 'ViralSpawnTV Verified Reserve'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          python verified_clip_queue.py persist data/verified_clip_queue.json
+          for file in history.json music_rotation_state.json shorts_rejected_history.json; do
+            if [ -f "/tmp/verified_$file" ]; then cp "/tmp/verified_$file" "$file"; fi
+          done
 
       - name: Persist successful Short history
         shell: bash
@@ -668,6 +697,10 @@ jobs:
             music_rotation_state.json
             shorts_rejected_history.json
             firefight_screen_cache.json
+            work/verified_queue_recovery/queue.json
+            work/verified_selected.json
+            data/verified_clip_queue.json
+            work/source_quality_gate/source_quality_gate_result.json
             work/ai_budget.json
             work/firefight_prescreen/screening_report.json
             work/v12_firefight_candidates.json
