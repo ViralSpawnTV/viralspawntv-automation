@@ -2539,14 +2539,9 @@ Return ONLY valid JSON:
             "for the 20-60 second fight-focused Shorts strategy."
         )
 
-    # Long sources still prefer a 52s+ story when available.
-    # Short 40-51s sources are no longer forced to use the ENTIRE file,
-    # because doing so kept post-payoff console/menu footage.
-    preferred_min = (
-        CORE_IDEAL_MIN_SECONDS
-        if seconds >= CORE_IDEAL_MIN_SECONDS
-        else CORE_MIN_SECONDS
-    )
+    # Preserve the planner's fight window regardless of raw source length.
+    # A long source does not justify pushing the start back into idle footage.
+    preferred_min = CORE_MIN_SECONDS
 
     max_start = max(
         0.0,
