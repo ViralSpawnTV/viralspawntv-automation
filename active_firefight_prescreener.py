@@ -12,6 +12,7 @@ from pathlib import Path
 
 from openai import OpenAI
 from firefight_cache import load as load_cache, current as cached_verdict, remember, exclude
+from local_combat_screen import verified, POLICY as LOCAL_SCREEN_POLICY
 
 
 INPUT = Path("work/v12_ranked_candidates.json")
@@ -30,7 +31,7 @@ WORK.mkdir(parents=True, exist_ok=True)
 
 MAX_CANDIDATES = 100
 
-LOCAL_AI_CANDIDATES = min(12, max(1, int(os.getenv("FIREFIGHT_MAX_PAID_CLIPS", "12"))))
+LOCAL_AI_CANDIDATES = min(12, max(1, int(os.getenv("FIREFIGHT_MAX_PAID_CLIPS", "6"))))
 TARGET_SURVIVORS = 4
 MIN_SURVIVORS = 16
 
@@ -130,358 +131,6 @@ def data_url(path):
     return "data:image/jpeg;base64," + encoded
 
 
-def title_term_score(candidate):
-    text = " ".join(
-        [
-            str(candidate.get("page_title", "")),
-            str(candidate.get("metadata_text", "")),
-            " ".join(candidate.get("action_hits", []) or []),
-        ]
-    ).casefold()
-
-    hits = sum(
-        1
-        for term in TITLE_COMBAT_TERMS
-        if term in text
-    )
-
-    return min(
-        100.0,
-        hits * 18.0,
-    )
-
-
-def frame_motion_metrics(media_url):
-    """
-    One local FFmpeg process per clip.
-
-    We decode a tiny 96x54 grayscale frame every ~5 seconds and calculate:
-      - average frame-to-frame pixel change
-      - burst motion (how many pixels change substantially)
-      - sustained motion (how many frame transitions are active)
-
-    This is intentionally cheap and local. It is NOT the final firearm
-    classifier. Its purpose is to eliminate obviously static / menu /
-    spectating / low-action clips before any paid vision call.
-    """
-
-    command = [
-        "ffmpeg",
-        "-loglevel",
-        "error",
-        "-i",
-        media_url,
-        "-vf",
-        f"fps={LOCAL_FPS},scale={LOCAL_WIDTH}:{LOCAL_HEIGHT},format=gray",
-        "-f",
-        "rawvideo",
-        "-pix_fmt",
-        "gray",
-        "-",
-    ]
-
-    proc = subprocess.run(
-        command,
-        check=True,
-        capture_output=True,
-        timeout=60,
-    )
-
-    raw = proc.stdout
-
-    if len(raw) < LOCAL_FRAME_BYTES * 2:
-        return {
-            "frame_count": 0,
-            "avg_change": 0.0,
-            "burst_change": 0.0,
-            "active_transition_ratio": 0.0,
-        }
-
-    count = len(raw) // LOCAL_FRAME_BYTES
-
-    frames = [
-        raw[
-            i * LOCAL_FRAME_BYTES:
-            (i + 1) * LOCAL_FRAME_BYTES
-        ]
-        for i in range(count)
-    ]
-
-    transition_means = []
-    transition_bursts = []
-
-    previous = frames[0]
-
-    for current in frames[1:]:
-        total = 0
-        burst_pixels = 0
-
-        for a, b in zip(previous, current):
-            diff = abs(a - b)
-            total += diff
-
-            if diff >= 22:
-                burst_pixels += 1
-
-        mean_change = total / LOCAL_FRAME_BYTES
-        burst_ratio = burst_pixels / LOCAL_FRAME_BYTES
-
-        transition_means.append(mean_change)
-        transition_bursts.append(burst_ratio)
-
-        previous = current
-
-    avg_change = (
-        sum(transition_means)
-        /
-        max(1, len(transition_means))
-    )
-
-    burst_change = (
-        sum(transition_bursts)
-        /
-        max(1, len(transition_bursts))
-    )
-
-    # Transition is "active" when there is both meaningful whole-frame
-    # motion and a non-trivial fraction of strongly changing pixels.
-    active = 0
-
-    for mean_change, burst_ratio in zip(
-        transition_means,
-        transition_bursts,
-    ):
-        if (
-            mean_change >= 10.0
-            and
-            burst_ratio >= 0.12
-        ):
-            active += 1
-
-    active_transition_ratio = (
-        active
-        /
-        max(1, len(transition_means))
-    )
-
-    # A promising 35-second window, rather than whole-clip sustained motion.
-    width = max(1, min(len(transition_means), 7))
-    peak = max(range(max(1, len(transition_means) - width + 1)),
-               key=lambda i: sum(transition_means[i:i + width]))
-    return {
-        "window_start": peak * 5.0,
-        "frame_count":
-            count,
-        "avg_change":
-            round(avg_change, 4),
-        "burst_change":
-            round(burst_change, 4),
-        "active_transition_ratio":
-            round(active_transition_ratio, 4),
-    }
-
-
-def local_candidate_score(candidate):
-    media_url = str(
-        candidate.get("media_url")
-        or
-        candidate.get("playlist_url")
-        or
-        ""
-    ).strip()
-
-    if not media_url:
-        raise RuntimeError(
-            "candidate has no media URL"
-        )
-
-    # Download once, then reuse the local preview for all frame extraction.
-    preview = WORK / safe_name(candidate.get("clip_id", "")) / "preview.mp4"
-    preview.parent.mkdir(parents=True, exist_ok=True)
-    preview.unlink(missing_ok=True)
-    try:
-        subprocess.run(["ffmpeg", "-v", "error", "-y", "-rw_timeout", "12000000",
-                        "-i", media_url, "-t", "120", "-map", "0:v:0", "-an",
-                        "-vf", "scale=640:-2", "-r", "15", "-c:v", "libx264",
-                        "-preset", "ultrafast", "-crf", "30", str(preview)],
-                       check=True, capture_output=True, timeout=90)
-        if not preview.is_file() or not preview.stat().st_size:
-            raise RuntimeError("Empty local preview")
-        metrics = frame_motion_metrics(str(preview))
-    except Exception:
-        preview.unlink(missing_ok=True)
-        raise
-
-    game = str(
-        candidate.get(
-            "game",
-            "",
-        )
-    ).strip().casefold()
-
-    shooter_prior = (
-        100.0
-        if game in SHOOTER_GAMES
-        else 10.0
-    )
-
-    # Map local raw motion into a loose 0-100 range.
-    motion_score = min(
-        100.0,
-        metrics[
-            "avg_change"
-        ] * 4.5,
-    )
-
-    burst_score = min(
-        100.0,
-        metrics[
-            "burst_change"
-        ] * 260.0,
-    )
-
-    sustained_score = min(
-        100.0,
-        metrics[
-            "active_transition_ratio"
-        ] * 100.0,
-    )
-
-    title_score = title_term_score(
-        candidate
-    )
-
-    # Firefight-first means shooter eligibility and sustained visual activity
-    # matter more than raw views at this stage.
-    score = (
-        motion_score * 0.28
-        +
-        burst_score * 0.25
-        +
-        sustained_score * 0.27
-        +
-        shooter_prior * 0.15
-        +
-        title_score * 0.05
-    )
-
-    row = dict(candidate)
-    row["local_preview_path"] = str(preview)
-    row["local_window_start"] = metrics.get("window_start", 0.0)
-    row["local_preview_seconds"] = min(120.0, float(candidate.get("source_duration_seconds") or 120))
-
-    row[
-        "local_firefight_score"
-    ] = round(
-        max(
-            0.0,
-            min(
-                100.0,
-                score,
-            ),
-        ),
-        2,
-    )
-
-    row[
-        "local_motion_score"
-    ] = round(
-        motion_score,
-        2,
-    )
-
-    row[
-        "local_burst_score"
-    ] = round(
-        burst_score,
-        2,
-    )
-
-    row[
-        "local_sustained_motion_score"
-    ] = round(
-        sustained_score,
-        2,
-    )
-
-    row[
-        "local_title_combat_score"
-    ] = round(
-        title_score,
-        2,
-    )
-
-    row[
-        "local_shooter_game"
-    ] = bool(
-        game in SHOOTER_GAMES
-    )
-
-    row[
-        "local_frame_count"
-    ] = metrics[
-        "frame_count"
-    ]
-
-    return row
-
-
-def local_scan_parallel(candidates):
-    rows = []
-
-    with ThreadPoolExecutor(
-        max_workers=LOCAL_WORKERS
-    ) as executor:
-        future_map = {
-            executor.submit(
-                local_candidate_score,
-                candidate,
-            ):
-                candidate
-            for candidate in candidates
-        }
-
-        for future in as_completed(
-            future_map
-        ):
-            candidate = future_map[
-                future
-            ]
-
-            try:
-                rows.append(
-                    future.result()
-                )
-            except Exception as exc:
-                print(
-                    f"LOCAL FIREFIGHT SKIP "
-                    f"{candidate.get('clip_id')}: "
-                    f"{exc}"
-                )
-
-    rows.sort(
-        key=lambda row: (
-            float(
-                row.get(
-                    "local_firefight_score",
-                    0,
-                )
-            ),
-            float(
-                row.get(
-                    "v12_metadata_score",
-                    0,
-                )
-                or
-                0
-            ),
-        ),
-        reverse=True,
-    )
-
-    return rows
-
-
 def ensure_ai_preview(candidate):
     """Library stores scores/URLs, so prepare media only for this shortlist.
 
@@ -530,8 +179,10 @@ def extract_ai_frames(candidate):
     media_url = candidate.get("local_preview_path", "")
     duration = float(candidate.get("local_preview_seconds") or 0)
     window_start = max(0.0, float(candidate.get("local_window_start") or 0))
-    window_start = min(window_start, max(0.0, duration - 35))
-    window_seconds = min(35.0, duration - window_start)
+    requested_seconds = float(candidate.get("local_window_seconds") or 35)
+    requested_seconds = max(19.0, min(35.0, requested_seconds))
+    window_start = min(window_start, max(0.0, duration - requested_seconds))
+    window_seconds = min(requested_seconds, duration - window_start)
     # Record the window actually sampled if the live source is shorter.
     candidate["local_window_start"] = window_start
 
@@ -773,10 +424,8 @@ to the more expensive payoff/story pipeline.
                         f"title={candidate.get('page_title', '')}\n"
                         f"local_firefight_score="
                         f"{candidate.get('local_firefight_score')}\n"
-                        f"local_motion="
-                        f"{candidate.get('local_motion_score')}\n"
-                        f"local_sustained="
-                        f"{candidate.get('local_sustained_motion_score')}\n"
+                        f"window_seconds={candidate.get('local_window_seconds')}\n"
+                        "Local screen is provisional; decide combat from these images.\n"
                         "NEXT: SAMPLED FRAMES"
                     ),
             }
@@ -918,9 +567,13 @@ def main():
     payload = json.loads(INPUT.read_text(encoding="utf-8"))
     cache = load_cache()
     rows = []
+    unverified_count = 0
     seen = set()
     for row in payload.get("candidates", []):
         if not isinstance(row, dict):
+            continue
+        if not verified(row):
+            unverified_count += 1
             continue
         clip_id = str(row.get("clip_id", ""))
         if not clip_id or clip_id in seen:
@@ -933,11 +586,18 @@ def main():
             break
     report = {"version": "budget-screen-v1", "input_count": len(rows),
               "paid_clip_limit": LOCAL_AI_CANDIDATES, "paid_clip_count": 0,
-              "cached_passes": 0, "cached_rejects": 0, "decisions": [], "errors": []}
+              "cached_passes": 0, "cached_rejects": 0, "unverified_skips":unverified_count, "decisions": [], "errors": []}
     survivors = []
     uncached = []
     for row in rows:
         entry = cached_verdict(row, cache)
+        if entry and entry.get("passed") is True:
+            # Reuse approval only for this exact local window/policy. Old
+            # cached passes reviewed a different longer window.
+            if (entry.get("local_screen_policy") != LOCAL_SCREEN_POLICY
+                    or entry.get("window_seconds") != row.get("local_window_seconds")
+                    or entry.get("window_start") != row.get("local_window_start")):
+                entry = None
         if entry and entry.get("passed") is not True:
             report["cached_rejects"] += 1
             if entry.get("permanent_exclusion"):
@@ -967,38 +627,19 @@ def main():
     local_rows = []
     try:
         if len(survivors) < TARGET_SURVIVORS:
-            # Library records are free motion evidence, NOT paid/visual passes.
+            # Library records are provisional local image/audio evidence, NOT visual approvals.
             # Reuse only complete records from our local scan policy; all still
             # face the paid gunfight confirmation and exact edit checks.
-            from clip_library import LOCAL_POLICY
-            library_rows = [row for row in uncached
-                            if row.get("library_screen_tag") == LOCAL_POLICY
-                            and row.get("library_visual_approved") is False
-                            and row.get("local_frame_count", 0) >= 20
-                            and row.get("local_motion_score", 0) >= 35
-                            and row.get("local_sustained_motion_score", 0) >= 45
-                            and row.get("local_longest_idle_seconds", 999) <= 8
-                            and row.get("local_window_start") is not None]
+            library_rows = [row for row in uncached if verified(row)]
             library_ids = {row["clip_id"] for row in library_rows}
             local_rows = [dict(row, local_shooter_game=True) for row in library_rows]
-            local_rows += local_scan_parallel([row for row in uncached if row["clip_id"] not in library_ids])
+            report["legacy_unverified_skips"] = len(uncached) - len(library_rows)
             local_rows.sort(key=lambda row: row.get("local_firefight_score", 0), reverse=True)
-            # A loose motion threshold removes static footage; it never confirms combat.
-            for row in local_rows:
-                # Only a successfully decoded preview can become a spending skip.
-                # Download/FFmpeg failures never appear here as qualified rows.
-                if row.get("local_frame_count", 0) >= 5 and row.get("local_motion_score", 0) < 12:
-                    exclude(row, "local_preview_no_promising_window",
-                            "No promising motion window in the bounded local preview; no AI review purchased")
-                    report["decisions"].append({"clip_id": row.get("clip_id"),
-                        "passed": False, "paid": False, "permanent_exclusion": True,
-                        "reason": "No promising local preview window"})
             shortlist = [row for row in local_rows if row.get("local_shooter_game") is True
-                         and row.get("local_frame_count", 0) >= 5
-                         and row.get("local_motion_score", 0) >= 12][:LOCAL_AI_CANDIDATES]
+                         and verified(row)][:LOCAL_AI_CANDIDATES]
             report["local_scored_count"] = len(local_rows)
             report["local_shortlist_count"] = len(shortlist)
-            print(f"LOCAL SCREEN: {len(uncached)} attempted -> {len(local_rows)} decoded "
+            print(f"LOCAL EVIDENCE: {len(uncached)} uncached -> {len(local_rows)} verified library rows "
                   f"-> {len(shortlist)} shortlisted; at most {LOCAL_AI_CANDIDATES} paid reviews")
             client = OpenAI()
             for start in range(0, len(shortlist), AI_BATCH_SIZE):
