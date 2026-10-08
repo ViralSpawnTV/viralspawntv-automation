@@ -720,6 +720,86 @@
         "reason": "Warzone footage appears to be movement/positioning indoors with no visible enemy contact or firing in the sampled frames."
       },
       "window_start": 35.0
+    },
+    "clip_01M2BZ9SGY47BPHHT6JYRQWBCJ": {
+      "policy": "direct-gunfight-window-v1",
+      "updated_at": 1791425786.6038487,
+      "expires_at": 1791684986.6038487,
+      "media_url": "https://clips.kick.com/clips/bd/clip_01M2BZ9SGY47BPHHT6JYRQWBCJ/playlist.m3u8",
+      "passed": false,
+      "verdict": {
+        "id": 0,
+        "firefight_score": 58,
+        "active_samples": 2,
+        "sustained_combat": false,
+        "direct_gunfight": false,
+        "enemy_engagement": 52,
+        "combat_intensity": 56,
+        "dead_time_risk": 48,
+        "content_type": "gaming",
+        "reason": "Warzone final-kill-cam context suggests combat, but sampled frames mostly show movement/positioning and held weapons rather than clear enemy exchange or hit confirmation."
+      },
+      "window_start": 35.0
+    },
+    "clip_01M3X67FFX2PFR6RJ0VX16F5P4": {
+      "policy": "direct-gunfight-window-v1",
+      "updated_at": 1791425786.6051102,
+      "expires_at": 1791512186.6051102,
+      "media_url": "https://clips.kick.com/clips/8d/clip_01M3X67FFX2PFR6RJ0VX16F5P4/playlist.m3u8",
+      "passed": true,
+      "verdict": {
+        "id": 1,
+        "firefight_score": 84,
+        "active_samples": 4,
+        "sustained_combat": true,
+        "direct_gunfight": true,
+        "enemy_engagement": 88,
+        "combat_intensity": 86,
+        "dead_time_risk": 14,
+        "content_type": "gaming",
+        "reason": "Visible ADS and firing in open combat with clear engagement flow, plus post-engagement kill confirmation; multiple sampled moments indicate an active gunfight."
+      },
+      "window_start": 0.0
+    },
+    "clip_01M28CV510E2K9ZG9BXY52W4PJ": {
+      "policy": "direct-gunfight-window-v1",
+      "updated_at": 1791425786.606269,
+      "expires_at": 1791512186.606269,
+      "media_url": "https://clips.kick.com/clips/20/clip_01M28CV510E2K9ZG9BXY52W4PJ/playlist.m3u8",
+      "passed": true,
+      "verdict": {
+        "id": 2,
+        "firefight_score": 81,
+        "active_samples": 4,
+        "sustained_combat": true,
+        "direct_gunfight": true,
+        "enemy_engagement": 85,
+        "combat_intensity": 82,
+        "dead_time_risk": 18,
+        "content_type": "gaming",
+        "reason": "Sampled moments show active weapon handling in combat areas with kill/loot aftermath and multiple engagement phases, consistent with a real sustained firefight."
+      },
+      "window_start": 60.0
+    },
+    "clip_01M2BQ5ZBBDRBDFR6FVYD0TD67": {
+      "policy": "direct-gunfight-window-v1",
+      "updated_at": 1791425786.6074128,
+      "expires_at": 1791512186.6074128,
+      "media_url": "https://clips.kick.com/clips/56/clip_01M2BQ5ZBBDRBDFR6FVYD0TD67/playlist.m3u8",
+      "passed": true,
+      "verdict": {
+        "id": 3,
+        "firefight_score": 88,
+        "active_samples": 3,
+        "sustained_combat": true,
+        "direct_gunfight": true,
+        "enemy_engagement": 90,
+        "combat_intensity": 87,
+        "dead_time_risk": 12,
+        "content_type": "gaming",
+        "reason": "Final-kill and victory sequence is backed by visible gunfire engagement in the sampled frames, including direct combat before the win screen."
+      },
+      "window_start": 60.0
     }
   }
 }
