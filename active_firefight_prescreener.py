@@ -926,7 +926,22 @@ def main():
     local_rows = []
     try:
         if len(survivors) < TARGET_SURVIVORS:
-            local_rows = local_scan_parallel(uncached)
+            # Library records are free motion evidence, NOT paid/visual passes.
+            # Reuse only complete records from our local scan policy; all still
+            # face the paid gunfight confirmation and exact edit checks.
+            from clip_library import LOCAL_POLICY
+            library_rows = [row for row in uncached
+                            if row.get("library_screen_tag") == LOCAL_POLICY
+                            and row.get("library_visual_approved") is False
+                            and row.get("local_frame_count", 0) >= 20
+                            and row.get("local_motion_score", 0) >= 35
+                            and row.get("local_sustained_motion_score", 0) >= 45
+                            and row.get("local_longest_idle_seconds", 999) <= 8
+                            and row.get("local_window_start") is not None]
+            library_ids = {row["clip_id"] for row in library_rows}
+            local_rows = [dict(row, local_shooter_game=True) for row in library_rows]
+            local_rows += local_scan_parallel([row for row in uncached if row["clip_id"] not in library_ids])
+            local_rows.sort(key=lambda row: row.get("local_firefight_score", 0), reverse=True)
             # A loose motion threshold removes static footage; it never confirms combat.
             for row in local_rows:
                 # Only a successfully decoded preview can become a spending skip.
