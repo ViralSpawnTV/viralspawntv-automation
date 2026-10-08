@@ -482,17 +482,58 @@ def local_scan_parallel(candidates):
     return rows
 
 
+def ensure_ai_preview(candidate):
+    """Library stores scores/URLs, so prepare media only for this shortlist.
+
+    This is a local FFmpeg operation. It does not change motion scores or
+    grant visual approval. Failed downloads remain retryable.
+    """
+    existing = str(candidate.get("local_preview_path") or "")
+    if existing and Path(existing).is_file() and candidate.get("local_preview_seconds", 0) > 0:
+        return
+    media_url = str(candidate.get("media_url") or candidate.get("playlist_url")
+                    or candidate.get("prevalidated_media_url") or "").strip()
+    if not media_url:
+        raise RuntimeError("No source URL for visual preview")
+    preview = WORK / safe_name(candidate.get("clip_id")) / "preview.mp4"
+    preview.parent.mkdir(parents=True, exist_ok=True)
+    preview.unlink(missing_ok=True)
+    try:
+        subprocess.run(["ffmpeg", "-v", "error", "-y", "-rw_timeout", "12000000",
+                        "-i", media_url, "-t", "120", "-map", "0:v:0", "-an",
+                        "-vf", "scale=640:-2", "-r", "15", "-c:v", "libx264",
+                        "-preset", "ultrafast", "-crf", "30", str(preview)],
+                       check=True, capture_output=True, timeout=90)
+        probe = subprocess.run(["ffprobe", "-v", "error", "-show_entries",
+                                "format=duration", "-of", "default=noprint_wrappers=1:nokey=1",
+                                str(preview)], check=True, capture_output=True, text=True, timeout=15)
+        seconds = float(probe.stdout.strip())
+        if not math.isfinite(seconds) or seconds < 2 or not preview.stat().st_size:
+            raise RuntimeError("Empty or invalid visual preview")
+    except Exception:
+        preview.unlink(missing_ok=True)
+        candidate.pop("local_preview_path", None)
+        candidate.pop("local_preview_seconds", None)
+        raise
+    candidate["local_preview_path"] = str(preview)
+    candidate["local_preview_seconds"] = min(120.0, seconds)
+    print(f"LIBRARY VISUAL PREVIEW: {candidate.get('clip_id')} ready ({seconds:.1f}s); no API call")
+
+
 def extract_ai_frames(candidate):
     """
     Slightly richer visual evidence only for the small batch of clips that survived
     the local filter.
     """
 
+    ensure_ai_preview(candidate)
     media_url = candidate.get("local_preview_path", "")
     duration = float(candidate.get("local_preview_seconds") or 0)
     window_start = max(0.0, float(candidate.get("local_window_start") or 0))
     window_start = min(window_start, max(0.0, duration - 35))
     window_seconds = min(35.0, duration - window_start)
+    # Record the window actually sampled if the live source is shorter.
+    candidate["local_window_start"] = window_start
 
     clip_id = str(
         candidate.get(
@@ -631,10 +672,10 @@ def extract_ai_parallel(candidates):
                 results[
                     clip_id
                 ] = future.result()
-            except Exception:
-                results[
-                    clip_id
-                ] = []
+            except Exception as exc:
+                candidate["visual_preview_error"] = f"Preview/frame preparation failed: {type(exc).__name__}"
+                print(f"VISUAL PREVIEW RETRYABLE: {clip_id}: {type(exc).__name__}")
+                results[clip_id] = []
 
     return results
 
@@ -970,7 +1011,7 @@ def main():
                 for row in batch_rows:
                     frames = frames_by_id.get(str(row.get("clip_id")), [])
                     if len(frames) != 5:
-                        report["errors"].append({"clip_id": row.get("clip_id"), "reason": "Incomplete frames; no paid review/cache"})
+                        report["errors"].append({"clip_id": row.get("clip_id"), "reason": row.get("visual_preview_error", "Incomplete frames; no paid review/cache")})
                         continue
                     batch.append({"candidate": row, "frames": frames})
                 if not batch:
