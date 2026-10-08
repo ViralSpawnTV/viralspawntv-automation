@@ -1817,77 +1817,9 @@ def main():
         :PROMOTE_COUNT
     ]
 
-    # V12.14.6 RELIABILITY BACKFILL:
-    # Strict candidates remain first. If fewer than four clear the cheap
-    # promotion thresholds, fill the remaining slots with the highest-ranked
-    # distinct source clips instead of letting the entire workflow depend on
-    # one candidate.
-    strict_ids = {
-        str(
-            row.get(
-                "clip_id",
-                "",
-            )
-        )
-        for row in promoted
-    }
-
+    # Do not purchase fresh source reviews of windows already below the
+    # promotion thresholds. Keep diagnostics even when none qualify.
     backfilled = []
-
-    if len(
-        promoted
-    ) < PROMOTE_COUNT:
-        for row in best_rows:
-            clip_id = str(
-                row.get(
-                    "clip_id",
-                    "",
-                )
-            )
-
-            if (
-                not clip_id
-                or
-                clip_id in strict_ids
-            ):
-                continue
-
-            fallback = dict(
-                row
-            )
-
-            fallback[
-                "prescreen_reliability_backfill"
-            ] = True
-
-            backfilled.append(
-                fallback
-            )
-
-            strict_ids.add(
-                clip_id
-            )
-
-            if (
-                len(
-                    promoted
-                )
-                +
-                len(
-                    backfilled
-                )
-                >=
-                PROMOTE_COUNT
-            ):
-                break
-
-    promoted = (
-        promoted
-        +
-        backfilled
-    )[
-        :PROMOTE_COUNT
-    ]
 
     print(
         f"V12.14.6 PROMOTION FILTER: "
@@ -1899,9 +1831,9 @@ def main():
 
     payload = {
         "version":
-            "12.14.5-four-source-reliability",
+            "12.14.7-strict-promotion",
         "strategy":
-            "capped_payoff_scan_strict_plus_four_source_backfill",
+            "capped_payoff_scan_strict_promotion_only",
         "input_candidate_count":
             len(candidates),
         "candidate_window_count":
