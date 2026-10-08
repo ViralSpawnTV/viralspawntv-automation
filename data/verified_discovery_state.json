@@ -1,0 +1,14 @@
+{
+  "version": 1,
+  "seen": {},
+  "pending": {},
+  "lanes": {},
+  "leases": {
+    "37812915752-1": {
+      "day": "2026-10-08",
+      "limit": 3,
+      "created_at": 1791478701.5874798
+    }
+  },
+  "lane_position": 1
+}
