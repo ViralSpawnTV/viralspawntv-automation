@@ -55,6 +55,37 @@ def remember(row, verdict, passed):
     write(data)
 
 
+def defer_failed_edit(row, action_result, hours=6):
+    """Temporarily suppress a source after a completed, valid action rejection.
+
+    This is not a permanent source-quality verdict. API errors, malformed
+    assessments and unrelated render failures must never create a cooldown.
+    """
+    if (action_result.get("passed") is not False
+            or action_result.get("valid_evidence") is not True
+            or action_result.get("response_status") != "completed"):
+        return False
+    clip_id = str(row.get("clip_id", "")).strip()
+    if not clip_id:
+        return False
+    media = row.get("media_url") or row.get("playlist_url") or row.get("prevalidated_media_url") or ""
+    if not media:
+        return False
+    now = time.time()
+    data = load()
+    data["entries"][clip_id] = {
+        "policy": POLICY, "updated_at": now,
+        "expires_at": now + min(24, max(1, hours)) * 3600,
+        "media_url": media, "passed": False,
+        "window_start": row.get("local_window_start"),
+        "temporary_edit_cooldown": True,
+        "verdict": {"reason": "Temporary cooldown after rejected edit: "
+                    + str(action_result.get("reason", "gunfight check failed"))},
+    }
+    write(data)
+    return True
+
+
 def merge(generated, latest=PATH):
     result = load(latest)
     for key, entry in load(generated)["entries"].items():
