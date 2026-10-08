@@ -10,7 +10,7 @@
   ],
   "frames": [
     {
-      "file": "data/library_calibration_frames/clip_16_frame_10.jpg",
+      "file": "data/clip_16_frame_10.jpg",
       "clip_id": "clip_01M4DECNEA5KKXR9A32PHWZKP1",
       "review_clip_number": 16,
       "source_seconds": 15.062,
@@ -19,7 +19,7 @@
       "reason": "Enemy and muzzle flash visible"
     },
     {
-      "file": "data/library_calibration_frames/clip_04_frame_10.jpg",
+      "file": "data/clip_04_frame_10.jpg",
       "clip_id": "clip_01M4DDZKBR1RSSGTAPCTG8VBR3",
       "review_clip_number": 4,
       "source_seconds": 32.067,
@@ -28,7 +28,7 @@
       "reason": "Visible gun muzzle flash; target obscured by smoke"
     },
     {
-      "file": "data/library_calibration_frames/clip_04_frame_12.jpg",
+      "file": "data/clip_04_frame_12.jpg",
       "clip_id": "clip_01M4DDZKBR1RSSGTAPCTG8VBR3",
       "review_clip_number": 4,
       "source_seconds": 35.245,
@@ -37,7 +37,7 @@
       "reason": "Ability activation, not visible weapon firing"
     },
     {
-      "file": "data/library_calibration_frames/clip_16_frame_01.jpg",
+      "file": "data/clip_16_frame_01.jpg",
       "clip_id": "clip_01M4DECNEA5KKXR9A32PHWZKP1",
       "review_clip_number": 16,
       "source_seconds": 0.76,
@@ -46,7 +46,7 @@
       "reason": "Weapon held, no visible firing"
     },
     {
-      "file": "data/library_calibration_frames/clip_16_frame_12.jpg",
+      "file": "data/clip_16_frame_12.jpg",
       "clip_id": "clip_01M4DECNEA5KKXR9A32PHWZKP1",
       "review_clip_number": 16,
       "source_seconds": 18.24,
@@ -55,7 +55,7 @@
       "reason": "Round ended, knife held"
     },
     {
-      "file": "data/library_calibration_frames/clip_04_frame_01.jpg",
+      "file": "data/clip_04_frame_01.jpg",
       "clip_id": "clip_01M4DDZKBR1RSSGTAPCTG8VBR3",
       "review_clip_number": 4,
       "source_seconds": 17.765,
@@ -64,7 +64,7 @@
       "reason": "Death overlay on blank game background"
     },
     {
-      "file": "data/library_calibration_frames/clip_19_frame_02.jpg",
+      "file": "data/clip_19_frame_02.jpg",
       "clip_id": "clip_01M4CMRTGWWA5S11ZHAHCBVM0V",
       "review_clip_number": 19,
       "source_seconds": 58.349,
@@ -73,7 +73,7 @@
       "reason": "Menu/browser dominates frame"
     },
     {
-      "file": "data/library_calibration_frames/clip_19_frame_06.jpg",
+      "file": "data/clip_19_frame_06.jpg",
       "clip_id": "clip_01M4CMRTGWWA5S11ZHAHCBVM0V",
       "review_clip_number": 19,
       "source_seconds": 64.705,
@@ -82,7 +82,7 @@
       "reason": "Menu/browser dominates frame"
     },
     {
-      "file": "data/library_calibration_frames/clip_24_frame_01.jpg",
+      "file": "data/clip_24_frame_01.jpg",
       "clip_id": "clip_01M4D8R5W1Y02F4YT03K5F06CM",
       "review_clip_number": 24,
       "source_seconds": 26.76,
@@ -91,7 +91,7 @@
       "reason": "Non-shooter mobile game"
     },
     {
-      "file": "data/library_calibration_frames/clip_24_frame_06.jpg",
+      "file": "data/clip_24_frame_06.jpg",
       "clip_id": "clip_01M4D8R5W1Y02F4YT03K5F06CM",
       "review_clip_number": 24,
       "source_seconds": 34.705,
@@ -100,7 +100,7 @@
       "reason": "Non-shooter mobile game"
     },
     {
-      "file": "data/library_calibration_frames/clip_25_frame_07.jpg",
+      "file": "data/clip_25_frame_07.jpg",
       "clip_id": "clip_01M4DB98FKBXSZT3HXN1N4TMC0",
       "review_clip_number": 25,
       "source_seconds": 10.295,
@@ -109,7 +109,7 @@
       "reason": "Scoped shot with visible target and firing effect"
     },
     {
-      "file": "data/library_calibration_frames/clip_25_frame_02.jpg",
+      "file": "data/clip_25_frame_02.jpg",
       "clip_id": "clip_01M4DB98FKBXSZT3HXN1N4TMC0",
       "review_clip_number": 25,
       "source_seconds": 2.349,
@@ -118,7 +118,7 @@
       "reason": "Reloading behind cover, no visible engagement"
     },
     {
-      "file": "data/library_calibration_frames/clip_03_frame_02.jpg",
+      "file": "data/clip_03_frame_02.jpg",
       "clip_id": "clip_01M45NQ8SWJV9C6CYEAW32HQ53",
       "review_clip_number": 3,
       "source_seconds": 63.091,
@@ -127,7 +127,7 @@
       "reason": "Holding weapon in empty corridor"
     },
     {
-      "file": "data/library_calibration_frames/clip_03_frame_09.jpg",
+      "file": "data/clip_03_frame_09.jpg",
       "clip_id": "clip_01M45NQ8SWJV9C6CYEAW32HQ53",
       "review_clip_number": 3,
       "source_seconds": 77.727,
@@ -136,7 +136,7 @@
       "reason": "Holding angle, no visible firing"
     },
     {
-      "file": "data/library_calibration_frames/clip_14_frame_02.jpg",
+      "file": "data/clip_14_frame_02.jpg",
       "clip_id": "clip_01M4D6Q2V02C1N3S6APV5PGNKD",
       "review_clip_number": 14,
       "source_seconds": 2.349,
@@ -145,7 +145,7 @@
       "reason": "Webcam only"
     },
     {
-      "file": "data/library_calibration_frames/clip_14_frame_08.jpg",
+      "file": "data/clip_14_frame_08.jpg",
       "clip_id": "clip_01M4D6Q2V02C1N3S6APV5PGNKD",
       "review_clip_number": 14,
       "source_seconds": 11.884,
