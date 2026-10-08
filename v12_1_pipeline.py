@@ -670,126 +670,15 @@ def main():
             "V12.14.6 could not source-gate any candidate."
         )
 
-    normal = [
-        item
-        for item in source_candidates
-        if (
-            int(
-                item[
-                    "source_result"
-                ].get(
-                    "source_score",
-                    0,
-                )
-                or
-                0
-            )
-            >=
-            NORMAL_SOURCE_SCORE
-            and
-            int(
-                item[
-                    "source_result"
-                ].get(
-                    "payoff",
-                    0,
-                )
-                or
-                0
-            )
-            >=
-            NORMAL_SOURCE_PAYOFF
-        )
-    ]
-
-    borderline = [
-        item
-        for item in source_candidates
-        if (
-            int(
-                item[
-                    "source_result"
-                ].get(
-                    "source_score",
-                    0,
-                )
-                or
-                0
-            )
-            >=
-            BORDERLINE_SOURCE_SCORE
-            and
-            int(
-                item[
-                    "source_result"
-                ].get(
-                    "payoff",
-                    0,
-                )
-                or
-                0
-            )
-            >=
-            BORDERLINE_SOURCE_PAYOFF
-        )
-    ]
-
-    normal.sort(
-        key=lambda item:
-            item[
-                "source_rank"
-            ],
-        reverse=True,
-    )
-
-    borderline.sort(
-        key=lambda item:
-            item[
-                "source_rank"
-            ],
-        reverse=True,
-    )
-
-    if normal:
-        render_order = normal + [
-            item
-            for item in borderline
-            if item not in normal
-        ]
-
-        print(
-            f"V12.14.6 SOURCE SELECTION: "
-            f"{len(normal)} normal-pass source(s); "
-            f"best normal source renders first."
-        )
-    elif borderline:
-        render_order = borderline
-
-        print(
-            "V12.14.6 EMERGENCY SOURCE FALLBACK: "
-            "no source cleared 65/60, so the strongest borderline "
-            "source will be rendered."
-        )
-    else:
-        # Last-resort reliability mode:
-        # render the single strongest source-gated candidate rather than
-        # paying for a workflow that returns nothing. Music/final-content
-        # gates still protect publication safety.
-        render_order = sorted(
-            source_candidates,
-            key=lambda item:
-                item[
-                    "source_rank"
-                ],
-            reverse=True,
-        )
-
-        print(
-            "V12.14.6 BEST-SOURCE FALLBACK: "
-            "all shortlist candidates scored below borderline thresholds. "
-            "Rendering the highest-ranked source rather than returning "
-            "no video."
-        )
+    # A failed source-quality gate is a stop, never a render fallback.
+    render_order = [item for item in source_candidates
+                    if item["source_code"] == 0
+                    and float(item["source_result"].get("source_score", 0) or 0) >= NORMAL_SOURCE_SCORE
+                    and float(item["source_result"].get("payoff", 0) or 0) >= NORMAL_SOURCE_PAYOFF]
+    render_order.sort(key=lambda item: item["source_rank"], reverse=True)
+    if not render_order:
+        raise RuntimeError("No source passed the source-quality gate; production skipped.")
+    print(f"V12.14.6 SOURCE SELECTION: {len(render_order)} passed source(s); rejected sources skipped.")
 
     # ---------------------------------------------------------
     # 3. RENDER BEST SOURCES UNTIL WE HAVE A DECENT/FINAL VIDEO.
