@@ -4,622 +4,467 @@
     "clip_01M446MTTP9YD2YQ2JWFZHGHFM": {
       "policy": "direct-gunfight-window-v1",
       "updated_at": 1791208600.9846647,
-      "expires_at": 1791467800.9846647,
+      "expires_at": null,
       "media_url": "https://clips.kick.com/clips/1c/clip_01M446MTTP9YD2YQ2JWFZHGHFM/playlist.m3u8",
       "passed": false,
       "verdict": {
-        "id": 0,
-        "firefight_score": 34,
-        "active_samples": 1,
-        "sustained_combat": false,
-        "direct_gunfight": false,
-        "enemy_engagement": 38,
-        "combat_intensity": 42,
-        "dead_time_risk": 56,
-        "content_type": "gaming",
-        "reason": "Kill feed suggests combat, but samples mainly show knife movement, repositioning, and aftermath without visible firearm engagement."
+        "reason": "Automatic spending exclusion after prior rejected action edit"
       },
-      "window_start": 25.0
+      "window_start": 25.0,
+      "permanent_exclusion": true,
+      "exclusion_basis": "prior_saved_action_rejection",
+      "temporary_edit_cooldown": false
     },
     "clip_01M43M81R1X6PGRZK6674V3VXZ": {
       "policy": "direct-gunfight-window-v1",
       "updated_at": 1791208600.9848664,
-      "expires_at": 1791467800.9848664,
+      "expires_at": null,
       "media_url": "https://clips.kick.com/clips/50/clip_01M43M81R1X6PGRZK6674V3VXZ/playlist.m3u8",
       "passed": false,
       "verdict": {
-        "id": 1,
-        "firefight_score": 49,
-        "active_samples": 1,
-        "sustained_combat": false,
-        "direct_gunfight": false,
-        "enemy_engagement": 52,
-        "combat_intensity": 55,
-        "dead_time_risk": 43,
-        "content_type": "gaming",
-        "reason": "Reloading and multi-kill feed indicate a fight occurred, but sampled frames do not visibly show firing at an exposed enemy."
+        "reason": "Automatic spending exclusion after prior rejected action edit"
       },
-      "window_start": 0.0
+      "window_start": 0.0,
+      "permanent_exclusion": true,
+      "exclusion_basis": "prior_saved_action_rejection",
+      "temporary_edit_cooldown": false
     },
     "clip_01M1XT4RVBHFJCPC35WM2EVAYF": {
       "policy": "direct-gunfight-window-v1",
       "updated_at": 1791208600.985529,
-      "expires_at": 1791467800.985529,
+      "expires_at": null,
       "media_url": "https://clips.kick.com/clips/f7/clip_01M1XT4RVBHFJCPC35WM2EVAYF/playlist.m3u8",
       "passed": false,
       "verdict": {
-        "id": 3,
-        "firefight_score": 55,
-        "active_samples": 1,
-        "sustained_combat": false,
-        "direct_gunfight": true,
-        "enemy_engagement": 70,
-        "combat_intensity": 64,
-        "dead_time_risk": 46,
-        "content_type": "gaming",
-        "reason": "Final-kill replay visibly shows an enemy being shot with hit effects, but only one convincing engagement sample is present amid cover movement and replay setup."
+        "reason": "Automatic spending exclusion after prior rejected action edit"
       },
-      "window_start": 5.0
+      "window_start": 5.0,
+      "permanent_exclusion": true,
+      "exclusion_basis": "prior_saved_action_rejection",
+      "temporary_edit_cooldown": false
     },
     "clip_01M43JZTS2TN9NMEFCZJ39QTMZ": {
       "policy": "direct-gunfight-window-v1",
       "updated_at": 1791208615.4492621,
-      "expires_at": 1791467815.4492621,
+      "expires_at": null,
       "media_url": "https://clips.kick.com/clips/5d/clip_01M43JZTS2TN9NMEFCZJ39QTMZ/playlist.m3u8",
       "passed": false,
       "verdict": {
-        "id": 1,
-        "firefight_score": 55,
-        "active_samples": 1,
-        "sustained_combat": false,
-        "direct_gunfight": true,
-        "enemy_engagement": 61,
-        "combat_intensity": 55,
-        "dead_time_risk": 48,
-        "content_type": "gaming",
-        "reason": "One clear exchange shows weapon fire and a visible opponent, but most samples show aftermath, rotation, smoke, or angle-holding rather than repeated direct firefights."
+        "reason": "Automatic spending exclusion after prior rejected action edit"
       },
-      "window_start": 0.0
+      "window_start": 0.0,
+      "permanent_exclusion": true,
+      "exclusion_basis": "prior_saved_action_rejection",
+      "temporary_edit_cooldown": false
     },
     "clip_01JQ6MW1D9YEK5JQY9N3TC8S4C": {
       "policy": "direct-gunfight-window-v1",
       "updated_at": 1791208615.4497354,
-      "expires_at": 1791467815.4497354,
+      "expires_at": null,
       "media_url": "https://clips.kick.com/clips/d8/clip_01JQ6MW1D9YEK5JQY9N3TC8S4C/playlist.m3u8",
       "passed": false,
       "verdict": {
-        "id": 2,
-        "firefight_score": 5,
-        "active_samples": 0,
-        "sustained_combat": false,
-        "direct_gunfight": false,
-        "enemy_engagement": 3,
-        "combat_intensity": 5,
-        "dead_time_risk": 96,
-        "content_type": "gaming",
-        "reason": "Samples are overwhelmingly from the buy phase with menus, teammates, knife movement, and ability handling; no enemy-directed weapon engagement is visible."
+        "reason": "Automatic spending exclusion after prior rejected action edit"
       },
-      "window_start": 15.0
+      "window_start": 15.0,
+      "permanent_exclusion": true,
+      "exclusion_basis": "prior_saved_action_rejection",
+      "temporary_edit_cooldown": false
     },
     "clip_01M460CS6AHYRPX5GVQAM4TRRH": {
       "policy": "direct-gunfight-window-v1",
       "updated_at": 1791208615.4502048,
-      "expires_at": 1791467815.4502048,
+      "expires_at": null,
       "media_url": "https://clips.kick.com/clips/fd/clip_01M460CS6AHYRPX5GVQAM4TRRH/playlist.m3u8",
       "passed": false,
       "verdict": {
-        "id": 3,
-        "firefight_score": 12,
-        "active_samples": 0,
-        "sustained_combat": false,
-        "direct_gunfight": false,
-        "enemy_engagement": 6,
-        "combat_intensity": 10,
-        "dead_time_risk": 90,
-        "content_type": "gaming",
-        "reason": "The player runs through corridors and holds angles with a rifle, but no visible enemy, weapon fire, hit confirmation, or direct exchange appears."
+        "reason": "Automatic spending exclusion after prior rejected action edit"
       },
-      "window_start": 0.0
+      "window_start": 0.0,
+      "permanent_exclusion": true,
+      "exclusion_basis": "prior_saved_action_rejection",
+      "temporary_edit_cooldown": false
     },
     "clip_01K5FKREJQTT6EEFW4DEPWKK79": {
       "policy": "direct-gunfight-window-v1",
       "updated_at": 1791208622.4109547,
-      "expires_at": 1791467822.4109547,
+      "expires_at": null,
       "media_url": "https://clips.kick.com/clips/a0/clip_01K5FKREJQTT6EEFW4DEPWKK79/playlist.m3u8",
       "passed": false,
       "verdict": {
-        "id": 0,
-        "firefight_score": 18,
-        "active_samples": 0,
-        "sustained_combat": false,
-        "direct_gunfight": false,
-        "enemy_engagement": 15,
-        "combat_intensity": 18,
-        "dead_time_risk": 78,
-        "content_type": "gaming",
-        "reason": "Mostly traversal, reloading, and a final held aim; no visible enemy or weapon-fire exchange."
+        "reason": "Automatic spending exclusion after prior rejected action edit"
       },
-      "window_start": 0.0
+      "window_start": 0.0,
+      "permanent_exclusion": true,
+      "exclusion_basis": "prior_saved_action_rejection",
+      "temporary_edit_cooldown": false
     },
     "clip_01H4FE0XDGMRZBMH2KJMZ1YY3G": {
       "policy": "direct-gunfight-window-v1",
       "updated_at": 1791208622.4115143,
-      "expires_at": 1791467822.4115143,
+      "expires_at": null,
       "media_url": "https://clips.kick.com/clips/3g/clip_01H4FE0XDGMRZBMH2KJMZ1YY3G/a88c7562-16d9-472b-94d0-eb99625363ba.mp4",
       "passed": false,
       "verdict": {
-        "id": 1,
-        "firefight_score": 2,
-        "active_samples": 0,
-        "sustained_combat": false,
-        "direct_gunfight": false,
-        "enemy_engagement": 0,
-        "combat_intensity": 3,
-        "dead_time_risk": 96,
-        "content_type": "gaming",
-        "reason": "Traversal, death screen, map, and respawn footage with no direct ranged engagement."
+        "reason": "Automatic spending exclusion after prior rejected action edit"
       },
-      "window_start": 20.0
+      "window_start": 20.0,
+      "permanent_exclusion": true,
+      "exclusion_basis": "prior_saved_action_rejection",
+      "temporary_edit_cooldown": false
     },
     "clip_01HMCQD2996GPBDTM59PCJ30J1": {
       "policy": "direct-gunfight-window-v1",
       "updated_at": 1791208622.412143,
-      "expires_at": 1791467822.412143,
+      "expires_at": null,
       "media_url": "https://clips.kick.com/clips/87/clip_01HMCQD2996GPBDTM59PCJ30J1/playlist.m3u8",
       "passed": false,
       "verdict": {
-        "id": 2,
-        "firefight_score": 12,
-        "active_samples": 0,
-        "sustained_combat": false,
-        "direct_gunfight": false,
-        "enemy_engagement": 8,
-        "combat_intensity": 10,
-        "dead_time_risk": 87,
-        "content_type": "gaming",
-        "reason": "A corpse is visible initially, but sampled moments only show movement and holding angles without firing or enemies."
+        "reason": "Automatic spending exclusion after prior rejected action edit"
       },
-      "window_start": 15.0
+      "window_start": 15.0,
+      "permanent_exclusion": true,
+      "exclusion_basis": "prior_saved_action_rejection",
+      "temporary_edit_cooldown": false
     },
     "clip_01H6SDR672AHVR3V1RD1AACQ2A": {
       "policy": "direct-gunfight-window-v1",
       "updated_at": 1791208622.4127684,
-      "expires_at": 1791467822.4127684,
+      "expires_at": null,
       "media_url": "https://clips.kick.com/clips/2a/clip_01H6SDR672AHVR3V1RD1AACQ2A/playlist.m3u8",
       "passed": false,
       "verdict": {
-        "id": 3,
-        "firefight_score": 9,
-        "active_samples": 0,
-        "sustained_combat": false,
-        "direct_gunfight": false,
-        "enemy_engagement": 5,
-        "combat_intensity": 8,
-        "dead_time_risk": 89,
-        "content_type": "gaming",
-        "reason": "Spectating/holding an angle with a combat report displayed, followed by an ability; no direct weapon exchange is visible."
+        "reason": "Automatic spending exclusion after prior rejected action edit"
       },
-      "window_start": 15.0
+      "window_start": 15.0,
+      "permanent_exclusion": true,
+      "exclusion_basis": "prior_saved_action_rejection",
+      "temporary_edit_cooldown": false
     },
     "clip_01H0VK33YRVWCME02M4XRWAT4M": {
       "policy": "direct-gunfight-window-v1",
       "updated_at": 1791210317.978585,
-      "expires_at": 1791469517.978585,
+      "expires_at": null,
       "media_url": "https://clips.kick.com/clips/4m/clip_01H0VK33YRVWCME02M4XRWAT4M/1d89b9e1-6b70-4165-952b-82693c4dba69.mp4",
       "passed": false,
       "verdict": {
-        "id": 1,
-        "firefight_score": 0,
-        "active_samples": 0,
-        "sustained_combat": false,
-        "direct_gunfight": false,
-        "enemy_engagement": 0,
-        "combat_intensity": 0,
-        "dead_time_risk": 100,
-        "content_type": "irl",
-        "reason": "Live-action cake prank with no gameplay or ranged combat."
+        "reason": "Automatic spending exclusion after prior rejected action edit"
       },
-      "window_start": 0.0
+      "window_start": 0.0,
+      "permanent_exclusion": true,
+      "exclusion_basis": "prior_saved_action_rejection",
+      "temporary_edit_cooldown": false
     },
     "clip_01M464GFT74QJQNT17AWT459A9": {
       "policy": "direct-gunfight-window-v1",
       "updated_at": 1791210317.979453,
-      "expires_at": 1791469517.979453,
+      "expires_at": null,
       "media_url": "https://clips.kick.com/clips/25/clip_01M464GFT74QJQNT17AWT459A9/playlist.m3u8",
       "passed": false,
       "verdict": {
-        "id": 2,
-        "firefight_score": 24,
-        "active_samples": 1,
-        "sustained_combat": false,
-        "direct_gunfight": false,
-        "enemy_engagement": 28,
-        "combat_intensity": 18,
-        "dead_time_risk": 82,
-        "content_type": "gaming",
-        "reason": "Mostly esports player reactions; only one brief scoped gameplay moment and no repeated visible weapon engagement."
+        "reason": "Automatic spending exclusion after prior rejected action edit"
       },
-      "window_start": 0.0
+      "window_start": 0.0,
+      "permanent_exclusion": true,
+      "exclusion_basis": "prior_saved_action_rejection",
+      "temporary_edit_cooldown": false
     },
     "clip_01M3PW82D0WG4JSEMEHZ3RWFW5": {
       "policy": "direct-gunfight-window-v1",
       "updated_at": 1791213694.2032444,
-      "expires_at": 1791472894.2032444,
+      "expires_at": null,
       "media_url": "https://clips.kick.com/clips/38/clip_01M3PW82D0WG4JSEMEHZ3RWFW5/playlist.m3u8",
       "passed": false,
       "verdict": {
-        "id": 0,
-        "firefight_score": 22,
-        "active_samples": 0,
-        "sustained_combat": false,
-        "direct_gunfight": false,
-        "enemy_engagement": 15,
-        "combat_intensity": 25,
-        "dead_time_risk": 78,
-        "content_type": "gaming",
-        "reason": "Mostly movement, grenade handling, weapon preparation, and smoke; no clearly visible enemy or repeated direct firing engagement."
+        "reason": "Automatic spending exclusion after prior rejected action edit"
       },
-      "window_start": 0.0
+      "window_start": 0.0,
+      "permanent_exclusion": true,
+      "exclusion_basis": "prior_saved_action_rejection",
+      "temporary_edit_cooldown": false
     },
     "clip_01HN33D0N0THC2703YY3PTM155": {
       "policy": "direct-gunfight-window-v1",
       "updated_at": 1791213694.2046962,
-      "expires_at": 1791472894.2046962,
+      "expires_at": null,
       "media_url": "https://clips.kick.com/clips/34/clip_01HN33D0N0THC2703YY3PTM155/playlist.m3u8",
       "passed": false,
       "verdict": {
-        "id": 2,
-        "firefight_score": 8,
-        "active_samples": 0,
-        "sustained_combat": false,
-        "direct_gunfight": false,
-        "enemy_engagement": 5,
-        "combat_intensity": 72,
-        "dead_time_risk": 15,
-        "content_type": "gaming",
-        "reason": "Sustained weapon action is visible, but it is Zombies PvE rather than direct PvP combat."
+        "reason": "Automatic spending exclusion after prior rejected action edit"
       },
-      "window_start": 10.0
+      "window_start": 10.0,
+      "permanent_exclusion": true,
+      "exclusion_basis": "prior_saved_action_rejection",
+      "temporary_edit_cooldown": false
     },
     "clip_01HK61VRW6YMYNJ85NTE2VP1BG": {
       "policy": "direct-gunfight-window-v1",
       "updated_at": 1791213694.2054489,
-      "expires_at": 1791472894.2054489,
+      "expires_at": null,
       "media_url": "https://clips.kick.com/clips/aa/clip_01HK61VRW6YMYNJ85NTE2VP1BG/playlist.m3u8",
       "passed": false,
       "verdict": {
-        "id": 3,
-        "firefight_score": 3,
-        "active_samples": 0,
-        "sustained_combat": false,
-        "direct_gunfight": false,
-        "enemy_engagement": 0,
-        "combat_intensity": 2,
-        "dead_time_risk": 98,
-        "content_type": "gaming",
-        "reason": "Scoreboard, buy phase, knife movement, and downtime only; no direct weapon engagement."
+        "reason": "Automatic spending exclusion after prior rejected action edit"
       },
-      "window_start": 0.0
+      "window_start": 0.0,
+      "permanent_exclusion": true,
+      "exclusion_basis": "prior_saved_action_rejection",
+      "temporary_edit_cooldown": false
     },
     "clip_01M468P2BRYPBSJZ1C90DD0ZSZ": {
       "policy": "direct-gunfight-window-v1",
       "updated_at": 1791216937.786851,
-      "expires_at": 1791476137.786851,
+      "expires_at": null,
       "media_url": "https://clips.kick.com/clips/87/clip_01M468P2BRYPBSJZ1C90DD0ZSZ/playlist.m3u8",
       "passed": false,
       "verdict": {
-        "id": 0,
-        "firefight_score": 28,
-        "active_samples": 1,
-        "sustained_combat": false,
-        "direct_gunfight": false,
-        "enemy_engagement": 35,
-        "combat_intensity": 25,
-        "dead_time_risk": 85,
-        "content_type": "gaming",
-        "reason": "Only one sampled gameplay moment suggests engagement; the remaining window is scoreboard, transitions, and advertisement footage."
+        "reason": "Automatic spending exclusion after prior rejected action edit"
       },
-      "window_start": 5.0
+      "window_start": 5.0,
+      "permanent_exclusion": true,
+      "exclusion_basis": "prior_saved_action_rejection",
+      "temporary_edit_cooldown": false
     },
     "clip_01M46AXN29HARFEG3C14F5J49B": {
       "policy": "direct-gunfight-window-v1",
       "updated_at": 1791216937.7877636,
-      "expires_at": 1791476137.7877636,
+      "expires_at": null,
       "media_url": "https://clips.kick.com/clips/08/clip_01M46AXN29HARFEG3C14F5J49B/playlist.m3u8",
       "passed": false,
       "verdict": {
-        "id": 1,
-        "firefight_score": 22,
-        "active_samples": 1,
-        "sustained_combat": false,
-        "direct_gunfight": false,
-        "enemy_engagement": 25,
-        "combat_intensity": 20,
-        "dead_time_risk": 88,
-        "content_type": "gaming",
-        "reason": "Mostly player-camera and transition footage, with only one replay frame and no multiple visible firing exchanges."
+        "reason": "Automatic spending exclusion after prior rejected action edit"
       },
-      "window_start": 20.0
+      "window_start": 20.0,
+      "permanent_exclusion": true,
+      "exclusion_basis": "prior_saved_action_rejection",
+      "temporary_edit_cooldown": false
     },
     "clip_01M421QFT12FTH86HAJ7M9NYZW": {
       "policy": "direct-gunfight-window-v1",
       "updated_at": 1791216937.788589,
-      "expires_at": 1791476137.788589,
+      "expires_at": null,
       "media_url": "https://clips.kick.com/clips/83/clip_01M421QFT12FTH86HAJ7M9NYZW/playlist.m3u8",
       "passed": false,
       "verdict": {
-        "id": 2,
-        "firefight_score": 42,
-        "active_samples": 1,
-        "sustained_combat": false,
-        "direct_gunfight": false,
-        "enemy_engagement": 45,
-        "combat_intensity": 38,
-        "dead_time_risk": 65,
-        "content_type": "gaming",
-        "reason": "One scoped combat-like moment with damage indicators, followed primarily by equipment deployment, looting, and repositioning; insufficient repeated gunfight evidence."
+        "reason": "Automatic spending exclusion after prior rejected action edit"
       },
-      "window_start": 70.0
+      "window_start": 70.0,
+      "permanent_exclusion": true,
+      "exclusion_basis": "prior_saved_action_rejection",
+      "temporary_edit_cooldown": false
     },
     "clip_01M22H2DN3C3HCNREWY6YY9Z94": {
       "policy": "direct-gunfight-window-v1",
       "updated_at": 1791219838.830611,
-      "expires_at": 1791479038.830611,
+      "expires_at": null,
       "media_url": "https://clips.kick.com/clips/d0/clip_01M22H2DN3C3HCNREWY6YY9Z94/playlist.m3u8",
       "passed": false,
       "verdict": {
-        "id": 1,
-        "firefight_score": 10,
-        "active_samples": 0,
-        "sustained_combat": false,
-        "direct_gunfight": false,
-        "enemy_engagement": 20,
-        "combat_intensity": 12,
-        "dead_time_risk": 86,
-        "content_type": "gaming",
-        "reason": "Enemies are visible, but the player only carries a melee weapon and no direct ranged-weapon engagement is shown."
+        "reason": "Automatic spending exclusion after prior rejected action edit"
       },
-      "window_start": 10.0
+      "window_start": 10.0,
+      "permanent_exclusion": true,
+      "exclusion_basis": "prior_saved_action_rejection",
+      "temporary_edit_cooldown": false
     },
     "clip_01H5TYZA90WBS6GPTRC1B652TK": {
       "policy": "direct-gunfight-window-v1",
       "updated_at": 1791219838.8313642,
-      "expires_at": 1791479038.8313642,
+      "expires_at": null,
       "media_url": "https://clips.kick.com/clips/tk/clip_01H5TYZA90WBS6GPTRC1B652TK/92770a28-228b-4266-b9ea-9c030d4c43f0.mp4",
       "passed": false,
       "verdict": {
-        "id": 2,
-        "firefight_score": 0,
-        "active_samples": 0,
-        "sustained_combat": false,
-        "direct_gunfight": false,
-        "enemy_engagement": 0,
-        "combat_intensity": 0,
-        "dead_time_risk": 100,
-        "content_type": "non-gaming",
-        "reason": "Sampled window is live-action entertainment footage with a reaction overlay, not Apex Legends combat."
+        "reason": "Automatic spending exclusion after prior rejected action edit"
       },
-      "window_start": 20.0
+      "window_start": 20.0,
+      "permanent_exclusion": true,
+      "exclusion_basis": "prior_saved_action_rejection",
+      "temporary_edit_cooldown": false
     },
     "clip_01H6W26TE4AJBNJNW41QR6FZSE": {
       "policy": "direct-gunfight-window-v1",
       "updated_at": 1791219838.8321145,
-      "expires_at": 1791479038.8321145,
+      "expires_at": null,
       "media_url": "https://clips.kick.com/clips/se/clip_01H6W26TE4AJBNJNW41QR6FZSE/playlist.m3u8",
       "passed": false,
       "verdict": {
-        "id": 3,
-        "firefight_score": 38,
-        "active_samples": 1,
-        "sustained_combat": false,
-        "direct_gunfight": false,
-        "enemy_engagement": 45,
-        "combat_intensity": 36,
-        "dead_time_risk": 70,
-        "content_type": "gaming",
-        "reason": "One scoped combat/elimination moment is visible, but the remaining samples show movement, a round loss, buy phase, and scoreboard; insufficient repeated direct gunfight evidence."
+        "reason": "Automatic spending exclusion after prior rejected action edit"
       },
-      "window_start": 20.0
+      "window_start": 20.0,
+      "permanent_exclusion": true,
+      "exclusion_basis": "prior_saved_action_rejection",
+      "temporary_edit_cooldown": false
     },
     "clip_01M26WBMPS1STXMTT4JAC4Y4JB": {
       "policy": "direct-gunfight-window-v1",
       "updated_at": 1791224514.39587,
-      "expires_at": 1791483714.39587,
+      "expires_at": null,
       "media_url": "https://clips.kick.com/clips/47/clip_01M26WBMPS1STXMTT4JAC4Y4JB/playlist.m3u8",
       "passed": false,
       "verdict": {
-        "id": 1,
-        "firefight_score": 48,
-        "active_samples": 1,
-        "sustained_combat": false,
-        "direct_gunfight": false,
-        "enemy_engagement": 55,
-        "combat_intensity": 48,
-        "dead_time_risk": 44,
-        "content_type": "gaming",
-        "reason": "Mostly smoke setup and scoped angle holding; one apparent sniper elimination is insufficient, while the later knife ability does not establish repeated firearm combat."
+        "reason": "Automatic spending exclusion after prior rejected action edit"
       },
-      "window_start": 5.0
+      "window_start": 5.0,
+      "permanent_exclusion": true,
+      "exclusion_basis": "prior_saved_action_rejection",
+      "temporary_edit_cooldown": false
     },
     "clip_01M3XVCC7WC8G96YBFAAXX0E5Z": {
       "policy": "direct-gunfight-window-v1",
-      "updated_at": 1791411660.6385205,
-      "expires_at": 1791498060.6385205,
+      "updated_at": 1791450731.7361968,
+      "expires_at": null,
       "media_url": "https://clips.kick.com/clips/41/clip_01M3XVCC7WC8G96YBFAAXX0E5Z/playlist.m3u8",
-      "passed": true,
+      "passed": false,
+      "permanent_exclusion": true,
+      "window_start": 60.0,
+      "exclusion_basis": "candidate_exhausted_bounded_action_edit_review",
+      "reviewed_windows": [
+        {
+          "stage": "action_segment_gate.py",
+          "start_local": 31.0,
+          "end_local": 53.75,
+          "source_offset": 60.0,
+          "start_original": 91.0,
+          "end_original": 113.75,
+          "reason": "Insufficient direct gunfight samples; Most samples are outside the confirmed fight; Combat starts too late; Long inactive stretch; Long post-combat ending"
+        }
+      ],
       "verdict": {
-        "id": 2,
-        "firefight_score": 74,
-        "active_samples": 4,
-        "sustained_combat": true,
-        "direct_gunfight": true,
-        "enemy_engagement": 79,
-        "combat_intensity": 76,
-        "dead_time_risk": 25,
-        "content_type": "gaming",
-        "reason": "Warzone clip shows repeated ranged engagement with a bow, aiming and firing in combat across several samples; direct weapon action is visible."
+        "reason": "Insufficient direct gunfight samples; Most samples are outside the confirmed fight; Combat starts too late; Long inactive stretch; Long post-combat ending"
       },
-      "window_start": 60.0
+      "limitation": "Automatic spending exclusion; not proof that every source frame lacks combat."
     },
     "clip_01M3PYKFCNR6E8XB5WQ927XBNG": {
       "policy": "direct-gunfight-window-v1",
       "updated_at": 1791296726.1620862,
-      "expires_at": 1791555926.1620862,
+      "expires_at": null,
       "media_url": "https://clips.kick.com/clips/0d/clip_01M3PYKFCNR6E8XB5WQ927XBNG/playlist.m3u8",
       "passed": false,
       "verdict": {
-        "id": 3,
-        "firefight_score": 28,
-        "active_samples": 0,
-        "sustained_combat": false,
-        "direct_gunfight": false,
-        "enemy_engagement": 12,
-        "combat_intensity": 20,
-        "dead_time_risk": 78,
-        "content_type": "gaming",
-        "reason": "Samples show movement/positioning through smoke in CS2, but no convincing weapon fire, hit feedback, or visible direct firefight."
+        "reason": "Automatic spending exclusion after prior rejected action edit"
       },
-      "window_start": 0.0
+      "window_start": 0.0,
+      "permanent_exclusion": true,
+      "exclusion_basis": "prior_saved_action_rejection",
+      "temporary_edit_cooldown": false
     },
     "clip_01HKCHGM9AQ42GJ3ZBASMJ6JWH": {
       "policy": "direct-gunfight-window-v1",
       "updated_at": 1791317456.3303359,
-      "expires_at": 1791576656.3303359,
+      "expires_at": null,
       "media_url": "https://clips.kick.com/clips/50/clip_01HKCHGM9AQ42GJ3ZBASMJ6JWH/playlist.m3u8",
       "passed": false,
       "verdict": {
-        "id": 2,
-        "firefight_score": 0,
-        "active_samples": 0,
-        "sustained_combat": false,
-        "direct_gunfight": false,
-        "enemy_engagement": 0,
-        "combat_intensity": 0,
-        "dead_time_risk": 95,
-        "content_type": "gaming",
-        "reason": "Rocket League footage is vehicle sports gameplay, not a direct PvP firearm/ranged firefight."
+        "reason": "Automatic spending exclusion after prior rejected action edit"
       },
-      "window_start": 15.0
+      "window_start": 15.0,
+      "permanent_exclusion": true,
+      "exclusion_basis": "prior_saved_action_rejection",
+      "temporary_edit_cooldown": false
     },
     "clip_01M3T139RSGDKNMWH0J7Z6DNMZ": {
       "policy": "direct-gunfight-window-v1",
       "updated_at": 1791360898.020798,
-      "expires_at": 1791620098.020798,
+      "expires_at": null,
       "media_url": "https://clips.kick.com/clips/a7/clip_01M3T139RSGDKNMWH0J7Z6DNMZ/playlist.m3u8",
       "passed": false,
       "verdict": {
-        "id": 3,
-        "firefight_score": 5,
-        "active_samples": 0,
-        "sustained_combat": false,
-        "direct_gunfight": false,
-        "enemy_engagement": 0,
-        "combat_intensity": 2,
-        "dead_time_risk": 98,
-        "content_type": "gaming",
-        "reason": "Sampled frames show utility, movement, and end-of-match victory rather than visible direct firefight or enemy weapon engagement."
+        "reason": "Automatic spending exclusion after prior rejected action edit"
       },
-      "window_start": 5.0
+      "window_start": 5.0,
+      "permanent_exclusion": true,
+      "exclusion_basis": "prior_saved_action_rejection",
+      "temporary_edit_cooldown": false
     },
     "clip_01M3WN9VRMXADXENRBJKSM4VZZ": {
       "policy": "direct-gunfight-window-v1",
-      "updated_at": 1791411655.5697033,
-      "expires_at": 1791498055.5697033,
+      "updated_at": 1791450677.757042,
+      "expires_at": null,
       "media_url": "https://clips.kick.com/clips/59/clip_01M3WN9VRMXADXENRBJKSM4VZZ/playlist.m3u8",
-      "passed": true,
+      "passed": false,
+      "permanent_exclusion": true,
+      "window_start": 10.0,
+      "exclusion_basis": "candidate_exhausted_bounded_action_edit_review",
+      "reviewed_windows": [
+        {
+          "stage": "action_segment_gate.py",
+          "start_local": 14.6,
+          "end_local": 55.033667,
+          "source_offset": 8.0,
+          "start_original": 22.6,
+          "end_original": 63.033667,
+          "reason": "Long post-combat ending"
+        },
+        {
+          "stage": "action_segment_gate.py",
+          "start_local": 14.6,
+          "end_local": 50.46590653125,
+          "source_offset": 8.0,
+          "start_original": 22.6,
+          "end_original": 58.46590653125,
+          "reason": "Most samples are outside the confirmed fight; Long inactive stretch; Long post-combat ending"
+        }
+      ],
       "verdict": {
-        "id": 0,
-        "firefight_score": 82,
-        "active_samples": 2,
-        "sustained_combat": true,
-        "direct_gunfight": true,
-        "enemy_engagement": 85,
-        "combat_intensity": 78,
-        "dead_time_risk": 25,
-        "content_type": "gaming",
-        "reason": "Valorant clip shows visible enemy contact with weapon engagement and kill-feed activity across multiple samples; some downtime/holding angles, but enough direct PvP action."
+        "reason": "Most samples are outside the confirmed fight; Long inactive stretch; Long post-combat ending"
       },
-      "window_start": 10.0
+      "limitation": "Automatic spending exclusion; not proof that every source frame lacks combat."
     },
     "clip_01M3X2JHQM1YNE9Q9KVA3RJ3GC": {
       "policy": "direct-gunfight-window-v1",
       "updated_at": 1791411655.5707936,
-      "expires_at": 1791670855.5707936,
+      "expires_at": null,
       "media_url": "https://clips.kick.com/clips/a6/clip_01M3X2JHQM1YNE9Q9KVA3RJ3GC/playlist.m3u8",
       "passed": false,
       "verdict": {
-        "id": 1,
-        "firefight_score": 52,
-        "active_samples": 1,
-        "sustained_combat": false,
-        "direct_gunfight": true,
-        "enemy_engagement": 58,
-        "combat_intensity": 55,
-        "dead_time_risk": 65,
-        "content_type": "gaming",
-        "reason": "Warzone sample shows a clear scoped ranged engagement and likely elimination, but most sampled moments are passive aiming/rotating with limited repeated firefight evidence."
+        "reason": "Automatic spending exclusion after prior rejected action edit"
       },
-      "window_start": 40.0
+      "window_start": 40.0,
+      "permanent_exclusion": true,
+      "exclusion_basis": "prior_saved_action_rejection",
+      "temporary_edit_cooldown": false
     },
     "clip_01M494YE0ZBKH78PMJPDB9N4WT": {
       "policy": "direct-gunfight-window-v1",
       "updated_at": 1791411655.5717618,
-      "expires_at": 1791670855.5717618,
+      "expires_at": null,
       "media_url": "https://clips.kick.com/clips/0b/clip_01M494YE0ZBKH78PMJPDB9N4WT/playlist.m3u8",
       "passed": false,
       "verdict": {
-        "id": 2,
-        "firefight_score": 12,
-        "active_samples": 0,
-        "sustained_combat": false,
-        "direct_gunfight": false,
-        "enemy_engagement": 5,
-        "combat_intensity": 10,
-        "dead_time_risk": 95,
-        "content_type": "gaming",
-        "reason": "CS2 frames show movement and positioning without visible enemy exchange, firing, hit markers, or elimination activity."
+        "reason": "Automatic spending exclusion after prior rejected action edit"
       },
-      "window_start": 0.0
+      "window_start": 0.0,
+      "permanent_exclusion": true,
+      "exclusion_basis": "prior_saved_action_rejection",
+      "temporary_edit_cooldown": false
     },
     "clip_01M4C3EAQY90QTTFY9FG9CVKWG": {
       "policy": "direct-gunfight-window-v1",
       "updated_at": 1791411655.5727196,
-      "expires_at": 1791670855.5727196,
+      "expires_at": null,
       "media_url": "https://clips.kick.com/clips/91/clip_01M4C3EAQY90QTTFY9FG9CVKWG/playlist.m3u8",
       "passed": false,
       "verdict": {
-        "id": 3,
-        "firefight_score": 10,
-        "active_samples": 0,
-        "sustained_combat": false,
-        "direct_gunfight": false,
-        "enemy_engagement": 5,
-        "combat_intensity": 10,
-        "dead_time_risk": 95,
-        "content_type": "gaming",
-        "reason": "CS2 samples show traversal and setup only; no visible direct weapon engagement or confirmed firefight moments."
+        "reason": "Automatic spending exclusion after prior rejected action edit"
       },
-      "window_start": 20.0
+      "window_start": 20.0,
+      "permanent_exclusion": true,
+      "exclusion_basis": "prior_saved_action_rejection",
+      "temporary_edit_cooldown": false
     },
     "clip_01M4C42EV6RZXZE9CQF66A3QC6": {
       "policy": "direct-gunfight-window-v1",
       "updated_at": 1791411660.636398,
-      "expires_at": 1791670860.636398,
+      "expires_at": null,
       "media_url": "https://clips.kick.com/clips/e3/clip_01M4C42EV6RZXZE9CQF66A3QC6/playlist.m3u8",
       "passed": false,
       "verdict": {
-        "id": 0,
-        "firefight_score": 0,
-        "active_samples": 0,
-        "sustained_combat": false,
-        "direct_gunfight": false,
-        "enemy_engagement": 0,
-        "combat_intensity": 0,
-        "dead_time_risk": 95,
-        "content_type": "gaming",
-        "reason": "Dead by Daylight, not a direct firearm/ranged gunfight; no visible weapon exchange."
+        "reason": "Automatic spending exclusion after prior rejected action edit"
       },
-      "window_start": 0.0
+      "window_start": 0.0,
+      "permanent_exclusion": true,
+      "exclusion_basis": "prior_saved_action_rejection",
+      "temporary_edit_cooldown": false
     },
     "clip_01M3W9044TK1AXNERX257YQXVN": {
       "policy": "direct-gunfight-window-v1",
@@ -644,54 +489,44 @@
     "clip_01M44YP9YF8M055N1B2KCJGH2X": {
       "policy": "direct-gunfight-window-v1",
       "updated_at": 1791411660.6395948,
-      "expires_at": 1791670860.6395948,
+      "expires_at": null,
       "media_url": "https://clips.kick.com/clips/9a/clip_01M44YP9YF8M055N1B2KCJGH2X/playlist.m3u8",
       "passed": false,
       "verdict": {
-        "id": 3,
-        "firefight_score": 18,
-        "active_samples": 0,
-        "sustained_combat": false,
-        "direct_gunfight": false,
-        "enemy_engagement": 10,
-        "combat_intensity": 12,
-        "dead_time_risk": 85,
-        "content_type": "gaming",
-        "reason": "Warzone footage appears to be movement/positioning indoors with no visible enemy contact or firing in the sampled frames."
+        "reason": "Automatic spending exclusion after prior rejected action edit"
       },
-      "window_start": 35.0
+      "window_start": 35.0,
+      "permanent_exclusion": true,
+      "exclusion_basis": "prior_saved_action_rejection",
+      "temporary_edit_cooldown": false
     },
     "clip_01M2BZ9SGY47BPHHT6JYRQWBCJ": {
       "policy": "direct-gunfight-window-v1",
       "updated_at": 1791425786.6038487,
-      "expires_at": 1791684986.6038487,
+      "expires_at": null,
       "media_url": "https://clips.kick.com/clips/bd/clip_01M2BZ9SGY47BPHHT6JYRQWBCJ/playlist.m3u8",
       "passed": false,
       "verdict": {
-        "id": 0,
-        "firefight_score": 58,
-        "active_samples": 2,
-        "sustained_combat": false,
-        "direct_gunfight": false,
-        "enemy_engagement": 52,
-        "combat_intensity": 56,
-        "dead_time_risk": 48,
-        "content_type": "gaming",
-        "reason": "Warzone final-kill-cam context suggests combat, but sampled frames mostly show movement/positioning and held weapons rather than clear enemy exchange or hit confirmation."
+        "reason": "Automatic spending exclusion after prior rejected action edit"
       },
-      "window_start": 35.0
+      "window_start": 35.0,
+      "permanent_exclusion": true,
+      "exclusion_basis": "prior_saved_action_rejection",
+      "temporary_edit_cooldown": false
     },
     "clip_01M3X67FFX2PFR6RJ0VX16F5P4": {
       "policy": "direct-gunfight-window-v1",
       "updated_at": 1791448993.043168,
-      "expires_at": 1791470593.043168,
+      "expires_at": null,
       "media_url": "https://clips.kick.com/clips/8d/clip_01M3X67FFX2PFR6RJ0VX16F5P4/playlist.m3u8",
       "passed": false,
       "window_start": 0.0,
-      "temporary_edit_cooldown": true,
+      "temporary_edit_cooldown": false,
       "verdict": {
-        "reason": "Temporary cooldown after rejected edit: Long inactive stretch"
-      }
+        "reason": "Automatic spending exclusion after prior rejected action edit"
+      },
+      "permanent_exclusion": true,
+      "exclusion_basis": "prior_saved_action_rejection"
     },
     "clip_01M28CV510E2K9ZG9BXY52W4PJ": {
       "policy": "direct-gunfight-window-v1",
@@ -716,14 +551,16 @@
     "clip_01M2BQ5ZBBDRBDFR6FVYD0TD67": {
       "policy": "direct-gunfight-window-v1",
       "updated_at": 1791449032.7526636,
-      "expires_at": 1791470632.7526636,
+      "expires_at": null,
       "media_url": "https://clips.kick.com/clips/56/clip_01M2BQ5ZBBDRBDFR6FVYD0TD67/playlist.m3u8",
       "passed": false,
       "window_start": 60.0,
-      "temporary_edit_cooldown": true,
+      "temporary_edit_cooldown": false,
       "verdict": {
-        "reason": "Temporary cooldown after rejected edit: Insufficient direct gunfight samples; Most samples are outside the confirmed fight; Combat starts too late; Long inactive stretch; Long post-combat ending"
-      }
+        "reason": "Automatic spending exclusion after prior rejected action edit"
+      },
+      "permanent_exclusion": true,
+      "exclusion_basis": "prior_saved_action_rejection"
     }
   }
 }
