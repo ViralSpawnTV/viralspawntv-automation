@@ -6,6 +6,8 @@ import sys
 import time
 from pathlib import Path
 
+from firefight_cache import defer_failed_edit
+
 
 LOG = Path("work/v12_attempt_log.json")
 REJECTED = Path("shorts_rejected_history.json")
@@ -842,18 +844,42 @@ def main():
                 print("Music screen uncertain/failed: deferring clip without permanent rejection.")
             continue
 
+        # Never attribute a previous candidate's files to this attempt.
+        for diagnostic in (
+            "work/production/action_segment_gate/result.json",
+            "work/production/v4_edit_plan.json",
+            "work/production/pre_render_plan_gate.json",
+        ):
+            Path(diagnostic).unlink(missing_ok=True)
+
         production_code = run_timed(
             f"production_{render_index}",
             "production_test.py",
             extra_env={"FIREFIGHT_WINDOW_START": relative_action_hint(candidate)},
         )
 
+        action_result = load_json("work/production/action_segment_gate/result.json", {})
+        production_attempt = {
+            "render_attempt": render_index, "clip_id": clip_id,
+            "production_exit_code": production_code,
+            "action_segment_validation": action_result,
+            "edit_plan": load_json("work/production/v4_edit_plan.json", {}),
+            "pre_render_validation": load_json("work/production/pre_render_plan_gate.json", {}),
+        }
+        if production_code != 0:
+            production_attempt["temporary_edit_cooldown"] = defer_failed_edit(candidate, action_result)
+        attempts.append(production_attempt)
+        save_log(attempts)
+
         if production_code != 0:
             print(
                 f"V12.14.6 production failed for "
                 f"{clip_id}; trying next source."
             )
-            print("Edit/render failure: source deferred; no permanent rejection.")
+            if production_attempt.get("temporary_edit_cooldown"):
+                print("Valid gunfight rejection: source cooled down for six hours; no permanent rejection.")
+            else:
+                print("Edit/render/API failure: no action cooldown or permanent rejection.")
             continue
 
         # Gambling/content safety remains a hard gate.
