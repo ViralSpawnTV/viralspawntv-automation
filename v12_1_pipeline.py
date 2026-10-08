@@ -469,7 +469,7 @@ def main():
 
     if run_timed(
         "discovery",
-        "kick_game_discovery.py",
+        "clip_library_feed.py",
     ) != 0:
         raise RuntimeError(
             "V12.14.6 discovery failed"
