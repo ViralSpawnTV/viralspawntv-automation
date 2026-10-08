@@ -14,12 +14,12 @@ OUTDIR = Path("work/kick_gaming")
 OUT = OUTDIR / "selected_kick_gaming_source.mp4"
 RESULT = OUTDIR / "acquisition_result.json"
 
-MIN_WINDOW_SECONDS = 40.0
+MIN_WINDOW_SECONDS = 19.0
 MAX_WINDOW_SECONDS = 58.5
 
-# HLS segment boundaries can shave a fraction of a second. A local 39s
-# core plus the existing 1s branded outro still yields a 40s final Short.
-MIN_LOCAL_SECONDS = 39.0
+# Preserve a minimum 19-second core for the existing 1-second branded outro.
+# An undersized stream-copy result uses the existing accurate encode fallback.
+MIN_LOCAL_SECONDS = 19.0
 
 KICK_API_TEMPLATE = "https://kick.com/api/v2/clips/{clip_id}/play"
 API_HEADERS = {
