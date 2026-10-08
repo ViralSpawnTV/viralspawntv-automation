@@ -92,7 +92,7 @@ def remember(row, verdict, passed):
         exclude(row, "strongest_preview_window_failed_paid_action_screen",
                 verdict.get("reason", "No qualifying gunfight in reviewed window"),
                 [{"stage": "active_firefight_prescreener.py", "start_original": start,
-                  "nominal_window_seconds": 35, "verdict": copy.deepcopy(verdict)}])
+                  "nominal_window_seconds": row.get("local_window_seconds",35), "verdict": copy.deepcopy(verdict)}])
         return
     data = load()
     if data["entries"].get(clip_id, {}).get("permanent_exclusion") is True:
@@ -103,6 +103,8 @@ def remember(row, verdict, passed):
         "policy": POLICY, "updated_at": now, "expires_at": now + 86400,
         "media_url": media(row), "passed": True, "verdict": verdict,
         "window_start": row.get("local_window_start"),
+        "window_seconds": row.get("local_window_seconds"),
+        "local_screen_policy": row.get("library_screen_tag"),
     }
     write(data)
 
