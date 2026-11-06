@@ -573,8 +573,8 @@
       "reviewed": {
         "1b29d717cd6da36f919baba1": {
           "status": "error",
-          "retry_after": 1793969486.3537264,
-          "updated_at": 1793947886.3537276
+          "retry_after": 1794015204.8559806,
+          "updated_at": 1793993604.855982
         }
       }
     },
@@ -1365,7 +1365,7 @@
     "clip_01M4D6GC1SAQ1AEC0BH8741017": {
       "scan_policy": "action-first-temporal-v1",
       "status": "scanned",
-      "updated_at": 1793947317.4471624,
+      "updated_at": 1793993070.6813538,
       "evidence": {
         "scanned_seconds": 29.2053125,
         "scan_offset": 70.8,
@@ -1430,7 +1430,7 @@
     "clip_01M2NX1GAFQBRYQY4HP4AX0EG9": {
       "scan_policy": "action-first-temporal-v1",
       "status": "scanned",
-      "updated_at": 1793947344.130038,
+      "updated_at": 1793993095.3239052,
       "evidence": {
         "scanned_seconds": 33.6213125,
         "scan_offset": 4.512062500000006,
@@ -1475,7 +1475,7 @@
     "clip_01M4DD0RFZD4ZF8QF93KRHEX3H": {
       "scan_policy": "action-first-temporal-v1",
       "status": "scanned",
-      "updated_at": 1793947366.0893974,
+      "updated_at": 1793993116.9234912,
       "evidence": {
         "scanned_seconds": 35.0,
         "scan_offset": 15.011937499999995,
@@ -1520,7 +1520,7 @@
     "clip_01M4A7J2PPC76YHPG5XVD8NPXJ": {
       "scan_policy": "action-first-temporal-v1",
       "status": "scanned",
-      "updated_at": 1793947388.6547115,
+      "updated_at": 1793993137.695556,
       "evidence": {
         "scanned_seconds": 35.0,
         "scan_offset": 23.021,
@@ -1565,11 +1565,11 @@
     "clip_01M4CC0YWHTSY55G7SK7S4WS36": {
       "scan_policy": "action-first-temporal-v1",
       "status": "scanned",
-      "updated_at": 1793947410.9241526,
+      "updated_at": 1793993158.1127455,
       "evidence": {
-        "scanned_seconds": 35.0,
+        "scanned_seconds": 33.003125,
         "scan_offset": 5.0177499999999995,
-        "scanned_through_seconds": 40.01775,
+        "scanned_through_seconds": 38.020875,
         "next_scan_offset": 5.0177499999999995,
         "source_fully_scanned": false,
         "local_model_revisions": {
@@ -1610,7 +1610,7 @@
     "clip_01M4BCSK75BP1CC204ENP65NA9": {
       "scan_policy": "action-first-temporal-v1",
       "status": "scanned",
-      "updated_at": 1793947436.1882687,
+      "updated_at": 1793993180.6217318,
       "evidence": {
         "scanned_seconds": 34.5813125,
         "scan_offset": 46.722624999999994,
@@ -1655,7 +1655,7 @@
     "clip_01M4CS22TD2A02H7A87QBCRQTC": {
       "scan_policy": "action-first-temporal-v1",
       "status": "scanned",
-      "updated_at": 1793947460.7498252,
+      "updated_at": 1793993202.855429,
       "evidence": {
         "scanned_seconds": 32.9026875,
         "scan_offset": 5.789937500000001,
@@ -1700,7 +1700,7 @@
     "clip_01M4D58C74JAHAG8Y2M7H31TGG": {
       "scan_policy": "action-first-temporal-v1",
       "status": "scanned",
-      "updated_at": 1793947483.5885384,
+      "updated_at": 1793993225.4194124,
       "evidence": {
         "scanned_seconds": 33.344,
         "scan_offset": 58.51199999999999,
@@ -1765,7 +1765,7 @@
     "clip_01M25W70PRN46ZTKD2FRN1N7VP": {
       "scan_policy": "action-first-temporal-v1",
       "status": "scanned",
-      "updated_at": 1793947506.669579,
+      "updated_at": 1793993247.701171,
       "evidence": {
         "scanned_seconds": 33.3013125,
         "scan_offset": 50.13081250000003,
@@ -1810,7 +1810,7 @@
     "clip_01M4DCQ5AA7KJN7KPQ8DCS4BN7": {
       "scan_policy": "action-first-temporal-v1",
       "status": "scanned",
-      "updated_at": 1793947529.9169586,
+      "updated_at": 1793993270.4752336,
       "evidence": {
         "scanned_seconds": 33.3653125,
         "scan_offset": 9.210625,
@@ -2746,6 +2746,17 @@
           "last_action_tail_seconds": 2,
           "longest_gap_seconds": 2,
           "scoring_crop": "central"
+        },
+        {
+          "start": 20.210625,
+          "seconds": 19.0,
+          "active_ratio": 0.7368421052631579,
+          "gameplay_ratio": 0.7894736842105263,
+          "gunfire_ratio": 1.0,
+          "first_action_hint_seconds": 1,
+          "last_action_tail_seconds": 2,
+          "longest_gap_seconds": 2,
+          "scoring_crop": "central"
         }
       ],
       "candidate": {
@@ -2829,7 +2840,7 @@
     "clip_01M3ZA4KES2J0ED0K7HE3FCYGQ": {
       "scan_policy": "action-first-temporal-v1",
       "status": "scanned",
-      "updated_at": 1793947555.0654647,
+      "updated_at": 1793993294.4105506,
       "evidence": {
         "scanned_seconds": 34.0053125,
         "scan_offset": 70.994625,
@@ -2874,7 +2885,7 @@
     "clip_01M4CFZSNYWMWQE7XDZSD438AV": {
       "scan_policy": "action-first-temporal-v1",
       "status": "scanned",
-      "updated_at": 1793947578.0762415,
+      "updated_at": 1793993316.3673906,
       "evidence": {
         "scanned_seconds": 34.9226875,
         "scan_offset": 0.0,
@@ -2919,7 +2930,7 @@
     "clip_01M3TWTMJG51ZT990W5BZK0BTV": {
       "scan_policy": "action-first-temporal-v1",
       "status": "scanned",
-      "updated_at": 1793947601.6155097,
+      "updated_at": 1793993339.165977,
       "evidence": {
         "scanned_seconds": 35.0,
         "scan_offset": 101.49731250000025,
@@ -2964,7 +2975,7 @@
     "clip_01M47CH6RN29N9CDVZWX3XEEG1": {
       "scan_policy": "action-first-temporal-v1",
       "status": "scanned",
-      "updated_at": 1793947624.663187,
+      "updated_at": 1793993361.3443716,
       "evidence": {
         "scanned_seconds": 32.0213125,
         "scan_offset": 0.0,
@@ -3009,7 +3020,7 @@
     "clip_01M4D4WKB3PBCT08QWBHB9YXVM": {
       "scan_policy": "action-first-temporal-v1",
       "status": "scanned",
-      "updated_at": 1793947645.4278338,
+      "updated_at": 1793993381.3400216,
       "evidence": {
         "scanned_seconds": 31.0186875,
         "scan_offset": 58.859125000000056,
@@ -3074,11 +3085,11 @@
     "clip_01M2NW1173MQ6GXX4FQ0XZKKTT": {
       "scan_policy": "action-first-temporal-v1",
       "status": "scanned",
-      "updated_at": 1793947669.53471,
+      "updated_at": 1793993404.1060004,
       "evidence": {
-        "scanned_seconds": 32.0213125,
+        "scanned_seconds": 34.0053125,
         "scan_offset": 137.01199999999997,
-        "scanned_through_seconds": 169.03331249999997,
+        "scanned_through_seconds": 171.01731249999997,
         "next_scan_offset": 137.01199999999997,
         "source_fully_scanned": false,
         "local_model_revisions": {
@@ -3119,7 +3130,7 @@
     "clip_01M2RM08F8EFCDDHWC0FD57742": {
       "scan_policy": "action-first-temporal-v1",
       "status": "scanned",
-      "updated_at": 1793947694.2515235,
+      "updated_at": 1793993427.2397985,
       "evidence": {
         "scanned_seconds": 34.0266875,
         "scan_offset": 19.063312500000002,
@@ -3164,7 +3175,7 @@
     "clip_01M45R3R47HYN0AV4XKXHM11H0": {
       "scan_policy": "action-first-temporal-v1",
       "status": "scanned",
-      "updated_at": 1793947714.8944674,
+      "updated_at": 1793993445.5104566,
       "evidence": {
         "scanned_seconds": 32.504,
         "scan_offset": 10.421000000000006,
@@ -3209,7 +3220,7 @@
     "clip_01M4C29746AKKCBC4KZV9HQJDK": {
       "scan_policy": "action-first-temporal-v1",
       "status": "scanned",
-      "updated_at": 1793947740.570756,
+      "updated_at": 1793993469.5656548,
       "evidence": {
         "scanned_seconds": 34.2826875,
         "scan_offset": 106.99556249999995,
@@ -3254,7 +3265,7 @@
     "clip_01M499X33SNTVCNZ0Y24ESKH3D": {
       "scan_policy": "action-first-temporal-v1",
       "status": "scanned",
-      "updated_at": 1793947762.7838237,
+      "updated_at": 1793993490.950446,
       "evidence": {
         "scanned_seconds": 33.3670625,
         "scan_offset": 0.0,
@@ -3299,11 +3310,11 @@
     "clip_01M49ATM332YT5EBS5GQQSXVE0": {
       "scan_policy": "action-first-temporal-v1",
       "status": "scanned",
-      "updated_at": 1793947784.9374006,
+      "updated_at": 1793993510.328452,
       "evidence": {
-        "scanned_seconds": 35.0,
+        "scanned_seconds": 34.8506875,
         "scan_offset": 140.8183125,
-        "scanned_through_seconds": 175.8183125,
+        "scanned_through_seconds": 175.66899999999998,
         "next_scan_offset": 140.8183125,
         "source_fully_scanned": false,
         "local_model_revisions": {
@@ -3344,7 +3355,7 @@
     "clip_01M4D5PDRSW2NEV9BZKY4HX1D0": {
       "scan_policy": "action-first-temporal-v1",
       "status": "scanned",
-      "updated_at": 1793947809.5108242,
+      "updated_at": 1793993533.2432566,
       "evidence": {
         "scanned_seconds": 33.3226875,
         "scan_offset": 134.965375,
@@ -3409,7 +3420,7 @@
     "clip_01HSGVRBY0M7AD8RQYP6ZHY7ME": {
       "scan_policy": "action-first-temporal-v1",
       "status": "scanned",
-      "updated_at": 1793947832.492269,
+      "updated_at": 1793993555.961558,
       "evidence": {
         "scanned_seconds": 33.3670625,
         "scan_offset": 17.5856875,
@@ -3454,7 +3465,7 @@
     "clip_01M324YE1B48TW2MCDDB6AT0C4": {
       "scan_policy": "action-first-temporal-v1",
       "status": "scanned",
-      "updated_at": 1793947857.524345,
+      "updated_at": 1793993578.8991551,
       "evidence": {
         "scanned_seconds": 34.0266875,
         "scan_offset": 31.0186875,
@@ -3499,7 +3510,7 @@
     "clip_01M3W2WHN85S6VF88HSHD18QHH": {
       "scan_policy": "action-first-temporal-v1",
       "status": "scanned",
-      "updated_at": 1793947878.3223329,
+      "updated_at": 1793993597.8754652,
       "evidence": {
         "scanned_seconds": 35.0,
         "scan_offset": 14.212687500000001,
@@ -35184,6 +35195,578 @@
       "local_window_seconds": 19.0,
       "library_window_end": 19.0,
       "local_firefight_score": 84.496
+    },
+    "clip_01M4CBBY6QYHGF1Q51A517ZD3S": {
+      "platform": "kick",
+      "game": "Counter-Strike 2",
+      "category_slug": "counter-strike-2",
+      "channel": "z3yx97",
+      "clip_id": "clip_01M4CBBY6QYHGF1Q51A517ZD3S",
+      "clip_url": "https://kick.com/z3yx97/clips/clip_01M4CBBY6QYHGF1Q51A517ZD3S",
+      "category_position": 0,
+      "prevalidated_title": "4ace atamad\u0131k",
+      "prevalidated_duration_seconds": 42.0,
+      "prevalidated_media_url": "https://clips.kick.com/clips/b2/clip_01M4CBBY6QYHGF1Q51A517ZD3S/playlist.m3u8",
+      "prevalidated_views": 7,
+      "prevalidated_likes": 0,
+      "prevalidated_created_at": "2026-10-07T23:33:26.751453Z",
+      "library_screen_tag": "local-gameplay-gunfire-v2",
+      "library_visual_approved": false,
+      "library_local_pass": true,
+      "library_scanned_at": 1793970808.4809403,
+      "library_model_revisions": {
+        "vision": "d15189d7028b43f1d3e65039190477f6af591c2a",
+        "audio": "249a1fbf0286b40e7f1ed687a8ae396997bf7dc6"
+      },
+      "library_screen_method": "local CLIP gameplay contrast plus AudioSet gunfire tags",
+      "library_combat_evidence": {
+        "start": 2.0,
+        "seconds": 19.0,
+        "end": 21.0,
+        "score": 78.472,
+        "gameplay_ratio": 0.9,
+        "gunfire_bins": 3,
+        "audio_bins": 3,
+        "gunfire_ratio": 1.0,
+        "mean_gunfire_score": 0.1236,
+        "longest_inactive_seconds": 3.0,
+        "passed": true
+      },
+      "local_frame_count": 23,
+      "local_shooter_game": true,
+      "preview_seconds": 46.0,
+      "local_window_start": 2.0,
+      "local_window_seconds": 19.0,
+      "library_window_end": 21.0,
+      "local_firefight_score": 78.472
+    },
+    "clip_01M4CBA1B72YT6JJDFFVPNCB3C": {
+      "platform": "kick",
+      "game": "Counter-Strike 2",
+      "category_slug": "counter-strike-2",
+      "channel": "rdvanndg",
+      "clip_id": "clip_01M4CBA1B72YT6JJDFFVPNCB3C",
+      "clip_url": "https://kick.com/rdvanndg/clips/clip_01M4CBA1B72YT6JJDFFVPNCB3C",
+      "category_position": 1,
+      "prevalidated_title": "DEAGLE",
+      "prevalidated_duration_seconds": 44.0,
+      "prevalidated_media_url": "https://clips.kick.com/clips/a3/clip_01M4CBA1B72YT6JJDFFVPNCB3C/playlist.m3u8",
+      "prevalidated_views": 6,
+      "prevalidated_likes": 0,
+      "prevalidated_created_at": "2026-10-07T23:32:18.348928Z",
+      "library_screen_tag": "local-gameplay-gunfire-v2",
+      "library_visual_approved": false,
+      "library_local_pass": true,
+      "library_scanned_at": 1793970826.6734302,
+      "library_model_revisions": {
+        "vision": "d15189d7028b43f1d3e65039190477f6af591c2a",
+        "audio": "249a1fbf0286b40e7f1ed687a8ae396997bf7dc6"
+      },
+      "library_screen_method": "local CLIP gameplay contrast plus AudioSet gunfire tags",
+      "library_combat_evidence": {
+        "start": 10.0,
+        "seconds": 25.0,
+        "end": 35.0,
+        "score": 73.454,
+        "gameplay_ratio": 0.923,
+        "gunfire_bins": 4,
+        "audio_bins": 5,
+        "gunfire_ratio": 0.8,
+        "mean_gunfire_score": 0.2266,
+        "longest_inactive_seconds": 5.0,
+        "passed": true
+      },
+      "local_frame_count": 23,
+      "local_shooter_game": true,
+      "preview_seconds": 45.25,
+      "local_window_start": 10.0,
+      "local_window_seconds": 25.0,
+      "library_window_end": 35.0,
+      "local_firefight_score": 73.454
+    },
+    "clip_01M4CAXXQRREW2EZPDGPN1MYV0": {
+      "platform": "kick",
+      "game": "Counter-Strike 2",
+      "category_slug": "counter-strike-2",
+      "channel": "imfrekez",
+      "clip_id": "clip_01M4CAXXQRREW2EZPDGPN1MYV0",
+      "clip_url": "https://kick.com/imfrekez/clips/clip_01M4CAXXQRREW2EZPDGPN1MYV0",
+      "category_position": 4,
+      "prevalidated_title": "ace de manual (",
+      "prevalidated_duration_seconds": 83.0,
+      "prevalidated_media_url": "https://clips.kick.com/clips/fa/clip_01M4CAXXQRREW2EZPDGPN1MYV0/playlist.m3u8",
+      "prevalidated_views": 3,
+      "prevalidated_likes": 0,
+      "prevalidated_created_at": "2026-10-07T23:25:20.996109Z",
+      "library_screen_tag": "local-gameplay-gunfire-v2",
+      "library_visual_approved": false,
+      "library_local_pass": true,
+      "library_scanned_at": 1793970855.8212934,
+      "library_model_revisions": {
+        "vision": "d15189d7028b43f1d3e65039190477f6af591c2a",
+        "audio": "249a1fbf0286b40e7f1ed687a8ae396997bf7dc6"
+      },
+      "library_screen_method": "local CLIP gameplay contrast plus AudioSet gunfire tags",
+      "library_combat_evidence": {
+        "start": 8.0,
+        "seconds": 19.0,
+        "end": 27.0,
+        "score": 87.985,
+        "gameplay_ratio": 1.0,
+        "gunfire_bins": 3,
+        "audio_bins": 3,
+        "gunfire_ratio": 1.0,
+        "mean_gunfire_score": 0.3993,
+        "longest_inactive_seconds": 2.0,
+        "passed": true
+      },
+      "local_frame_count": 42,
+      "local_shooter_game": true,
+      "preview_seconds": 84.875,
+      "local_window_start": 8.0,
+      "local_window_seconds": 19.0,
+      "library_window_end": 27.0,
+      "local_firefight_score": 87.985
+    },
+    "clip_01M6RFTSF5V7Q570C3E3X15RK0": {
+      "platform": "kick",
+      "game": "Fortnite",
+      "category_slug": "fortnite",
+      "channel": "rokdraco",
+      "clip_id": "clip_01M6RFTSF5V7Q570C3E3X15RK0",
+      "clip_url": "https://kick.com/rokdraco/clips/clip_01M6RFTSF5V7Q570C3E3X15RK0",
+      "category_position": 1,
+      "prevalidated_title": "A5 NO muere",
+      "prevalidated_duration_seconds": 75.0,
+      "prevalidated_media_url": "https://clips.kick.com/clips/76/clip_01M6RFTSF5V7Q570C3E3X15RK0/playlist.m3u8",
+      "prevalidated_views": 0,
+      "prevalidated_likes": 0,
+      "prevalidated_created_at": "2026-11-06T13:13:49.080919Z",
+      "library_screen_tag": "local-gameplay-gunfire-v2",
+      "library_visual_approved": false,
+      "library_local_pass": true,
+      "library_scanned_at": 1793970956.621175,
+      "library_model_revisions": {
+        "vision": "d15189d7028b43f1d3e65039190477f6af591c2a",
+        "audio": "249a1fbf0286b40e7f1ed687a8ae396997bf7dc6"
+      },
+      "library_screen_method": "local CLIP gameplay contrast plus AudioSet gunfire tags",
+      "library_combat_evidence": {
+        "start": 2.0,
+        "seconds": 25.0,
+        "end": 27.0,
+        "score": 72.096,
+        "gameplay_ratio": 1.0,
+        "gunfire_bins": 3,
+        "audio_bins": 4,
+        "gunfire_ratio": 0.75,
+        "mean_gunfire_score": 0.1048,
+        "longest_inactive_seconds": 5.0,
+        "passed": true
+      },
+      "local_frame_count": 40,
+      "local_shooter_game": true,
+      "preview_seconds": 79.375,
+      "local_window_start": 2.0,
+      "local_window_seconds": 25.0,
+      "library_window_end": 27.0,
+      "local_firefight_score": 72.096
+    },
+    "clip_01M6RFFDRBB18263BV645YXXCB": {
+      "platform": "kick",
+      "game": "Fortnite",
+      "category_slug": "fortnite",
+      "channel": "rokdraco",
+      "clip_id": "clip_01M6RFFDRBB18263BV645YXXCB",
+      "clip_url": "https://kick.com/rokdraco/clips/clip_01M6RFFDRBB18263BV645YXXCB",
+      "category_position": 4,
+      "prevalidated_title": "A2,3,4",
+      "prevalidated_duration_seconds": 117.0,
+      "prevalidated_media_url": "https://clips.kick.com/clips/d4/clip_01M6RFFDRBB18263BV645YXXCB/playlist.m3u8",
+      "prevalidated_views": 0,
+      "prevalidated_likes": 0,
+      "prevalidated_created_at": "2026-11-06T13:07:44.478134Z",
+      "library_screen_tag": "local-gameplay-gunfire-v2",
+      "library_visual_approved": false,
+      "library_local_pass": true,
+      "library_scanned_at": 1793970996.2538626,
+      "library_model_revisions": {
+        "vision": "d15189d7028b43f1d3e65039190477f6af591c2a",
+        "audio": "249a1fbf0286b40e7f1ed687a8ae396997bf7dc6"
+      },
+      "library_screen_method": "local CLIP gameplay contrast plus AudioSet gunfire tags",
+      "library_combat_evidence": {
+        "start": 12.0,
+        "seconds": 25.0,
+        "end": 37.0,
+        "score": 71.783,
+        "gameplay_ratio": 1.0,
+        "gunfire_bins": 3,
+        "audio_bins": 4,
+        "gunfire_ratio": 0.75,
+        "mean_gunfire_score": 0.0892,
+        "longest_inactive_seconds": 5.0,
+        "passed": true
+      },
+      "local_frame_count": 60,
+      "local_shooter_game": true,
+      "preview_seconds": 120,
+      "local_window_start": 12.0,
+      "local_window_seconds": 25.0,
+      "library_window_end": 37.0,
+      "local_firefight_score": 71.783
+    },
+    "clip_01M6RF8NJBPNQ3J8KB12BK3PFZ": {
+      "platform": "kick",
+      "game": "Fortnite",
+      "category_slug": "fortnite",
+      "channel": "rokdraco",
+      "clip_id": "clip_01M6RF8NJBPNQ3J8KB12BK3PFZ",
+      "clip_url": "https://kick.com/rokdraco/clips/clip_01M6RF8NJBPNQ3J8KB12BK3PFZ",
+      "category_position": 5,
+      "prevalidated_title": "A1 perse",
+      "prevalidated_duration_seconds": 130.0,
+      "prevalidated_media_url": "https://clips.kick.com/clips/d3/clip_01M6RF8NJBPNQ3J8KB12BK3PFZ/playlist.m3u8",
+      "prevalidated_views": 0,
+      "prevalidated_likes": 0,
+      "prevalidated_created_at": "2026-11-06T13:03:44.454083Z",
+      "library_screen_tag": "local-gameplay-gunfire-v2",
+      "library_visual_approved": false,
+      "library_local_pass": true,
+      "library_scanned_at": 1793971036.124595,
+      "library_model_revisions": {
+        "vision": "d15189d7028b43f1d3e65039190477f6af591c2a",
+        "audio": "249a1fbf0286b40e7f1ed687a8ae396997bf7dc6"
+      },
+      "library_screen_method": "local CLIP gameplay contrast plus AudioSet gunfire tags",
+      "library_combat_evidence": {
+        "start": 40.0,
+        "seconds": 25.0,
+        "end": 65.0,
+        "score": 74.706,
+        "gameplay_ratio": 1.0,
+        "gunfire_bins": 4,
+        "audio_bins": 5,
+        "gunfire_ratio": 0.8,
+        "mean_gunfire_score": 0.1353,
+        "longest_inactive_seconds": 5.0,
+        "passed": true
+      },
+      "local_frame_count": 60,
+      "local_shooter_game": true,
+      "preview_seconds": 120,
+      "local_window_start": 40.0,
+      "local_window_seconds": 25.0,
+      "library_window_end": 65.0,
+      "local_firefight_score": 74.706
+    },
+    "clip_01M6RDFRM11VVAD6RJ0SAWJXBX": {
+      "platform": "kick",
+      "game": "Fortnite",
+      "category_slug": "fortnite",
+      "channel": "marziipan",
+      "clip_id": "clip_01M6RDFRM11VVAD6RJ0SAWJXBX",
+      "clip_url": "https://kick.com/marziipan/clips/clip_01M6RDFRM11VVAD6RJ0SAWJXBX",
+      "category_position": 14,
+      "prevalidated_title": "fuhhh",
+      "prevalidated_duration_seconds": 180.0,
+      "prevalidated_media_url": "https://clips.kick.com/clips/dd/clip_01M6RDFRM11VVAD6RJ0SAWJXBX/playlist.m3u8",
+      "prevalidated_views": 0,
+      "prevalidated_likes": 0,
+      "prevalidated_created_at": "2026-11-06T12:31:51.91893Z",
+      "library_screen_tag": "local-gameplay-gunfire-v2",
+      "library_visual_approved": false,
+      "library_local_pass": true,
+      "library_scanned_at": 1793971142.378554,
+      "library_model_revisions": {
+        "vision": "d15189d7028b43f1d3e65039190477f6af591c2a",
+        "audio": "249a1fbf0286b40e7f1ed687a8ae396997bf7dc6"
+      },
+      "library_screen_method": "local CLIP gameplay contrast plus AudioSet gunfire tags",
+      "library_combat_evidence": {
+        "start": 8.0,
+        "seconds": 19.0,
+        "end": 27.0,
+        "score": 83.562,
+        "gameplay_ratio": 1.0,
+        "gunfire_bins": 3,
+        "audio_bins": 3,
+        "gunfire_ratio": 1.0,
+        "mean_gunfire_score": 0.1781,
+        "longest_inactive_seconds": 2.0,
+        "passed": true
+      },
+      "local_frame_count": 60,
+      "local_shooter_game": true,
+      "preview_seconds": 120,
+      "local_window_start": 8.0,
+      "local_window_seconds": 19.0,
+      "library_window_end": 27.0,
+      "local_firefight_score": 83.562
+    },
+    "clip_01M6RD9DK22J7C7DXE7CA9MG9Y": {
+      "platform": "kick",
+      "game": "Fortnite",
+      "category_slug": "fortnite",
+      "channel": "marziipan",
+      "clip_id": "clip_01M6RD9DK22J7C7DXE7CA9MG9Y",
+      "clip_url": "https://kick.com/marziipan/clips/clip_01M6RD9DK22J7C7DXE7CA9MG9Y",
+      "category_position": 16,
+      "prevalidated_title": "whoop",
+      "prevalidated_duration_seconds": 180.0,
+      "prevalidated_media_url": "https://clips.kick.com/clips/30/clip_01M6RD9DK22J7C7DXE7CA9MG9Y/playlist.m3u8",
+      "prevalidated_views": 0,
+      "prevalidated_likes": 0,
+      "prevalidated_created_at": "2026-11-06T12:28:30.025774Z",
+      "library_screen_tag": "local-gameplay-gunfire-v2",
+      "library_visual_approved": false,
+      "library_local_pass": true,
+      "library_scanned_at": 1793971182.4789765,
+      "library_model_revisions": {
+        "vision": "d15189d7028b43f1d3e65039190477f6af591c2a",
+        "audio": "249a1fbf0286b40e7f1ed687a8ae396997bf7dc6"
+      },
+      "library_screen_method": "local CLIP gameplay contrast plus AudioSet gunfire tags",
+      "library_combat_evidence": {
+        "start": 28.0,
+        "seconds": 19.0,
+        "end": 47.0,
+        "score": 85.396,
+        "gameplay_ratio": 1.0,
+        "gunfire_bins": 3,
+        "audio_bins": 3,
+        "gunfire_ratio": 1.0,
+        "mean_gunfire_score": 0.2698,
+        "longest_inactive_seconds": 2.0,
+        "passed": true
+      },
+      "local_frame_count": 60,
+      "local_shooter_game": true,
+      "preview_seconds": 120,
+      "local_window_start": 28.0,
+      "local_window_seconds": 19.0,
+      "library_window_end": 47.0,
+      "local_firefight_score": 85.396
+    },
+    "clip_01M4AF8CPBGXEWWGPDXAJVE318": {
+      "platform": "kick",
+      "game": "Fortnite",
+      "category_slug": "fortnite",
+      "channel": "nzo7off",
+      "clip_id": "clip_01M4AF8CPBGXEWWGPDXAJVE318",
+      "clip_url": "https://kick.com/nzo7off/clips/clip_01M4AF8CPBGXEWWGPDXAJVE318",
+      "category_position": 3,
+      "prevalidated_title": "cc",
+      "prevalidated_duration_seconds": 180.0,
+      "prevalidated_media_url": "https://clips.kick.com/clips/21/clip_01M4AF8CPBGXEWWGPDXAJVE318/playlist.m3u8",
+      "prevalidated_views": 7,
+      "prevalidated_likes": 0,
+      "prevalidated_created_at": "2026-10-07T06:01:58.723632Z",
+      "library_screen_tag": "local-gameplay-gunfire-v2",
+      "library_visual_approved": false,
+      "library_local_pass": true,
+      "library_scanned_at": 1793971239.792251,
+      "library_model_revisions": {
+        "vision": "d15189d7028b43f1d3e65039190477f6af591c2a",
+        "audio": "249a1fbf0286b40e7f1ed687a8ae396997bf7dc6"
+      },
+      "library_screen_method": "local CLIP gameplay contrast plus AudioSet gunfire tags",
+      "library_combat_evidence": {
+        "start": 0.0,
+        "seconds": 25.0,
+        "end": 25.0,
+        "score": 65.533,
+        "gameplay_ratio": 1.0,
+        "gunfire_bins": 3,
+        "audio_bins": 5,
+        "gunfire_ratio": 0.6,
+        "mean_gunfire_score": 0.0766,
+        "longest_inactive_seconds": 5.0,
+        "passed": true
+      },
+      "local_frame_count": 60,
+      "local_shooter_game": true,
+      "preview_seconds": 120,
+      "local_window_start": 0.0,
+      "local_window_seconds": 25.0,
+      "library_window_end": 25.0,
+      "local_firefight_score": 65.533
+    },
+    "clip_01M6BRPFW2KD5VDAHP44ENQ74Q": {
+      "platform": "kick",
+      "game": "Apex Legends",
+      "category_slug": "apex-legends",
+      "channel": "kokushimuso",
+      "clip_id": "clip_01M6BRPFW2KD5VDAHP44ENQ74Q",
+      "clip_url": "https://kick.com/kokushimuso/clips/clip_01M6BRPFW2KD5VDAHP44ENQ74Q",
+      "category_position": 5,
+      "prevalidated_title": "\u306a\u3093\u3067\u6b7b\u306c\u306e\uff1f",
+      "prevalidated_duration_seconds": 78.0,
+      "prevalidated_media_url": "https://clips.kick.com/clips/9a/clip_01M6BRPFW2KD5VDAHP44ENQ74Q/playlist.m3u8",
+      "prevalidated_views": 5,
+      "prevalidated_likes": 0,
+      "prevalidated_created_at": "2026-11-01T14:38:02.232005Z",
+      "library_screen_tag": "local-gameplay-gunfire-v2",
+      "library_visual_approved": false,
+      "library_local_pass": true,
+      "library_scanned_at": 1793971616.2119853,
+      "library_model_revisions": {
+        "vision": "d15189d7028b43f1d3e65039190477f6af591c2a",
+        "audio": "249a1fbf0286b40e7f1ed687a8ae396997bf7dc6"
+      },
+      "library_screen_method": "local CLIP gameplay contrast plus AudioSet gunfire tags",
+      "library_combat_evidence": {
+        "start": 24.0,
+        "seconds": 19.0,
+        "end": 43.0,
+        "score": 71.948,
+        "gameplay_ratio": 0.7,
+        "gunfire_bins": 3,
+        "audio_bins": 3,
+        "gunfire_ratio": 1.0,
+        "mean_gunfire_score": 0.1974,
+        "longest_inactive_seconds": 3.0,
+        "passed": true
+      },
+      "local_frame_count": 40,
+      "local_shooter_game": true,
+      "preview_seconds": 80.25,
+      "local_window_start": 24.0,
+      "local_window_seconds": 19.0,
+      "library_window_end": 43.0,
+      "local_firefight_score": 71.948
+    },
+    "clip_01M69KPP7CEJ204SSVYJQZ55K2": {
+      "platform": "kick",
+      "game": "Call of Duty: Warzone",
+      "category_slug": "call-of-duty-warzone",
+      "channel": "elmago016",
+      "clip_id": "clip_01M69KPP7CEJ204SSVYJQZ55K2",
+      "clip_url": "https://kick.com/elmago016/clips/clip_01M69KPP7CEJ204SSVYJQZ55K2",
+      "category_position": 8,
+      "prevalidated_title": "subiendo las armas",
+      "prevalidated_duration_seconds": 180.0,
+      "prevalidated_media_url": "https://clips.kick.com/clips/b0/clip_01M69KPP7CEJ204SSVYJQZ55K2/playlist.m3u8",
+      "prevalidated_views": 19,
+      "prevalidated_likes": 0,
+      "prevalidated_created_at": "2026-10-31T18:32:03.681334Z",
+      "library_screen_tag": "local-gameplay-gunfire-v2",
+      "library_visual_approved": false,
+      "library_local_pass": true,
+      "library_scanned_at": 1793972231.3771489,
+      "library_model_revisions": {
+        "vision": "d15189d7028b43f1d3e65039190477f6af591c2a",
+        "audio": "249a1fbf0286b40e7f1ed687a8ae396997bf7dc6"
+      },
+      "library_screen_method": "local CLIP gameplay contrast plus AudioSet gunfire tags",
+      "library_combat_evidence": {
+        "start": 34.0,
+        "seconds": 19.0,
+        "end": 53.0,
+        "score": 71.383,
+        "gameplay_ratio": 0.7,
+        "gunfire_bins": 3,
+        "audio_bins": 3,
+        "gunfire_ratio": 1.0,
+        "mean_gunfire_score": 0.1692,
+        "longest_inactive_seconds": 3.0,
+        "passed": true
+      },
+      "local_frame_count": 59,
+      "local_shooter_game": true,
+      "preview_seconds": 117.875,
+      "local_window_start": 34.0,
+      "local_window_seconds": 19.0,
+      "library_window_end": 53.0,
+      "local_firefight_score": 71.383
+    },
+    "clip_01M67DA25CGZ5RXDNKMFEPB9CG": {
+      "platform": "kick",
+      "game": "Call of Duty: Warzone",
+      "category_slug": "call-of-duty-warzone",
+      "channel": "washyload",
+      "clip_id": "clip_01M67DA25CGZ5RXDNKMFEPB9CG",
+      "clip_url": "https://kick.com/washyload/clips/clip_01M67DA25CGZ5RXDNKMFEPB9CG",
+      "category_position": 12,
+      "prevalidated_title": "waoo",
+      "prevalidated_duration_seconds": 52.0,
+      "prevalidated_media_url": "https://clips.kick.com/clips/4c/clip_01M67DA25CGZ5RXDNKMFEPB9CG/playlist.m3u8",
+      "prevalidated_views": 14,
+      "prevalidated_likes": 0,
+      "prevalidated_created_at": "2026-10-30T22:01:58.981805Z",
+      "library_screen_tag": "local-gameplay-gunfire-v2",
+      "library_visual_approved": false,
+      "library_local_pass": true,
+      "library_scanned_at": 1793972249.6126866,
+      "library_model_revisions": {
+        "vision": "d15189d7028b43f1d3e65039190477f6af591c2a",
+        "audio": "249a1fbf0286b40e7f1ed687a8ae396997bf7dc6"
+      },
+      "library_screen_method": "local CLIP gameplay contrast plus AudioSet gunfire tags",
+      "library_combat_evidence": {
+        "start": 20.0,
+        "seconds": 25.0,
+        "end": 45.0,
+        "score": 63.712,
+        "gameplay_ratio": 0.923,
+        "gunfire_bins": 3,
+        "audio_bins": 5,
+        "gunfire_ratio": 0.6,
+        "mean_gunfire_score": 0.1395,
+        "longest_inactive_seconds": 5.0,
+        "passed": true
+      },
+      "local_frame_count": 27,
+      "local_shooter_game": true,
+      "preview_seconds": 54.375,
+      "local_window_start": 20.0,
+      "local_window_seconds": 25.0,
+      "library_window_end": 45.0,
+      "local_firefight_score": 63.712
+    },
+    "clip_01M6RGSWR8PNAS1PGM0RMYR8JA": {
+      "platform": "kick",
+      "game": "Valorant",
+      "category_slug": "valorant",
+      "channel": "xzerof",
+      "clip_id": "clip_01M6RGSWR8PNAS1PGM0RMYR8JA",
+      "clip_url": "https://kick.com/xzerof/clips/clip_01M6RGSWR8PNAS1PGM0RMYR8JA",
+      "category_position": 0,
+      "prevalidated_title": "hush life",
+      "prevalidated_duration_seconds": 60.0,
+      "prevalidated_media_url": "https://clips.kick.com/clips/4a/clip_01M6RGSWR8PNAS1PGM0RMYR8JA/playlist.m3u8",
+      "prevalidated_views": 0,
+      "prevalidated_likes": 0,
+      "prevalidated_created_at": "2026-11-06T13:29:40.01981Z",
+      "library_screen_tag": "local-gameplay-gunfire-v2",
+      "library_visual_approved": false,
+      "library_local_pass": true,
+      "library_scanned_at": 1793972333.1203213,
+      "library_model_revisions": {
+        "vision": "d15189d7028b43f1d3e65039190477f6af591c2a",
+        "audio": "249a1fbf0286b40e7f1ed687a8ae396997bf7dc6"
+      },
+      "library_screen_method": "local CLIP gameplay contrast plus AudioSet gunfire tags",
+      "library_combat_evidence": {
+        "start": 8.0,
+        "seconds": 19.0,
+        "end": 27.0,
+        "score": 75.94,
+        "gameplay_ratio": 0.8,
+        "gunfire_bins": 3,
+        "audio_bins": 3,
+        "gunfire_ratio": 1.0,
+        "mean_gunfire_score": 0.197,
+        "longest_inactive_seconds": 2.0,
+        "passed": true
+      },
+      "local_frame_count": 29,
+      "local_shooter_game": true,
+      "preview_seconds": 58.5,
+      "local_window_start": 8.0,
+      "local_window_seconds": 19.0,
+      "library_window_end": 27.0,
+      "local_firefight_score": 75.94
     }
   },
   "lanes": {},
