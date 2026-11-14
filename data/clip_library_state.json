@@ -47493,30 +47493,1311 @@
       "status": "local_reject",
       "updated_at": 1794578403.616715,
       "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M6X6TBF095CHEV7V1M83SA3P": {
+      "status": "local_reject",
+      "updated_at": 1794659344.825194,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M6X6QCT4G2Z0QXEENE2ATCBM": {
+      "status": "local_reject",
+      "updated_at": 1794659370.827365,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M6X6PYYZ9PEDYKKKWFKEZYHB": {
+      "status": "local_reject",
+      "updated_at": 1794659388.2740097,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M6X6MH1PAFAK5KBQ290TXZNP": {
+      "status": "local_reject",
+      "updated_at": 1794659414.56545,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M6X6FMTKH127Q1E748487WRR": {
+      "status": "passed",
+      "updated_at": 1794659437.289744,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M6X6CR6VB9S45W7JHRSJTFNM": {
+      "status": "passed",
+      "updated_at": 1794659467.3361878,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M6X68J0CWW8YDBT3JSBC980B": {
+      "status": "local_reject",
+      "updated_at": 1794659467.4238293,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M6X66G67BM3YG2NETDJMBMKK": {
+      "status": "local_reject",
+      "updated_at": 1794659467.5098805,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M6X655FKNDJWME4CAXRTDGF1": {
+      "status": "local_reject",
+      "updated_at": 1794659467.5972273,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M6X645H40P32HMS2Q9C5KA3G": {
+      "status": "local_reject",
+      "updated_at": 1794659467.6845646,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M6X63N123AZ7G6ATC3ADP5T9": {
+      "status": "local_reject",
+      "updated_at": 1794659467.7723508,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M6X60TND89F457HDFS7XJCMK": {
+      "status": "local_reject",
+      "updated_at": 1794659467.874143,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M6X5YSQJZFWTG4SJ5ZK0KHYH": {
+      "status": "local_reject",
+      "updated_at": 1794659483.124133,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M6X5VVZ46F897MEAD6ZFTAV3": {
+      "status": "local_reject",
+      "updated_at": 1794659483.2259681,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M6X5RXEV0XPQ28C7E15YS5RY": {
+      "status": "local_reject",
+      "updated_at": 1794659483.3134387,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M6X5CS6M2Y17WD8VCDZFSSR9": {
+      "status": "local_reject",
+      "updated_at": 1794659483.400827,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M6X5CG9V0RN4CYVVJ74H1MFN": {
+      "status": "local_reject",
+      "updated_at": 1794659483.486919,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M6X5BWP7XCPWAJ8DTS9RTDBR": {
+      "status": "local_reject",
+      "updated_at": 1794659483.5733902,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M6X5AVTGKMX5F6B84WCZC3ZE": {
+      "status": "local_reject",
+      "updated_at": 1794659483.6603575,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M6WMV9AQXCZ898TBQSCZXFXR": {
+      "status": "local_reject",
+      "updated_at": 1794659485.7912004,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M6VWY9DT7ZWJH4XZ3D37M1H9": {
+      "status": "local_reject",
+      "updated_at": 1794659485.8785992,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M6STN7ZHWJV1E27FPYZ19MSX": {
+      "status": "local_reject",
+      "updated_at": 1794659485.9648287,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M6Y5W77VD3AT8E6HF23G911D": {
+      "status": "local_reject",
+      "updated_at": 1794659486.0517223,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M6VMJP9EYFGFQ1B7J02Q6KHY": {
+      "status": "local_reject",
+      "updated_at": 1794659486.1384766,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M6WD6G5MPCZBM4AD9P2B6VJN": {
+      "status": "local_reject",
+      "updated_at": 1794659508.723537,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M6SNMF0QV8WB0KTZZFZQ5HQ7": {
+      "status": "local_reject",
+      "updated_at": 1794659508.817635,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M6VQ48HEM8T2CVWBZJKVENPW": {
+      "status": "local_reject",
+      "updated_at": 1794659508.9040782,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M6WHK37CX8Z05NEXDZAEEYNN": {
+      "status": "local_reject",
+      "updated_at": 1794659508.9907565,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M6WF1TCQ8CAP2AKYJPAJ3QRD": {
+      "status": "local_reject",
+      "updated_at": 1794659509.0774696,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M5ZTSSSA8T8VR1FCXSQ278DM": {
+      "status": "local_reject",
+      "updated_at": 1794659510.4349265,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M6X3GRFWM2AXY0WWQT0JW022": {
+      "status": "local_reject",
+      "updated_at": 1794659517.8564227,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M6X3F85T79PQ8XGAGSF09KWK": {
+      "status": "local_reject",
+      "updated_at": 1794659517.9435217,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M6X3CPYAFG82Z0RSTGDQ77CJ": {
+      "status": "local_reject",
+      "updated_at": 1794659531.1431513,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M6X34P8KGGH6WPX93ZCY2CV9": {
+      "status": "local_reject",
+      "updated_at": 1794659531.2456234,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M6X33SSS3DCVK9AD8C9JC2PQ": {
+      "status": "passed",
+      "updated_at": 1794659562.0382984,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M6X2ZXDQB2CVQ6V8VXP1XXDF": {
+      "status": "local_reject",
+      "updated_at": 1794659575.2985096,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M6X2WD86NQZCJYZZV2CEVR53": {
+      "status": "local_reject",
+      "updated_at": 1794659575.3868291,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M6X2V4Z719332TPSZNW6QM0H": {
+      "status": "local_reject",
+      "updated_at": 1794659575.473594,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M6X2TPZY5PGSAA8B1PDMTXNW": {
+      "status": "local_reject",
+      "updated_at": 1794659575.5597534,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M6X2R7KJVMRENZW2ZC52XP9K": {
+      "status": "local_reject",
+      "updated_at": 1794659575.6469288,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M6X2BCYR2MA5QB9GC0DXPQ13": {
+      "status": "local_reject",
+      "updated_at": 1794659575.7339122,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M6X288TQBSBGJCCSJ16D6V3K": {
+      "status": "local_reject",
+      "updated_at": 1794659612.8469799,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M6X27A94K3NHCKBJT5G1RYH8": {
+      "status": "local_reject",
+      "updated_at": 1794659612.9349787,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M6X26ABS87DYFC6D2ECPEE0Y": {
+      "status": "local_reject",
+      "updated_at": 1794659613.0296159,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M6X24BBFTSW46D6GPCDA460Z": {
+      "status": "local_reject",
+      "updated_at": 1794659629.405276,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M6X2485KQTJ5D16STRM62FXC": {
+      "status": "local_reject",
+      "updated_at": 1794659629.4940276,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M6X20G2J7HSA7279V6XGNF6X": {
+      "status": "local_reject",
+      "updated_at": 1794659642.2764926,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M6X1T3XG4KV425R948GQM6C5": {
+      "status": "local_reject",
+      "updated_at": 1794659642.3649874,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M6X1RDZPEC8WGXT56Z4846GD": {
+      "status": "local_reject",
+      "updated_at": 1794659642.4535537,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M6X1RAVT8TV08SFAMDQWEPF4": {
+      "status": "local_reject",
+      "updated_at": 1794659642.5395665,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M762NA41XA6GTJRVD63A4JNV": {
+      "status": "local_reject",
+      "updated_at": 1794659643.9742138,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M721Y13FX2HJEEHD04FPR3JZ": {
+      "status": "local_reject",
+      "updated_at": 1794659644.0608697,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M7234BZRKX9PDD28RTR69MY2": {
+      "status": "local_reject",
+      "updated_at": 1794659644.1471329,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M70C3JCCPSSX4CG6CW1GE4AZ": {
+      "status": "local_reject",
+      "updated_at": 1794659644.2339332,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M79N5XB671CW29K0JBVKVH69": {
+      "status": "local_reject",
+      "updated_at": 1794659660.9951682,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M7C65032BMQ7S36VCXDZFHYC": {
+      "status": "local_reject",
+      "updated_at": 1794659682.310832,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M71RP1TP8KS3F6CCBPSAD9HN": {
+      "status": "local_reject",
+      "updated_at": 1794659682.40395,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M79M195SYNM2QGG7C58MEADE": {
+      "status": "local_reject",
+      "updated_at": 1794659682.4917598,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M4Z608M1WBQD7G54CQ9AT7QD": {
+      "status": "local_reject",
+      "updated_at": 1794659710.488997,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M4YKEPA33CE8RZ28PEBACYKS": {
+      "status": "local_reject",
+      "updated_at": 1794659731.4446876,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M4YTD9Z9GY5XXWFYAZP2XZKS": {
+      "status": "local_reject",
+      "updated_at": 1794659776.2330012,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M4YEQ87XJC7ENASP2F2H4GTS": {
+      "status": "local_reject",
+      "updated_at": 1794659776.3207805,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M4YSKCB83DDPE1S8DBFE6J2T": {
+      "status": "local_reject",
+      "updated_at": 1794659776.4070866,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M4YSCBDY241G8W62NCNXAGV9": {
+      "status": "local_reject",
+      "updated_at": 1794659776.4931953,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M4YHC3W0J3CW71MXH43A130E": {
+      "status": "local_reject",
+      "updated_at": 1794659790.1735096,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M4Z35WRAWGZMZRS1ZPE3GFCM": {
+      "status": "local_reject",
+      "updated_at": 1794659790.2614143,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M4YSRG0WGKS79E0J9ASBC55C": {
+      "status": "local_reject",
+      "updated_at": 1794659790.3484004,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M4Z6E7NMGR4P2ZFE9T39VVSY": {
+      "status": "local_reject",
+      "updated_at": 1794659790.4352553,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M4Z6BGK7T1MT16837T7MBG9G": {
+      "status": "local_reject",
+      "updated_at": 1794659811.1745782,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M4YW031D4992B1BJPJY87QDZ": {
+      "status": "local_reject",
+      "updated_at": 1794659811.26248,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M4YW72RJV7WFC6EM2JFYB3WS": {
+      "status": "local_reject",
+      "updated_at": 1794659811.349549,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M4YV7XS7DPATT1TA1XBWC2HJ": {
+      "status": "local_reject",
+      "updated_at": 1794659846.972716,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01H7EAR6PSMCFTW2N9DXZHZWRE": {
+      "status": "local_reject",
+      "updated_at": 1794659848.5612988,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01H6PVFJB1QFJE5K4T4Z95F4FS": {
+      "status": "local_reject",
+      "updated_at": 1794659848.6487005,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01H1JA00K06RQDRQFR454KK64H": {
+      "status": "local_reject",
+      "updated_at": 1794659848.7364445,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M79EMX7KE0D8KKBBXPPN6FQQ": {
+      "status": "passed",
+      "updated_at": 1794659879.0229318,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M79EMA7WET9STRTHN3XD7FRA": {
+      "status": "local_reject",
+      "updated_at": 1794659900.7942033,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M79DCWMY9Q1ZSF4NF6YV99PS": {
+      "status": "local_reject",
+      "updated_at": 1794659943.9614522,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M79CX30H46KYV5S0VKQGAT00": {
+      "status": "passed",
+      "updated_at": 1794659960.0352073,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M79CKNCCB70YNGW1SRNRE0PK": {
+      "status": "passed",
+      "updated_at": 1794659979.664119,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M79CCFHP3RCZCZ2QVSMX9PJ3": {
+      "status": "passed",
+      "updated_at": 1794660027.2939625,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M79AXXG3V3SRRNVDGFE4Z6NT": {
+      "status": "local_reject",
+      "updated_at": 1794660027.3819978,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M797EGGAE537MRMEP9H48NB9": {
+      "status": "local_reject",
+      "updated_at": 1794660046.0228465,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M79588SJEEVQY1XGF7CZMP0J": {
+      "status": "local_reject",
+      "updated_at": 1794660092.4367778,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M7D01PCZ0M3HFP1ZT3S85TAV": {
+      "status": "local_reject",
+      "updated_at": 1794660124.370366,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M7CZQ66AFCD940KX8SFSX7YT": {
+      "status": "passed",
+      "updated_at": 1794660162.9450178,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M7CY0TZSPJY9TAC6Q36RZJXZ": {
+      "status": "local_reject",
+      "updated_at": 1794660163.0375874,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M7CH6ZCNGNBRJG688RFT4XZW": {
+      "status": "local_reject",
+      "updated_at": 1794660163.1247032,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M7CG4NWR4ST4VGQGEPNZWWR0": {
+      "status": "local_reject",
+      "updated_at": 1794660163.2176008,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M7CFTNZWBQ24Y96BZ69NNBCK": {
+      "status": "local_reject",
+      "updated_at": 1794660163.3051937,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M7CF14R6ZV2HFXBNSXXB554N": {
+      "status": "local_reject",
+      "updated_at": 1794660198.1406538,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M7CEWA9MVEBSKEX67R4HGSE6": {
+      "status": "local_reject",
+      "updated_at": 1794660198.2339387,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M7CEFK73WE1T69C6SRW7QFD8": {
+      "status": "passed",
+      "updated_at": 1794660214.5863547,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M7CDT1C3Z7N4RGKESRMVCGHB": {
+      "status": "passed",
+      "updated_at": 1794660251.9820213,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M7CD17VFQEESZSYJZEYJ1E2Z": {
+      "status": "local_reject",
+      "updated_at": 1794660289.0598059,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M7C9Y8JRC5YS3GF8W8VCBQWD": {
+      "status": "local_reject",
+      "updated_at": 1794660304.24249,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M7C9XF8D2QTNN9CK7DH05JAY": {
+      "status": "local_reject",
+      "updated_at": 1794660319.8979506,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M7C8DCV31KXQPGQD6AJVHNC4": {
+      "status": "local_reject",
+      "updated_at": 1794660320.0068414,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M7C5WH1EVZMKP5VAVC9DNCYY": {
+      "status": "local_reject",
+      "updated_at": 1794660338.3089511,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M7C5MFNRGEV985B2TVVNXPG0": {
+      "status": "local_reject",
+      "updated_at": 1794660338.3973892,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M7C5FRESWVJZZ0XYHCXABJC8": {
+      "status": "local_reject",
+      "updated_at": 1794660338.48434,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M7C5AX9FVZTD2W6D9YDX5CZY": {
+      "status": "local_reject",
+      "updated_at": 1794660338.5712667,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M7C58W8M4PGG4RMHW2E7KW6K": {
+      "status": "local_reject",
+      "updated_at": 1794660338.6592274,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M62D72H6CWVHMWGNC4EW0GX2": {
+      "status": "local_reject",
+      "updated_at": 1794660340.0322335,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M62CVJXP8TCRVCMQH9BKYRK4": {
+      "status": "passed",
+      "updated_at": 1794660357.9566073,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M62CF5A9NKE7QBPXAHQKB0S5": {
+      "status": "local_reject",
+      "updated_at": 1794660358.045428,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M6270KN3QM3SZN6NG0DXPVJX": {
+      "status": "local_reject",
+      "updated_at": 1794660392.426475,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M6222PM48A7JGJFZ1M0D9Z6T": {
+      "status": "local_reject",
+      "updated_at": 1794660392.52313,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M6218JG5YV6NQKDF5DYYX7H4": {
+      "status": "passed",
+      "updated_at": 1794660410.8127842,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M6214T0G7F80F0N2ZQJSBCBK": {
+      "status": "local_reject",
+      "updated_at": 1794660448.1825743,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M61Y3A2H6HMK5GB4SQWHQAY0": {
+      "status": "local_reject",
+      "updated_at": 1794660448.2717142,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M61PY87MP9G0D2J8PQXY9A4K": {
+      "status": "local_reject",
+      "updated_at": 1794660448.3597872,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M61PTKGWXHK1WH6PT9250JGR": {
+      "status": "local_reject",
+      "updated_at": 1794660448.447974,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M61M7B5SHTYNQ11XJCQQ6C79": {
+      "status": "local_reject",
+      "updated_at": 1794660448.535985,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M61M2BGZ3C9MDP8ZG83TBAZQ": {
+      "status": "local_reject",
+      "updated_at": 1794660448.6294966,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M61KFY7AF0R3HXXG4JDSP6VN": {
+      "status": "local_reject",
+      "updated_at": 1794660471.7299235,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M61K3S7Z1XJXNXQK2Q4045FD": {
+      "status": "local_reject",
+      "updated_at": 1794660494.665928,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M61H99K5PJDQ859NZJM9RF3Q": {
+      "status": "local_reject",
+      "updated_at": 1794660522.9140506,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M61H2STWZ0ADHE099KX8FJAY": {
+      "status": "local_reject",
+      "updated_at": 1794660523.012678,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M61GX3WXEKSEWKQ08676ZH6G": {
+      "status": "local_reject",
+      "updated_at": 1794660544.3491323,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M61AFRF508NN3KXCKNGR2SX2": {
+      "status": "local_reject",
+      "updated_at": 1794660544.4376473,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M61A8Z62GDQWF6YK2T4484A5": {
+      "status": "local_reject",
+      "updated_at": 1794660592.3310935,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M70JRNEQT4A01S50V5XS3J0J": {
+      "status": "local_reject",
+      "updated_at": 1794660617.307588,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M6YV2H44DFH1AABHXZW6VCKK": {
+      "status": "local_reject",
+      "updated_at": 1794660617.396817,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M6WVXT9YQ1DYWHRX33XPV228": {
+      "status": "local_reject",
+      "updated_at": 1794660617.484611,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M6Y6D9M9GNT0MNM4VDEMA07H": {
+      "status": "local_reject",
+      "updated_at": 1794660617.571632,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M6WS7XR7TS4XTZ0EVM00XK1Y": {
+      "status": "local_reject",
+      "updated_at": 1794660638.6861045,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M6VWHQ8800PCAFY2NH9KXMCA": {
+      "status": "passed",
+      "updated_at": 1794660652.8975065,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M6VJ7AWB8WFXNAR2G5VS68VA": {
+      "status": "local_reject",
+      "updated_at": 1794660691.8166223,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M6YNFGHVKVQJMJNE7QKAQ16A": {
+      "status": "local_reject",
+      "updated_at": 1794660708.0475254,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M6TZMHSGETDQ5QNYJV0N7HX1": {
+      "status": "local_reject",
+      "updated_at": 1794660739.3912256,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M71QS28VGHYMKQPVK2SM19V5": {
+      "status": "local_reject",
+      "updated_at": 1794660744.4147766,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M71QNK3A2274AKW3V1VZQEFQ": {
+      "status": "local_reject",
+      "updated_at": 1794660780.4085379,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M71MPY1TJZBYKT2FD80VEF4R": {
+      "status": "local_reject",
+      "updated_at": 1794660780.5047174,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M71FSCGEJ17YR8NGNJ4E54YJ": {
+      "status": "local_reject",
+      "updated_at": 1794660780.5936575,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M71FE12FC7TVHXC1STMG962M": {
+      "status": "local_reject",
+      "updated_at": 1794660780.6825285,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M5FGG8WV57GD4PZE7833EBZH": {
+      "status": "local_reject",
+      "updated_at": 1794660781.9851382,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M5F8APY2DDG6B1ZT1T0CKWWA": {
+      "status": "local_reject",
+      "updated_at": 1794660797.8450089,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M5F4WGZDVMCCBJA14H35E8CC": {
+      "status": "local_reject",
+      "updated_at": 1794660797.9402826,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M5F4S93W3V78B9QJ99KE99VP": {
+      "status": "local_reject",
+      "updated_at": 1794660798.0299108,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M5F4QHVSM137W8K8FZ795722": {
+      "status": "local_reject",
+      "updated_at": 1794660798.1188147,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M5F1K1HVBXBYZDF3G1E63N2J": {
+      "status": "local_reject",
+      "updated_at": 1794660798.2075176,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M5F1H5J3WSZVM3NZBK6XH586": {
+      "status": "local_reject",
+      "updated_at": 1794660798.29651,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M5F1E6G3NKKYHV1WQABJ5YN2": {
+      "status": "local_reject",
+      "updated_at": 1794660798.385956,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M5ESHPWQXV3ZYPWX3J0X5A8G": {
+      "status": "local_reject",
+      "updated_at": 1794660798.475014,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M5E9NFK1T7G6CE6XEQFJAD7S": {
+      "status": "local_reject",
+      "updated_at": 1794660816.293513,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M5DYMTF9GRQ61586GDCP6ATD": {
+      "status": "local_reject",
+      "updated_at": 1794660816.3881168,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M7BDCBAP6V2STA69YBWGXENK": {
+      "status": "local_reject",
+      "updated_at": 1794660817.7127523,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M6ZDNP0JZ1J797AKDGRE3P9A": {
+      "status": "local_reject",
+      "updated_at": 1794660831.6625874,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M707J1D8HXWFN9VA37J9CSK1": {
+      "status": "local_reject",
+      "updated_at": 1794660831.7581563,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M7BBZQWXZG0DKCWYWYCAQDCB": {
+      "status": "local_reject",
+      "updated_at": 1794660831.845754,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M6ZF8M444H5PQF4AFC0ZB7WD": {
+      "status": "local_reject",
+      "updated_at": 1794660831.9337647,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M6Z85X9829ZQJDYHPY998AT4": {
+      "status": "local_reject",
+      "updated_at": 1794660855.8628335,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M6Z81VX7V635B0VNCNSHQQZM": {
+      "status": "local_reject",
+      "updated_at": 1794660855.951997,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M77M7WDT8WF5ZX3V6R37GN38": {
+      "status": "local_reject",
+      "updated_at": 1794660913.3645759,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M77M6RQ6AD0RT6F4SBAGQEAD": {
+      "status": "local_reject",
+      "updated_at": 1794660954.987638,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M77M6BJJ01DCQM2MFDJW4NA5": {
+      "status": "local_reject",
+      "updated_at": 1794660997.6064022,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M77M4WH5C25YHB8QNJPCB0YT": {
+      "status": "local_reject",
+      "updated_at": 1794661039.8815417,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M7771P3HZ203HWQGH5Z64856": {
+      "status": "local_reject",
+      "updated_at": 1794661039.9727561,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M776220FXDN3BN1FZJD4DXFZ": {
+      "status": "local_reject",
+      "updated_at": 1794661040.0648615,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M77153WK3YP05F3VPN5XBMFY": {
+      "status": "local_reject",
+      "updated_at": 1794661066.624368,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M770QPVK6CPETMVJ9XE01THW": {
+      "status": "local_reject",
+      "updated_at": 1794661066.7138836,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M76YFVWF3SB4C0DZG3RPM7N9": {
+      "status": "local_reject",
+      "updated_at": 1794661066.8022976,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M76WP7KB9BXFJYGBY9Q4C6XM": {
+      "status": "local_reject",
+      "updated_at": 1794661066.8902638,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M768EXJF8WRJBDFG4HYTCT5M": {
+      "status": "local_reject",
+      "updated_at": 1794661066.9784055,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M7621XP4CV1TFRKFH5W695JP": {
+      "status": "local_reject",
+      "updated_at": 1794661067.0730832,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M75JGC2ZT445V3J2R668QGHG": {
+      "status": "local_reject",
+      "updated_at": 1794661067.1615856,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M75J3F2SYH8T8N67YVA86NX9": {
+      "status": "local_reject",
+      "updated_at": 1794661067.2498431,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M75HXSY8TQ62XHVNX129NTR9": {
+      "status": "local_reject",
+      "updated_at": 1794661067.3379474,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M5KJQXZ9WTC40AZYWRGE18J9": {
+      "status": "local_reject",
+      "updated_at": 1794661068.712324,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M5KG3SVD4Q7YGKBMXFJDP8Y1": {
+      "status": "local_reject",
+      "updated_at": 1794661068.8015926,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M5KF8EQY2C4VZH09FKGV03M6": {
+      "status": "local_reject",
+      "updated_at": 1794661068.8911607,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M5KF7KCQW1KBD5JYC1K4RQRJ": {
+      "status": "local_reject",
+      "updated_at": 1794661068.9794192,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M5KD6PW0XTH9G55FEXX0SZ6P": {
+      "status": "local_reject",
+      "updated_at": 1794661069.0729134,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M5KD61T45SZDPC3HW2ET05YX": {
+      "status": "local_reject",
+      "updated_at": 1794661069.1622262,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M5KBRDJX4F899CZXGKNH1P1N": {
+      "status": "local_reject",
+      "updated_at": 1794661069.25091,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M5K8602D7R3R82BG7H4YS4ES": {
+      "status": "local_reject",
+      "updated_at": 1794661069.3396893,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M5K7C14ME1NGQ84DXC9DFX4W": {
+      "status": "local_reject",
+      "updated_at": 1794661090.1981223,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M5K77B6JVY3X82QM4304T7YF": {
+      "status": "local_reject",
+      "updated_at": 1794661106.5706213,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M5K6XJZ21TPNRRZ1TVK1CZ0J": {
+      "status": "local_reject",
+      "updated_at": 1794661106.659933,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M5K6N7ZK17YW7Y9P3ECSD4SM": {
+      "status": "local_reject",
+      "updated_at": 1794661106.7484417,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M5K6DDJ4C3GB59TRQ0WQ5MP5": {
+      "status": "local_reject",
+      "updated_at": 1794661106.8374026,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M5K68T4A01DETNYY95TA00T8": {
+      "status": "local_reject",
+      "updated_at": 1794661124.278487,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M5K5MVRDCQM1QTJ1BE6RFM4T": {
+      "status": "passed",
+      "updated_at": 1794661148.0766976,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M5K0VN8GP5H4234HP1J0761D": {
+      "status": "local_reject",
+      "updated_at": 1794661148.1754327,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M5JYRY9HJHDF1Q71M4Z144V8": {
+      "status": "local_reject",
+      "updated_at": 1794661148.2633739,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M5JYDBS8P04D6W2M310D8ABD": {
+      "status": "local_reject",
+      "updated_at": 1794661148.3511486,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M5JPBH6YKRFTP2NEQ2TMFWWP": {
+      "status": "local_reject",
+      "updated_at": 1794661148.4391131,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M7494HA19YNKS9GXHJW8JZCT": {
+      "status": "local_reject",
+      "updated_at": 1794661172.5443487,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M749291Y9A7C7410RNR9X8KD": {
+      "status": "passed",
+      "updated_at": 1794661195.265824,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M748Y2G653GSZTE9SE939TBP": {
+      "status": "passed",
+      "updated_at": 1794661243.0323696,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M748WRBW0F32MND2BXVKXWTR": {
+      "status": "local_reject",
+      "updated_at": 1794661243.1274738,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M748T7J101SY2HENTSZEXVAZ": {
+      "status": "local_reject",
+      "updated_at": 1794661243.22384,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M748J2P0MT6NRZP9PEZE208V": {
+      "status": "local_reject",
+      "updated_at": 1794661243.3126495,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M748H5Y13T5DXF5APWB22K2F": {
+      "status": "passed",
+      "updated_at": 1794661292.8884718,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M748DSQSJH4ZB901JM0TC50E": {
+      "status": "local_reject",
+      "updated_at": 1794661292.9786575,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M7489A65DJXF55J4F2NVXQ65": {
+      "status": "local_reject",
+      "updated_at": 1794661293.0686207,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M747V729296DKBKKBJ4J78ZX": {
+      "status": "local_reject",
+      "updated_at": 1794661313.0930622,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M747SGK6Z73ZDN6AGWWD05RW": {
+      "status": "local_reject",
+      "updated_at": 1794661313.1841996,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M747HS1DC6WVSRXR847EQXZZ": {
+      "status": "local_reject",
+      "updated_at": 1794661313.2735505,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M747FXWRAD22CM2KJ7CAG63J": {
+      "status": "local_reject",
+      "updated_at": 1794661313.363016,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M746DEA9AW243AYHJQ792RB7": {
+      "status": "local_reject",
+      "updated_at": 1794661313.4529965,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M746DATNDQJA3H3FDF3W5BBR": {
+      "status": "local_reject",
+      "updated_at": 1794661313.5428326,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M744XGP34RY2784RPC8A81BP": {
+      "status": "local_reject",
+      "updated_at": 1794661313.6328332,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M744WZBSXA920PQGVZAJBQYH": {
+      "status": "local_reject",
+      "updated_at": 1794661313.7229602,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M744VBTYHFQ1G18VZX9JSA3F": {
+      "status": "local_reject",
+      "updated_at": 1794661313.8123257,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M7448B29HW04FG1VMDNZQPXR": {
+      "status": "local_reject",
+      "updated_at": 1794661313.9022539,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M6STNT3GX7J3CZN8KYWWHK1G": {
+      "status": "local_reject",
+      "updated_at": 1794661315.3668222,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M6STHE4JPWN10H75DK7WHCK0": {
+      "status": "local_reject",
+      "updated_at": 1794661315.4578261,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M6STDDSWAQJ96CPHXFM9D1RY": {
+      "status": "passed",
+      "updated_at": 1794661332.6346157,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M6STCN9H8NW2MVBJ93222JW5": {
+      "status": "local_reject",
+      "updated_at": 1794661332.7249763,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M6ST9GAQVAPB8G90MC4YCT8S": {
+      "status": "local_reject",
+      "updated_at": 1794661332.8336225,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M6SSH2NMKDZAV29F3S3CY48K": {
+      "status": "local_reject",
+      "updated_at": 1794661332.9234555,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M6SSA2K7RYDZWE9S8XH0NPJ7": {
+      "status": "local_reject",
+      "updated_at": 1794661333.0131178,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M6SRZ6CNA980RGRW0196K34F": {
+      "status": "local_reject",
+      "updated_at": 1794661333.1041493,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M6SRGMX40E9HBR89ZZF76TMC": {
+      "status": "local_reject",
+      "updated_at": 1794661333.1955714,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M6SRCVR61WF8SSVFHB9J7VW9": {
+      "status": "local_reject",
+      "updated_at": 1794661333.2862387,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M6SQT1GG3XGZ6BYD5S1TS46X": {
+      "status": "local_reject",
+      "updated_at": 1794661333.3765225,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M6SQRW0SYRZSYR0X84Z4NGZ1": {
+      "status": "local_reject",
+      "updated_at": 1794661333.4732378,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M6SQQ021W70669R25Z01NR81": {
+      "status": "local_reject",
+      "updated_at": 1794661333.5624874,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M6SQM8ZJWEWM16GMV0GBGZR3": {
+      "status": "local_reject",
+      "updated_at": 1794661333.6518817,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M6SQG289NPDYEM9BKKC8R4H8": {
+      "status": "local_reject",
+      "updated_at": 1794661333.7416527,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M6SPZXCQXNGJWVMKAN6XZ17W": {
+      "status": "local_reject",
+      "updated_at": 1794661333.831562,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M6SPVYKT2ZK6RCHZRD5JAMJM": {
+      "status": "local_reject",
+      "updated_at": 1794661333.9213207,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M710X5GF8S8XMHZ03MNMTSGE": {
+      "status": "local_reject",
+      "updated_at": 1794661381.0489278,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M7419AKQ132AY1T941F9B38V": {
+      "status": "local_reject",
+      "updated_at": 1794661381.1398618,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M762XHGMR315ANZ55BPGJBBW": {
+      "status": "local_reject",
+      "updated_at": 1794661405.6173587,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M6ZBB7BXNVZ0R06VBP4PQ4N1": {
+      "status": "local_reject",
+      "updated_at": 1794661405.7080643,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M6YQVN33251E9QNP2BT8WJX3": {
+      "status": "local_reject",
+      "updated_at": 1794661405.797627,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M6ZHQ95JG3ZE6SZJCZY12P4Z": {
+      "status": "passed",
+      "updated_at": 1794661441.6130998,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M71AMRH936F700KX770QEXPP": {
+      "status": "local_reject",
+      "updated_at": 1794661475.3670657,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M765FERP4Q3VGCE9Z27JRM32": {
+      "status": "passed",
+      "updated_at": 1794661503.6064777,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M6ZDH6HD29D3FZ6AMWN06JZQ": {
+      "status": "local_reject",
+      "updated_at": 1794661503.7076893,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M5BJV88KG3Y1S36WPQ1EHGZ9": {
+      "status": "local_reject",
+      "updated_at": 1794661505.0626554,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M7AH0HAM7X2825EW44B29EPN": {
+      "status": "local_reject",
+      "updated_at": 1794661507.6706352,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M7AH0274JFS25FD6SW7XEP4D": {
+      "status": "local_reject",
+      "updated_at": 1794661507.7685175,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M7AGXE2K87A621Y6GMKFZ6FA": {
+      "status": "local_reject",
+      "updated_at": 1794661557.2313266,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M7AGXDBZRM69SDPARERS5NNE": {
+      "status": "local_reject",
+      "updated_at": 1794661580.8112428,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M7AGH97BC6F2Y01K92ZFG19Z": {
+      "status": "local_reject",
+      "updated_at": 1794661580.925002,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M7AGGTYZH70MPKXYMDYBGDWQ": {
+      "status": "local_reject",
+      "updated_at": 1794661606.481163,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M7AGDNSJ53RJB1XBWZG66EDD": {
+      "status": "local_reject",
+      "updated_at": 1794661606.5780056,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M7AGDAY8F71VQ4391CW0C1SD": {
+      "status": "local_reject",
+      "updated_at": 1794661606.667818,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M7AGCRHNB3XKMSNVBR08PWH7": {
+      "status": "local_reject",
+      "updated_at": 1794661606.757761,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M7AGAD2QXDCZS4H72VRQPP3Z": {
+      "status": "local_reject",
+      "updated_at": 1794661606.8483355,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M7AG226GCGBKR6M9DV9WKAAR": {
+      "status": "local_reject",
+      "updated_at": 1794661606.938991,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M7AFYE43YMKGH0QA5NY4GPJ4": {
+      "status": "local_reject",
+      "updated_at": 1794661607.0294647,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M7AFXR0W5WG24TBK6HCCQQ3B": {
+      "status": "local_reject",
+      "updated_at": 1794661651.2878988,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M7AFMBFGGQDVK52CSN5VC20R": {
+      "status": "local_reject",
+      "updated_at": 1794661651.3785205,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M7AF6G0N80GY021RQZ3VTYHT": {
+      "status": "local_reject",
+      "updated_at": 1794661651.4685886,
+      "policy": "local-gameplay-gunfire-v2"
+    },
+    "clip_01M7AF4X10WD7C31GFY0KKZBZQ": {
+      "status": "local_reject",
+      "updated_at": 1794661651.5583425,
+      "policy": "local-gameplay-gunfire-v2"
     }
   },
-  "pending": {},
+  "pending": {
+    "clip_01M7AF1RSZV27ZMCHZHPYG4T3P": {
+      "platform": "kick",
+      "game": "Valorant",
+      "category_slug": "valorant",
+      "channel": "tn-lobo21",
+      "clip_id": "clip_01M7AF1RSZV27ZMCHZHPYG4T3P",
+      "clip_url": "https://kick.com/tn-lobo21/clips/clip_01M7AF1RSZV27ZMCHZHPYG4T3P",
+      "category_position": 18,
+      "prevalidated_title": "JAJA",
+      "prevalidated_duration_seconds": 42.0,
+      "prevalidated_media_url": "https://clips.kick.com/clips/19/clip_01M7AF1RSZV27ZMCHZHPYG4T3P/playlist.m3u8",
+      "prevalidated_views": 3,
+      "prevalidated_likes": 0,
+      "prevalidated_created_at": "2026-11-13T12:45:42.882362Z"
+    },
+    "clip_01M7AF07X4WDFFTCVTTSG14BXT": {
+      "platform": "kick",
+      "game": "Valorant",
+      "category_slug": "valorant",
+      "channel": "bertanuwr",
+      "clip_id": "clip_01M7AF07X4WDFFTCVTTSG14BXT",
+      "clip_url": "https://kick.com/bertanuwr/clips/clip_01M7AF07X4WDFFTCVTTSG14BXT",
+      "category_position": 19,
+      "prevalidated_title": "..",
+      "prevalidated_duration_seconds": 30.0,
+      "prevalidated_media_url": "https://clips.kick.com/clips/5c/clip_01M7AF07X4WDFFTCVTTSG14BXT/playlist.m3u8",
+      "prevalidated_views": 1,
+      "prevalidated_likes": 0,
+      "prevalidated_created_at": "2026-11-13T12:44:33.493187Z"
+    }
+  },
   "lanes": {
     "call-of-duty-warzone:date:day": {
-      "cursor": "clip_01M7735G9R63PDF7DS80ZD2MC1"
+      "done_at": 1794661152.5906713
     },
     "call-of-duty-warzone:date:week": {
-      "cursor": "clip_01M7499DGGMCVKGZA1WN7PGKCF"
+      "cursor": "clip_01M7448B29HW04FG1VMDNZQPXR"
     },
     "call-of-duty-warzone:date:month": {
-      "cursor": "clip_01M6STYFX91ZZ5VD2XYHKGZA9T"
+      "cursor": "clip_01M6SPVYKT2ZK6RCHZRD5JAMJM"
     },
     "call-of-duty-warzone:view:week": {
-      "done_at": 1794577810.3439589
+      "cursor": "clip_01M6ZDH6HD29D3FZ6AMWN06JZQ"
     },
     "call-of-duty-warzone:view:month": {
-      "cursor": "clip_01M5CAK5705SP9450KZGQGTRFH"
+      "cursor": "clip_01M5BJV88KG3Y1S36WPQ1EHGZ9"
     },
     "call-of-duty-warzone:view:all": {
-      "cursor": "clip_01HHHX64N82NX7F2DXP9W6W1JE"
+      "cursor": "clip_01GY17Q5BGZCW1DCDDAPCG6KAW"
     },
     "valorant:date:day": {
-      "cursor": "clip_01M7AH2K92B126EDJ08HFAFP41"
+      "cursor": "clip_01M7AF07X4WDFFTCVTTSG14BXT"
     },
     "valorant:date:week": {
       "done_at": 1794578021.8621707
@@ -47537,73 +48818,73 @@
       "cursor": "clip_01M7AJ51DPHPEG3NHCHGK6QM4R"
     },
     "counter-strike-2:date:week": {
-      "cursor": "clip_01M6NMJH802H8KMCXA09BNWHQP"
+      "done_at": 1794659342.416197
     },
     "counter-strike-2:date:month": {
-      "cursor": "clip_01M6X6WG8W06G90Z11BN51692R"
+      "cursor": "clip_01M6X5AVTGKMX5F6B84WCZC3ZE"
     },
     "counter-strike-2:view:week": {
-      "cursor": "clip_01M6Y7KNYF28XZST7MM10WHCRM"
+      "cursor": "clip_01M6WF1TCQ8CAP2AKYJPAJ3QRD"
     },
     "counter-strike-2:view:month": {
-      "done_at": 1794495205.5842857
+      "cursor": "clip_01M6NTWD5T1P60FR02V3YVTNC1"
     },
     "counter-strike-2:view:all": {
-      "done_at": 1794495206.7995188
+      "cursor": "clip_01JS7V13Q4082TB27RSAMFF1AS"
     },
     "fortnite:date:day": {
-      "cursor": "clip_01M780RYDA6379KD3Y8N35KZ6R"
+      "done_at": 1794659511.8504374
     },
     "fortnite:date:week": {
-      "cursor": "clip_01M6QWPQZ36SW248FD3NG5BKH1"
+      "done_at": 1794659515.5197754
     },
     "fortnite:date:month": {
-      "cursor": "clip_01M6X3RA6QRY9XT944NGCZJX76"
+      "cursor": "clip_01M6X1RAVT8TV08SFAMDQWEPF4"
     },
     "fortnite:view:week": {
-      "done_at": 1794576492.67721
+      "cursor": "clip_01M79M195SYNM2QGG7C58MEADE"
     },
     "fortnite:view:month": {
-      "cursor": "clip_01M4ZRPMJDBB4VX2MS030GS3NS"
+      "cursor": "clip_01M4YV7XS7DPATT1TA1XBWC2HJ"
     },
     "fortnite:view:all": {
-      "cursor": "clip_01HAS4Y8MAQ39PKRJ153NS1SJ7"
+      "cursor": "clip_01H1JA00K06RQDRQFR454KK64H"
     },
     "apex-legends:date:day": {
-      "cursor": "clip_01M79EPK64D8V31BXCCM55XJ2B"
+      "done_at": 1794659848.955086
     },
     "apex-legends:date:week": {
-      "done_at": 1794576555.513313
+      "cursor": "clip_01M7C58W8M4PGG4RMHW2E7KW6K"
     },
     "apex-legends:date:month": {
-      "cursor": "clip_01M62F9GXZ7EFTZS8FQTBEET4K"
+      "cursor": "clip_01M61A8Z62GDQWF6YK2T4484A5"
     },
     "apex-legends:view:week": {
-      "cursor": "clip_01M722ZRC5S318G93AZ9VK4E73"
+      "cursor": "clip_01M6TKK8VAVNXJEF7TPPGJ7DM2"
     },
     "apex-legends:view:month": {
-      "cursor": "clip_01M4W1CFDRBAF9N6SD3ZYBW7QA"
+      "done_at": 1794660739.57242
     },
     "apex-legends:view:all": {
-      "cursor": "clip_01JK45XD0GP8DF4PJSJM9RNKHZ"
+      "cursor": "clip_01H1T2BD00Z195VN1KK5MHHZ6H"
     },
     "marvel-rivals:date:day": {
-      "cursor": "clip_01M772X33ZPSRJ6FAARCSD0B6T"
+      "done_at": 1794660742.0873659
     },
     "marvel-rivals:date:week": {
-      "cursor": "clip_01M74G179YQF2QFHAZPW72AEER"
+      "cursor": "clip_01M71FE12FC7TVHXC1STMG962M"
     },
     "marvel-rivals:date:month": {
-      "cursor": "clip_01M5FPXFJPW3X8Y5BGYG20AFJD"
+      "cursor": "clip_01M5DYMTF9GRQ61586GDCP6ATD"
     },
     "marvel-rivals:view:week": {
-      "done_at": 1794577012.952298
+      "cursor": "clip_01M76JS7X410SF4R50VAGWSMYA"
     },
     "marvel-rivals:view:month": {
-      "cursor": "clip_01M4YN7P4CDNF57Z77PB1FFS70"
+      "done_at": 1794660856.1512718
     },
     "marvel-rivals:view:all": {
-      "done_at": 1794577054.6337144
+      "cursor": "clip_01JWVC8SVD3H58TERXXM1NFF6W"
     },
     "overwatch-2:date:day": {},
     "overwatch-2:date:week": {},
@@ -47612,488 +48893,328 @@
     "overwatch-2:view:month": {},
     "overwatch-2:view:all": {},
     "call-of-duty-black-ops-7:date:day": {
-      "cursor": "clip_01M77M86X6W0SB6XEVXNBENBCA"
+      "done_at": 1794660868.522699
     },
     "call-of-duty-black-ops-7:date:week": {
-      "cursor": "clip_01M77M86X6W0SB6XEVXNBENBCA"
+      "cursor": "clip_01M74CEK6F4RHS8A9BXPZS5ZK8"
     },
     "call-of-duty-black-ops-7:date:month": {
-      "cursor": "clip_01M5KJRN2H6STEVCAN8JXKQMYD"
+      "cursor": "clip_01M5JPBH6YKRFTP2NEQ2TMFWWP"
     },
     "call-of-duty-black-ops-7:view:week": {
-      "cursor": "clip_01M77M8R4P8GQCH56BQ0GWVQMD"
+      "cursor": "clip_01M77M6BJJ01DCQM2MFDJW4NA5"
     },
     "call-of-duty-black-ops-7:view:month": {
-      "cursor": "clip_01M4YQV4JF07WKTQNZ13C15DTX"
+      "done_at": 1794661150.0617356
     },
     "call-of-duty-black-ops-7:view:all": {
-      "cursor": "clip_01K6MJKKV7M03RE4VWPXF06XBK"
+      "cursor": "clip_01K6M58NSFSP44F3Z1HNGFRN88"
     }
   },
-  "lane_position": 13,
+  "lane_position": 7,
   "recent_evidence": [
     {
-      "clip_id": "clip_01M7AH5W21F30J88C2ATCMYRCS",
-      "game": "Valorant",
+      "clip_id": "clip_01M747FXWRAD22CM2KJ7CAG63J",
+      "game": "Call of Duty: Warzone",
       "passed": false,
       "evidence": null,
       "window_start": null,
       "window_seconds": null
     },
     {
-      "clip_id": "clip_01M7AH2K92B126EDJ08HFAFP41",
-      "game": "Valorant",
+      "clip_id": "clip_01M746DEA9AW243AYHJQ792RB7",
+      "game": "Call of Duty: Warzone",
       "passed": false,
       "evidence": null,
       "window_start": null,
       "window_seconds": null
     },
     {
-      "clip_id": "clip_01M705E83YSWTEJ63CB64H00JE",
-      "game": "Valorant",
-      "passed": true,
-      "evidence": {
-        "start": 52.0,
-        "seconds": 25.0,
-        "end": 77.0,
-        "score": 71.753,
-        "gameplay_ratio": 1.0,
-        "gunfire_bins": 3,
-        "audio_bins": 4,
-        "gunfire_ratio": 0.75,
-        "mean_gunfire_score": 0.0877,
-        "longest_inactive_seconds": 5.0,
-        "passed": true
-      },
-      "window_start": 52.0,
-      "window_seconds": 25.0
-    },
-    {
-      "clip_id": "clip_01M705CY6RAF4SDKT45NE78RSB",
-      "game": "Valorant",
-      "passed": false,
-      "evidence": {
-        "start": 2.0,
-        "seconds": 19.0,
-        "end": 21.0,
-        "score": 64.57,
-        "gameplay_ratio": 0.9,
-        "gunfire_bins": 2,
-        "audio_bins": 3,
-        "gunfire_ratio": 0.667,
-        "mean_gunfire_score": 0.0952,
-        "longest_inactive_seconds": 8.0,
-        "passed": false
-      },
-      "window_start": 2.0,
-      "window_seconds": 19.0
-    },
-    {
-      "clip_id": "clip_01M705B9927VJEZRMSXCX1K8DZ",
-      "game": "Valorant",
-      "passed": false,
-      "evidence": {
-        "start": 12.0,
-        "seconds": 25.0,
-        "end": 37.0,
-        "score": 62.25,
-        "gameplay_ratio": 1.0,
-        "gunfire_bins": 2,
-        "audio_bins": 4,
-        "gunfire_ratio": 0.5,
-        "mean_gunfire_score": 0.1125,
-        "longest_inactive_seconds": 10.0,
-        "passed": false
-      },
-      "window_start": 12.0,
-      "window_seconds": 25.0
-    },
-    {
-      "clip_id": "clip_01M704YXFBKENRTSAP8GRSCASV",
-      "game": "Valorant",
+      "clip_id": "clip_01M746DATNDQJA3H3FDF3W5BBR",
+      "game": "Call of Duty: Warzone",
       "passed": false,
       "evidence": null,
       "window_start": null,
       "window_seconds": null
     },
     {
-      "clip_id": "clip_01M704YM02ZP19KJ7XK6ZP04YV",
-      "game": "Valorant",
+      "clip_id": "clip_01M744XGP34RY2784RPC8A81BP",
+      "game": "Call of Duty: Warzone",
+      "passed": false,
+      "evidence": null,
+      "window_start": null,
+      "window_seconds": null
+    },
+    {
+      "clip_id": "clip_01M744WZBSXA920PQGVZAJBQYH",
+      "game": "Call of Duty: Warzone",
+      "passed": false,
+      "evidence": null,
+      "window_start": null,
+      "window_seconds": null
+    },
+    {
+      "clip_id": "clip_01M744VBTYHFQ1G18VZX9JSA3F",
+      "game": "Call of Duty: Warzone",
+      "passed": false,
+      "evidence": null,
+      "window_start": null,
+      "window_seconds": null
+    },
+    {
+      "clip_id": "clip_01M7448B29HW04FG1VMDNZQPXR",
+      "game": "Call of Duty: Warzone",
+      "passed": false,
+      "evidence": null,
+      "window_start": null,
+      "window_seconds": null
+    },
+    {
+      "clip_id": "clip_01M6STNT3GX7J3CZN8KYWWHK1G",
+      "game": "Call of Duty: Warzone",
+      "passed": false,
+      "evidence": null,
+      "window_start": null,
+      "window_seconds": null
+    },
+    {
+      "clip_id": "clip_01M6STHE4JPWN10H75DK7WHCK0",
+      "game": "Call of Duty: Warzone",
+      "passed": false,
+      "evidence": null,
+      "window_start": null,
+      "window_seconds": null
+    },
+    {
+      "clip_id": "clip_01M6STDDSWAQJ96CPHXFM9D1RY",
+      "game": "Call of Duty: Warzone",
       "passed": true,
       "evidence": {
         "start": 12.0,
         "seconds": 19.0,
         "end": 31.0,
-        "score": 76.347,
-        "gameplay_ratio": 0.8,
-        "gunfire_bins": 3,
-        "audio_bins": 3,
-        "gunfire_ratio": 1.0,
-        "mean_gunfire_score": 0.2174,
-        "longest_inactive_seconds": 3.0,
-        "passed": true
-      },
-      "window_start": 12.0,
-      "window_seconds": 19.0
-    },
-    {
-      "clip_id": "clip_01M704GDAZ1YKV0BPPSWWSM9N6",
-      "game": "Valorant",
-      "passed": false,
-      "evidence": null,
-      "window_start": null,
-      "window_seconds": null
-    },
-    {
-      "clip_id": "clip_01M704C46MZ2397843EFP2PAWZ",
-      "game": "Valorant",
-      "passed": false,
-      "evidence": null,
-      "window_start": null,
-      "window_seconds": null
-    },
-    {
-      "clip_id": "clip_01M7046P8YQM5ZA6PD8KYJPDNX",
-      "game": "Valorant",
-      "passed": false,
-      "evidence": null,
-      "window_start": null,
-      "window_seconds": null
-    },
-    {
-      "clip_id": "clip_01M7043J57DYZC3YN4JEQETM8H",
-      "game": "Valorant",
-      "passed": false,
-      "evidence": null,
-      "window_start": null,
-      "window_seconds": null
-    },
-    {
-      "clip_id": "clip_01M703XWVB1CC2YQV5DGXHV6W4",
-      "game": "Valorant",
-      "passed": false,
-      "evidence": null,
-      "window_start": null,
-      "window_seconds": null
-    },
-    {
-      "clip_id": "clip_01M703T2CZHSHQY9PK8S157Z8N",
-      "game": "Valorant",
-      "passed": false,
-      "evidence": null,
-      "window_start": null,
-      "window_seconds": null
-    },
-    {
-      "clip_id": "clip_01M703T2CM3QF7K1E9T1JR4JKZ",
-      "game": "Valorant",
-      "passed": false,
-      "evidence": null,
-      "window_start": null,
-      "window_seconds": null
-    },
-    {
-      "clip_id": "clip_01M703SV7CHN2D0HEJV5K10NYC",
-      "game": "Valorant",
-      "passed": false,
-      "evidence": null,
-      "window_start": null,
-      "window_seconds": null
-    },
-    {
-      "clip_id": "clip_01M703QFZRA0Q2N80TCP3FH5VE",
-      "game": "Valorant",
-      "passed": true,
-      "evidence": {
-        "start": 2.0,
-        "seconds": 19.0,
-        "end": 21.0,
-        "score": 84.79,
-        "gameplay_ratio": 1.0,
-        "gunfire_bins": 3,
-        "audio_bins": 3,
-        "gunfire_ratio": 1.0,
-        "mean_gunfire_score": 0.2395,
-        "longest_inactive_seconds": 3.0,
-        "passed": true
-      },
-      "window_start": 2.0,
-      "window_seconds": 19.0
-    },
-    {
-      "clip_id": "clip_01M703PF4AP167MMGSS7C9HP9R",
-      "game": "Valorant",
-      "passed": false,
-      "evidence": null,
-      "window_start": null,
-      "window_seconds": null
-    },
-    {
-      "clip_id": "clip_01M703NYKMZPGX0PQSSANA27MN",
-      "game": "Valorant",
-      "passed": false,
-      "evidence": {
-        "start": 25.02,
-        "seconds": 19.0,
-        "end": 44.02,
-        "score": 54.511,
-        "gameplay_ratio": 1.0,
-        "gunfire_bins": 1,
-        "audio_bins": 3,
-        "gunfire_ratio": 0.333,
-        "mean_gunfire_score": 0.0589,
-        "longest_inactive_seconds": 9.02,
-        "passed": false
-      },
-      "window_start": 25.02,
-      "window_seconds": 19.0
-    },
-    {
-      "clip_id": "clip_01M703GR5S4RCBT4H9630E4QMH",
-      "game": "Valorant",
-      "passed": false,
-      "evidence": null,
-      "window_start": null,
-      "window_seconds": null
-    },
-    {
-      "clip_id": "clip_01M703DMRSCWRS1BE13CMK3KXM",
-      "game": "Valorant",
-      "passed": true,
-      "evidence": {
-        "start": 32.0,
-        "seconds": 19.0,
-        "end": 51.0,
-        "score": 84.189,
-        "gameplay_ratio": 1.0,
-        "gunfire_bins": 3,
-        "audio_bins": 3,
-        "gunfire_ratio": 1.0,
-        "mean_gunfire_score": 0.2095,
-        "longest_inactive_seconds": 3.0,
-        "passed": true
-      },
-      "window_start": 32.0,
-      "window_seconds": 19.0
-    },
-    {
-      "clip_id": "clip_01M70399DD5HW7G9T28D68RZ9H",
-      "game": "Valorant",
-      "passed": false,
-      "evidence": null,
-      "window_start": null,
-      "window_seconds": null
-    },
-    {
-      "clip_id": "clip_01M6QZF2NFN7EYAJ65DXRH7V21",
-      "game": "Valorant",
-      "passed": false,
-      "evidence": {
-        "start": 12.0,
-        "seconds": 19.0,
-        "end": 31.0,
-        "score": 0.006,
-        "gameplay_ratio": 0.0,
-        "gunfire_bins": 0,
-        "audio_bins": 3,
-        "gunfire_ratio": 0.0,
-        "mean_gunfire_score": 0.0003,
-        "longest_inactive_seconds": 19.0,
-        "passed": false
-      },
-      "window_start": 12.0,
-      "window_seconds": 19.0
-    },
-    {
-      "clip_id": "clip_01M78NMXWMDH1H6V5R1PAJF68P",
-      "game": "Valorant",
-      "passed": false,
-      "evidence": {
-        "start": 0.0,
-        "seconds": 19.0,
-        "end": 19.0,
-        "score": 28.06,
+        "score": 74.453,
         "gameplay_ratio": 0.7,
-        "gunfire_bins": 0,
+        "gunfire_bins": 3,
         "audio_bins": 3,
-        "gunfire_ratio": 0.0,
-        "mean_gunfire_score": 0.003,
-        "longest_inactive_seconds": 19.0,
-        "passed": false
+        "gunfire_ratio": 1.0,
+        "mean_gunfire_score": 0.3226,
+        "longest_inactive_seconds": 3.0,
+        "passed": true
       },
-      "window_start": 0.0,
+      "window_start": 12.0,
       "window_seconds": 19.0
     },
     {
-      "clip_id": "clip_01M73Q6JACXZHNN3XTHPBR3BT5",
-      "game": "Valorant",
+      "clip_id": "clip_01M6STCN9H8NW2MVBJ93222JW5",
+      "game": "Call of Duty: Warzone",
       "passed": false,
       "evidence": null,
       "window_start": null,
       "window_seconds": null
     },
     {
-      "clip_id": "clip_01M73KTD0GCEXXVD3YQSDHSACF",
-      "game": "Valorant",
+      "clip_id": "clip_01M6ST9GAQVAPB8G90MC4YCT8S",
+      "game": "Call of Duty: Warzone",
       "passed": false,
       "evidence": null,
       "window_start": null,
       "window_seconds": null
     },
     {
-      "clip_id": "clip_01M6T2KJ0H2YG90B5AH03Z3BK8",
-      "game": "Valorant",
-      "passed": true,
+      "clip_id": "clip_01M6SSH2NMKDZAV29F3S3CY48K",
+      "game": "Call of Duty: Warzone",
+      "passed": false,
+      "evidence": null,
+      "window_start": null,
+      "window_seconds": null
+    },
+    {
+      "clip_id": "clip_01M6SSA2K7RYDZWE9S8XH0NPJ7",
+      "game": "Call of Duty: Warzone",
+      "passed": false,
+      "evidence": null,
+      "window_start": null,
+      "window_seconds": null
+    },
+    {
+      "clip_id": "clip_01M6SRZ6CNA980RGRW0196K34F",
+      "game": "Call of Duty: Warzone",
+      "passed": false,
+      "evidence": null,
+      "window_start": null,
+      "window_seconds": null
+    },
+    {
+      "clip_id": "clip_01M6SRGMX40E9HBR89ZZF76TMC",
+      "game": "Call of Duty: Warzone",
+      "passed": false,
+      "evidence": null,
+      "window_start": null,
+      "window_seconds": null
+    },
+    {
+      "clip_id": "clip_01M6SRCVR61WF8SSVFHB9J7VW9",
+      "game": "Call of Duty: Warzone",
+      "passed": false,
+      "evidence": null,
+      "window_start": null,
+      "window_seconds": null
+    },
+    {
+      "clip_id": "clip_01M6SQT1GG3XGZ6BYD5S1TS46X",
+      "game": "Call of Duty: Warzone",
+      "passed": false,
+      "evidence": null,
+      "window_start": null,
+      "window_seconds": null
+    },
+    {
+      "clip_id": "clip_01M6SQRW0SYRZSYR0X84Z4NGZ1",
+      "game": "Call of Duty: Warzone",
+      "passed": false,
+      "evidence": null,
+      "window_start": null,
+      "window_seconds": null
+    },
+    {
+      "clip_id": "clip_01M6SQQ021W70669R25Z01NR81",
+      "game": "Call of Duty: Warzone",
+      "passed": false,
+      "evidence": null,
+      "window_start": null,
+      "window_seconds": null
+    },
+    {
+      "clip_id": "clip_01M6SQM8ZJWEWM16GMV0GBGZR3",
+      "game": "Call of Duty: Warzone",
+      "passed": false,
+      "evidence": null,
+      "window_start": null,
+      "window_seconds": null
+    },
+    {
+      "clip_id": "clip_01M6SQG289NPDYEM9BKKC8R4H8",
+      "game": "Call of Duty: Warzone",
+      "passed": false,
+      "evidence": null,
+      "window_start": null,
+      "window_seconds": null
+    },
+    {
+      "clip_id": "clip_01M6SPZXCQXNGJWVMKAN6XZ17W",
+      "game": "Call of Duty: Warzone",
+      "passed": false,
+      "evidence": null,
+      "window_start": null,
+      "window_seconds": null
+    },
+    {
+      "clip_id": "clip_01M6SPVYKT2ZK6RCHZRD5JAMJM",
+      "game": "Call of Duty: Warzone",
+      "passed": false,
+      "evidence": null,
+      "window_start": null,
+      "window_seconds": null
+    },
+    {
+      "clip_id": "clip_01M710X5GF8S8XMHZ03MNMTSGE",
+      "game": "Call of Duty: Warzone",
+      "passed": false,
       "evidence": {
-        "start": 0.0,
+        "start": 70.39,
         "seconds": 25.0,
-        "end": 25.0,
-        "score": 66.552,
-        "gameplay_ratio": 1.0,
-        "gunfire_bins": 3,
-        "audio_bins": 5,
-        "gunfire_ratio": 0.6,
-        "mean_gunfire_score": 0.1276,
-        "longest_inactive_seconds": 5.0,
-        "passed": true
+        "end": 95.39,
+        "score": 36.673,
+        "gameplay_ratio": 0.917,
+        "gunfire_bins": 0,
+        "audio_bins": 4,
+        "gunfire_ratio": 0.0,
+        "mean_gunfire_score": 0.0003,
+        "longest_inactive_seconds": 25.0,
+        "passed": false
       },
-      "window_start": 0.0,
+      "window_start": 70.39,
       "window_seconds": 25.0
     },
     {
-      "clip_id": "clip_01M6RZRM1JR4FPJ7YZZS659S69",
-      "game": "Valorant",
+      "clip_id": "clip_01M7419AKQ132AY1T941F9B38V",
+      "game": "Call of Duty: Warzone",
       "passed": false,
       "evidence": null,
       "window_start": null,
       "window_seconds": null
     },
     {
-      "clip_id": "clip_01M73YEQ5AVCP8QF8CAVXHZA54",
-      "game": "Valorant",
-      "passed": false,
-      "evidence": null,
-      "window_start": null,
-      "window_seconds": null
-    },
-    {
-      "clip_id": "clip_01M6VJCSBDP2YDDN0SMKKRESY2",
-      "game": "Valorant",
-      "passed": false,
-      "evidence": null,
-      "window_start": null,
-      "window_seconds": null
-    },
-    {
-      "clip_id": "clip_01M6VE4BYFJDAH2J6Z8RQ9FMTR",
-      "game": "Valorant",
+      "clip_id": "clip_01M762XHGMR315ANZ55BPGJBBW",
+      "game": "Call of Duty: Warzone",
       "passed": false,
       "evidence": {
-        "start": 6.0,
+        "start": 28.674,
         "seconds": 19.0,
-        "end": 25.0,
-        "score": 64.945,
-        "gameplay_ratio": 0.9,
-        "gunfire_bins": 2,
-        "audio_bins": 3,
-        "gunfire_ratio": 0.667,
-        "mean_gunfire_score": 0.1139,
-        "longest_inactive_seconds": 5.0,
+        "end": 47.674,
+        "score": 22.225,
+        "gameplay_ratio": 0.556,
+        "gunfire_bins": 0,
+        "audio_bins": 4,
+        "gunfire_ratio": 0.0,
+        "mean_gunfire_score": 0.0001,
+        "longest_inactive_seconds": 19.0,
         "passed": false
       },
-      "window_start": 6.0,
+      "window_start": 28.674,
       "window_seconds": 19.0
     },
     {
-      "clip_id": "clip_01M6QCWRS0PSZ04GNGC1MB240H",
-      "game": "Valorant",
+      "clip_id": "clip_01M6ZBB7BXNVZ0R06VBP4PQ4N1",
+      "game": "Call of Duty: Warzone",
       "passed": false,
       "evidence": null,
       "window_start": null,
       "window_seconds": null
     },
     {
-      "clip_id": "clip_01M7AK39GEQF0AMNBJTCJ53GT2",
-      "game": "Counter-Strike 2",
+      "clip_id": "clip_01M6YQVN33251E9QNP2BT8WJX3",
+      "game": "Call of Duty: Warzone",
       "passed": false,
+      "evidence": null,
+      "window_start": null,
+      "window_seconds": null
+    },
+    {
+      "clip_id": "clip_01M6ZHQ95JG3ZE6SZJCZY12P4Z",
+      "game": "Call of Duty: Warzone",
+      "passed": true,
       "evidence": {
-        "start": 2.0,
+        "start": 58.0,
         "seconds": 19.0,
-        "end": 21.0,
-        "score": 40.007,
+        "end": 77.0,
+        "score": 86.033,
         "gameplay_ratio": 1.0,
-        "gunfire_bins": 0,
+        "gunfire_bins": 3,
         "audio_bins": 3,
-        "gunfire_ratio": 0.0,
-        "mean_gunfire_score": 0.0003,
-        "longest_inactive_seconds": 19.0,
-        "passed": false
+        "gunfire_ratio": 1.0,
+        "mean_gunfire_score": 0.3017,
+        "longest_inactive_seconds": 2.0,
+        "passed": true
       },
-      "window_start": 2.0,
+      "window_start": 58.0,
       "window_seconds": 19.0
     },
     {
-      "clip_id": "clip_01M7AK25A5GH0463VX5FRZQKCN",
-      "game": "Counter-Strike 2",
-      "passed": false,
-      "evidence": {
-        "start": 2.0,
-        "seconds": 19.0,
-        "end": 21.0,
-        "score": 66.599,
-        "gameplay_ratio": 0.9,
-        "gunfire_bins": 2,
-        "audio_bins": 3,
-        "gunfire_ratio": 0.667,
-        "mean_gunfire_score": 0.1966,
-        "longest_inactive_seconds": 5.0,
-        "passed": false
-      },
-      "window_start": 2.0,
-      "window_seconds": 19.0
-    },
-    {
-      "clip_id": "clip_01M7AJWKS9QYYZN671WDQB1WC9",
-      "game": "Counter-Strike 2",
-      "passed": false,
-      "evidence": null,
-      "window_start": null,
-      "window_seconds": null
-    },
-    {
-      "clip_id": "clip_01M7AJSE58981FPC6E46N6GKXQ",
-      "game": "Counter-Strike 2",
-      "passed": false,
-      "evidence": {
-        "start": 2.0,
-        "seconds": 19.0,
-        "end": 21.0,
-        "score": 32.012,
-        "gameplay_ratio": 0.8,
-        "gunfire_bins": 0,
-        "audio_bins": 3,
-        "gunfire_ratio": 0.0,
-        "mean_gunfire_score": 0.0006,
-        "longest_inactive_seconds": 19.0,
-        "passed": false
-      },
-      "window_start": 2.0,
-      "window_seconds": 19.0
-    },
-    {
-      "clip_id": "clip_01M7AJRAYBKSEBRR2Q155E67M1",
-      "game": "Counter-Strike 2",
+      "clip_id": "clip_01M71AMRH936F700KX770QEXPP",
+      "game": "Call of Duty: Warzone",
       "passed": false,
       "evidence": {
         "start": 0.0,
         "seconds": 19.0,
         "end": 19.0,
-        "score": 60.482,
-        "gameplay_ratio": 0.8,
+        "score": 69.739,
+        "gameplay_ratio": 1.0,
         "gunfire_bins": 2,
         "audio_bins": 3,
         "gunfire_ratio": 0.667,
-        "mean_gunfire_score": 0.0908,
+        "mean_gunfire_score": 0.1536,
         "longest_inactive_seconds": 9.0,
         "passed": false
       },
@@ -48101,184 +49222,212 @@
       "window_seconds": 19.0
     },
     {
-      "clip_id": "clip_01M7AJQZED780ZJX4KDFJ0RAC1",
-      "game": "Counter-Strike 2",
-      "passed": false,
-      "evidence": {
-        "start": 36.0,
-        "seconds": 19.0,
-        "end": 55.0,
-        "score": 0.008,
-        "gameplay_ratio": 0.0,
-        "gunfire_bins": 0,
-        "audio_bins": 3,
-        "gunfire_ratio": 0.0,
-        "mean_gunfire_score": 0.0004,
-        "longest_inactive_seconds": 19.0,
-        "passed": false
-      },
-      "window_start": 36.0,
-      "window_seconds": 19.0
-    },
-    {
-      "clip_id": "clip_01M7AJQ09MJWV8K3V7WBTCVSCA",
-      "game": "Counter-Strike 2",
-      "passed": false,
-      "evidence": null,
-      "window_start": null,
-      "window_seconds": null
-    },
-    {
-      "clip_id": "clip_01M7AJPK2T365BK5Y3A9SKTC2M",
-      "game": "Counter-Strike 2",
+      "clip_id": "clip_01M765FERP4Q3VGCE9Z27JRM32",
+      "game": "Call of Duty: Warzone",
       "passed": true,
       "evidence": {
-        "start": 12.0,
+        "start": 0.0,
         "seconds": 19.0,
-        "end": 31.0,
-        "score": 85.135,
-        "gameplay_ratio": 1.0,
+        "end": 19.0,
+        "score": 78.994,
+        "gameplay_ratio": 0.9,
         "gunfire_bins": 3,
         "audio_bins": 3,
         "gunfire_ratio": 1.0,
-        "mean_gunfire_score": 0.2568,
-        "longest_inactive_seconds": 3.0,
+        "mean_gunfire_score": 0.1497,
+        "longest_inactive_seconds": 4.0,
         "passed": true
       },
-      "window_start": 12.0,
+      "window_start": 0.0,
       "window_seconds": 19.0
     },
     {
-      "clip_id": "clip_01M7AJP8VX5JNNYCW0XND0MB4Q",
-      "game": "Counter-Strike 2",
+      "clip_id": "clip_01M6ZDH6HD29D3FZ6AMWN06JZQ",
+      "game": "Call of Duty: Warzone",
       "passed": false,
       "evidence": null,
       "window_start": null,
       "window_seconds": null
     },
     {
-      "clip_id": "clip_01M7AJMR48TH6EJCF3EM3MKYJ3",
-      "game": "Counter-Strike 2",
+      "clip_id": "clip_01M5BJV88KG3Y1S36WPQ1EHGZ9",
+      "game": "Call of Duty: Warzone",
       "passed": false,
       "evidence": null,
       "window_start": null,
       "window_seconds": null
     },
     {
-      "clip_id": "clip_01M7AJKRYZPHA7NZC5ZF9R61MK",
-      "game": "Counter-Strike 2",
+      "clip_id": "clip_01M7AH0HAM7X2825EW44B29EPN",
+      "game": "Valorant",
       "passed": false,
       "evidence": null,
       "window_start": null,
       "window_seconds": null
     },
     {
-      "clip_id": "clip_01M7AJERA2KNMYKNZ33624ZB4J",
-      "game": "Counter-Strike 2",
+      "clip_id": "clip_01M7AH0274JFS25FD6SW7XEP4D",
+      "game": "Valorant",
       "passed": false,
       "evidence": null,
       "window_start": null,
       "window_seconds": null
     },
     {
-      "clip_id": "clip_01M7AJDE00C1ZB39H2RCJ3NJ1D",
-      "game": "Counter-Strike 2",
+      "clip_id": "clip_01M7AGXE2K87A621Y6GMKFZ6FA",
+      "game": "Valorant",
       "passed": false,
       "evidence": {
-        "start": 6.0,
+        "start": 30.0,
         "seconds": 19.0,
-        "end": 25.0,
-        "score": 57.772,
+        "end": 49.0,
+        "score": 56.877,
         "gameplay_ratio": 0.7,
         "gunfire_bins": 2,
         "audio_bins": 3,
         "gunfire_ratio": 0.667,
-        "mean_gunfire_score": 0.1553,
+        "mean_gunfire_score": 0.1105,
         "longest_inactive_seconds": 5.0,
         "passed": false
       },
-      "window_start": 6.0,
+      "window_start": 30.0,
       "window_seconds": 19.0
     },
     {
-      "clip_id": "clip_01M7AJCNBNWZS7G6K49WR8XX0Y",
-      "game": "Counter-Strike 2",
+      "clip_id": "clip_01M7AGXDBZRM69SDPARERS5NNE",
+      "game": "Valorant",
       "passed": false,
       "evidence": {
-        "start": 54.0,
+        "start": 2.0,
         "seconds": 19.0,
-        "end": 73.0,
-        "score": 64.686,
-        "gameplay_ratio": 0.9,
+        "end": 21.0,
+        "score": 28.029,
+        "gameplay_ratio": 0.7,
+        "gunfire_bins": 0,
+        "audio_bins": 3,
+        "gunfire_ratio": 0.0,
+        "mean_gunfire_score": 0.0015,
+        "longest_inactive_seconds": 19.0,
+        "passed": false
+      },
+      "window_start": 2.0,
+      "window_seconds": 19.0
+    },
+    {
+      "clip_id": "clip_01M7AGH97BC6F2Y01K92ZFG19Z",
+      "game": "Valorant",
+      "passed": false,
+      "evidence": null,
+      "window_start": null,
+      "window_seconds": null
+    },
+    {
+      "clip_id": "clip_01M7AGGTYZH70MPKXYMDYBGDWQ",
+      "game": "Valorant",
+      "passed": false,
+      "evidence": {
+        "start": 31.002,
+        "seconds": 19.0,
+        "end": 50.002,
+        "score": 63.171,
+        "gameplay_ratio": 0.8,
         "gunfire_bins": 2,
         "audio_bins": 3,
         "gunfire_ratio": 0.667,
-        "mean_gunfire_score": 0.101,
-        "longest_inactive_seconds": 6.0,
+        "mean_gunfire_score": 0.2252,
+        "longest_inactive_seconds": 5.0,
         "passed": false
       },
-      "window_start": 54.0,
+      "window_start": 31.002,
       "window_seconds": 19.0
     },
     {
-      "clip_id": "clip_01M7AJAQ3SMVSQVRJDD5FVXHFB",
-      "game": "Counter-Strike 2",
+      "clip_id": "clip_01M7AGDNSJ53RJB1XBWZG66EDD",
+      "game": "Valorant",
       "passed": false,
       "evidence": null,
       "window_start": null,
       "window_seconds": null
     },
     {
-      "clip_id": "clip_01M7AJA383FSS21ZJ4MHDD44AG",
-      "game": "Counter-Strike 2",
-      "passed": false,
-      "evidence": {
-        "start": 18.0,
-        "seconds": 19.0,
-        "end": 37.0,
-        "score": 32.095,
-        "gameplay_ratio": 0.8,
-        "gunfire_bins": 0,
-        "audio_bins": 3,
-        "gunfire_ratio": 0.0,
-        "mean_gunfire_score": 0.0048,
-        "longest_inactive_seconds": 19.0,
-        "passed": false
-      },
-      "window_start": 18.0,
-      "window_seconds": 19.0
-    },
-    {
-      "clip_id": "clip_01M7AJ9KP2P79RTHDQMV3MV4T2",
-      "game": "Counter-Strike 2",
+      "clip_id": "clip_01M7AGDAY8F71VQ4391CW0C1SD",
+      "game": "Valorant",
       "passed": false,
       "evidence": null,
       "window_start": null,
       "window_seconds": null
     },
     {
-      "clip_id": "clip_01M7AJ58TDV92GAA5V6DXDWH3D",
-      "game": "Counter-Strike 2",
+      "clip_id": "clip_01M7AGCRHNB3XKMSNVBR08PWH7",
+      "game": "Valorant",
+      "passed": false,
+      "evidence": null,
+      "window_start": null,
+      "window_seconds": null
+    },
+    {
+      "clip_id": "clip_01M7AGAD2QXDCZS4H72VRQPP3Z",
+      "game": "Valorant",
+      "passed": false,
+      "evidence": null,
+      "window_start": null,
+      "window_seconds": null
+    },
+    {
+      "clip_id": "clip_01M7AG226GCGBKR6M9DV9WKAAR",
+      "game": "Valorant",
+      "passed": false,
+      "evidence": null,
+      "window_start": null,
+      "window_seconds": null
+    },
+    {
+      "clip_id": "clip_01M7AFYE43YMKGH0QA5NY4GPJ4",
+      "game": "Valorant",
+      "passed": false,
+      "evidence": null,
+      "window_start": null,
+      "window_seconds": null
+    },
+    {
+      "clip_id": "clip_01M7AFXR0W5WG24TBK6HCCQQ3B",
+      "game": "Valorant",
       "passed": false,
       "evidence": {
-        "start": 46.0,
+        "start": 81.026,
         "seconds": 19.0,
-        "end": 65.0,
-        "score": 32.002,
-        "gameplay_ratio": 0.8,
+        "end": 100.026,
+        "score": 0.005,
+        "gameplay_ratio": 0.0,
         "gunfire_bins": 0,
         "audio_bins": 3,
         "gunfire_ratio": 0.0,
-        "mean_gunfire_score": 0.0001,
+        "mean_gunfire_score": 0.0002,
         "longest_inactive_seconds": 19.0,
         "passed": false
       },
-      "window_start": 46.0,
+      "window_start": 81.026,
       "window_seconds": 19.0
     },
     {
-      "clip_id": "clip_01M7AJ51DPHPEG3NHCHGK6QM4R",
-      "game": "Counter-Strike 2",
+      "clip_id": "clip_01M7AFMBFGGQDVK52CSN5VC20R",
+      "game": "Valorant",
+      "passed": false,
+      "evidence": null,
+      "window_start": null,
+      "window_seconds": null
+    },
+    {
+      "clip_id": "clip_01M7AF6G0N80GY021RQZ3VTYHT",
+      "game": "Valorant",
+      "passed": false,
+      "evidence": null,
+      "window_start": null,
+      "window_seconds": null
+    },
+    {
+      "clip_id": "clip_01M7AF4X10WD7C31GFY0KKZBZQ",
+      "game": "Valorant",
       "passed": false,
       "evidence": null,
       "window_start": null,
