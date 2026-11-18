@@ -573,8 +573,8 @@
       "reviewed": {
         "1b29d717cd6da36f919baba1": {
           "status": "error",
-          "retry_after": 1794970771.0328352,
-          "updated_at": 1794949171.0328362
+          "retry_after": 1795009012.3912501,
+          "updated_at": 1794987412.391251
         }
       }
     },
@@ -1365,7 +1365,7 @@
     "clip_01M4D6GC1SAQ1AEC0BH8741017": {
       "scan_policy": "action-first-temporal-v1",
       "status": "scanned",
-      "updated_at": 1794948849.519336,
+      "updated_at": 1794986825.2742183,
       "evidence": {
         "scanned_seconds": 29.2053125,
         "scan_offset": 70.8,
@@ -1430,7 +1430,7 @@
     "clip_01M2NX1GAFQBRYQY4HP4AX0EG9": {
       "scan_policy": "action-first-temporal-v1",
       "status": "scanned",
-      "updated_at": 1794948863.0369937,
+      "updated_at": 1794986852.5819495,
       "evidence": {
         "scanned_seconds": 33.6213125,
         "scan_offset": 4.512062500000006,
@@ -1475,7 +1475,7 @@
     "clip_01M4DD0RFZD4ZF8QF93KRHEX3H": {
       "scan_policy": "action-first-temporal-v1",
       "status": "scanned",
-      "updated_at": 1794948875.016304,
+      "updated_at": 1794986875.5021434,
       "evidence": {
         "scanned_seconds": 35.0,
         "scan_offset": 15.011937499999995,
@@ -1520,7 +1520,7 @@
     "clip_01M4A7J2PPC76YHPG5XVD8NPXJ": {
       "scan_policy": "action-first-temporal-v1",
       "status": "scanned",
-      "updated_at": 1794948887.009478,
+      "updated_at": 1794986899.2383864,
       "evidence": {
         "scanned_seconds": 35.0,
         "scan_offset": 23.021,
@@ -1565,7 +1565,7 @@
     "clip_01M4CC0YWHTSY55G7SK7S4WS36": {
       "scan_policy": "action-first-temporal-v1",
       "status": "scanned",
-      "updated_at": 1794948900.3539605,
+      "updated_at": 1794986922.4920874,
       "evidence": {
         "scanned_seconds": 33.003125,
         "scan_offset": 5.0177499999999995,
@@ -1610,7 +1610,7 @@
     "clip_01M4BCSK75BP1CC204ENP65NA9": {
       "scan_policy": "action-first-temporal-v1",
       "status": "scanned",
-      "updated_at": 1794948915.6714852,
+      "updated_at": 1794986947.4680076,
       "evidence": {
         "scanned_seconds": 34.5813125,
         "scan_offset": 46.722624999999994,
@@ -1655,11 +1655,11 @@
     "clip_01M4CS22TD2A02H7A87QBCRQTC": {
       "scan_policy": "action-first-temporal-v1",
       "status": "scanned",
-      "updated_at": 1794948929.7769315,
+      "updated_at": 1794986973.3326428,
       "evidence": {
-        "scanned_seconds": 32.9026875,
+        "scanned_seconds": 34.899625,
         "scan_offset": 5.789937500000001,
-        "scanned_through_seconds": 38.692625,
+        "scanned_through_seconds": 40.6895625,
         "next_scan_offset": 5.789937500000001,
         "source_fully_scanned": false,
         "local_model_revisions": {
@@ -1700,7 +1700,7 @@
     "clip_01M4D58C74JAHAG8Y2M7H31TGG": {
       "scan_policy": "action-first-temporal-v1",
       "status": "scanned",
-      "updated_at": 1794948942.6241064,
+      "updated_at": 1794986997.2113485,
       "evidence": {
         "scanned_seconds": 33.344,
         "scan_offset": 58.51199999999999,
@@ -1765,7 +1765,7 @@
     "clip_01M25W70PRN46ZTKD2FRN1N7VP": {
       "scan_policy": "action-first-temporal-v1",
       "status": "scanned",
-      "updated_at": 1794948956.336551,
+      "updated_at": 1794987020.087456,
       "evidence": {
         "scanned_seconds": 31.3173125,
         "scan_offset": 50.13081250000003,
@@ -1810,11 +1810,11 @@
     "clip_01M4DCQ5AA7KJN7KPQ8DCS4BN7": {
       "scan_policy": "action-first-temporal-v1",
       "status": "scanned",
-      "updated_at": 1794948969.1068993,
+      "updated_at": 1794987044.6753244,
       "evidence": {
-        "scanned_seconds": 29.184,
+        "scanned_seconds": 33.3653125,
         "scan_offset": 9.210625,
-        "scanned_through_seconds": 38.394625000000005,
+        "scanned_through_seconds": 42.5759375,
         "next_scan_offset": 9.210625,
         "source_fully_scanned": false,
         "local_model_revisions": {
@@ -2834,6 +2834,17 @@
           "last_action_tail_seconds": 2,
           "longest_gap_seconds": 2,
           "scoring_crop": "central"
+        },
+        {
+          "start": 20.210625,
+          "seconds": 19.0,
+          "active_ratio": 0.7368421052631579,
+          "gameplay_ratio": 0.7894736842105263,
+          "gunfire_ratio": 1.0,
+          "first_action_hint_seconds": 1,
+          "last_action_tail_seconds": 2,
+          "longest_gap_seconds": 2,
+          "scoring_crop": "central"
         }
       ],
       "candidate": {
@@ -2917,7 +2928,7 @@
     "clip_01M3ZA4KES2J0ED0K7HE3FCYGQ": {
       "scan_policy": "action-first-temporal-v1",
       "status": "scanned",
-      "updated_at": 1794948983.7081382,
+      "updated_at": 1794987070.2957878,
       "evidence": {
         "scanned_seconds": 34.0053125,
         "scan_offset": 70.994625,
@@ -2962,7 +2973,7 @@
     "clip_01M4CFZSNYWMWQE7XDZSD438AV": {
       "scan_policy": "action-first-temporal-v1",
       "status": "scanned",
-      "updated_at": 1794948998.005788,
+      "updated_at": 1794987094.9244616,
       "evidence": {
         "scanned_seconds": 34.9226875,
         "scan_offset": 0.0,
@@ -3007,7 +3018,7 @@
     "clip_01M3TWTMJG51ZT990W5BZK0BTV": {
       "scan_policy": "action-first-temporal-v1",
       "status": "scanned",
-      "updated_at": 1794949012.0599215,
+      "updated_at": 1794987120.2275484,
       "evidence": {
         "scanned_seconds": 35.0,
         "scan_offset": 101.49731250000025,
@@ -3052,11 +3063,11 @@
     "clip_01M47CH6RN29N9CDVZWX3XEEG1": {
       "scan_policy": "action-first-temporal-v1",
       "status": "scanned",
-      "updated_at": 1794949025.637766,
+      "updated_at": 1794987145.6649923,
       "evidence": {
-        "scanned_seconds": 30.016,
+        "scanned_seconds": 32.0213125,
         "scan_offset": 0.0,
-        "scanned_through_seconds": 30.016,
+        "scanned_through_seconds": 32.0213125,
         "next_scan_offset": 0.0,
         "source_fully_scanned": false,
         "local_model_revisions": {
@@ -3097,7 +3108,7 @@
     "clip_01M4D4WKB3PBCT08QWBHB9YXVM": {
       "scan_policy": "action-first-temporal-v1",
       "status": "scanned",
-      "updated_at": 1794949038.6015856,
+      "updated_at": 1794987167.3891888,
       "evidence": {
         "scanned_seconds": 31.0186875,
         "scan_offset": 58.859125000000056,
@@ -3162,11 +3173,11 @@
     "clip_01M2NW1173MQ6GXX4FQ0XZKKTT": {
       "scan_policy": "action-first-temporal-v1",
       "status": "scanned",
-      "updated_at": 1794949052.346771,
+      "updated_at": 1794987192.5711708,
       "evidence": {
-        "scanned_seconds": 32.0213125,
+        "scanned_seconds": 34.0053125,
         "scan_offset": 137.01199999999997,
-        "scanned_through_seconds": 169.03331249999997,
+        "scanned_through_seconds": 171.01731249999997,
         "next_scan_offset": 137.01199999999997,
         "source_fully_scanned": false,
         "local_model_revisions": {
@@ -3207,7 +3218,7 @@
     "clip_01M2RM08F8EFCDDHWC0FD57742": {
       "scan_policy": "action-first-temporal-v1",
       "status": "scanned",
-      "updated_at": 1794949065.1538482,
+      "updated_at": 1794987218.8071218,
       "evidence": {
         "scanned_seconds": 34.0266875,
         "scan_offset": 19.063312500000002,
@@ -3252,7 +3263,7 @@
     "clip_01M45R3R47HYN0AV4XKXHM11H0": {
       "scan_policy": "action-first-temporal-v1",
       "status": "scanned",
-      "updated_at": 1794949076.0609686,
+      "updated_at": 1794987239.6734262,
       "evidence": {
         "scanned_seconds": 32.504,
         "scan_offset": 10.421000000000006,
@@ -3297,7 +3308,7 @@
     "clip_01M4C29746AKKCBC4KZV9HQJDK": {
       "scan_policy": "action-first-temporal-v1",
       "status": "scanned",
-      "updated_at": 1794949091.6795492,
+      "updated_at": 1794987265.9766293,
       "evidence": {
         "scanned_seconds": 34.2826875,
         "scan_offset": 106.99556249999995,
@@ -3342,7 +3353,7 @@
     "clip_01M499X33SNTVCNZ0Y24ESKH3D": {
       "scan_policy": "action-first-temporal-v1",
       "status": "scanned",
-      "updated_at": 1794949104.676457,
+      "updated_at": 1794987289.2962675,
       "evidence": {
         "scanned_seconds": 33.3670625,
         "scan_offset": 0.0,
@@ -3387,11 +3398,11 @@
     "clip_01M49ATM332YT5EBS5GQQSXVE0": {
       "scan_policy": "action-first-temporal-v1",
       "status": "scanned",
-      "updated_at": 1794949116.3154762,
+      "updated_at": 1794987310.5384443,
       "evidence": {
-        "scanned_seconds": 34.8506875,
+        "scanned_seconds": 35.0,
         "scan_offset": 140.8183125,
-        "scanned_through_seconds": 175.66899999999998,
+        "scanned_through_seconds": 175.8183125,
         "next_scan_offset": 140.8183125,
         "source_fully_scanned": false,
         "local_model_revisions": {
@@ -3432,7 +3443,7 @@
     "clip_01M4D5PDRSW2NEV9BZKY4HX1D0": {
       "scan_policy": "action-first-temporal-v1",
       "status": "scanned",
-      "updated_at": 1794949129.2343822,
+      "updated_at": 1794987334.723701,
       "evidence": {
         "scanned_seconds": 33.3226875,
         "scan_offset": 134.965375,
@@ -3497,7 +3508,7 @@
     "clip_01HSGVRBY0M7AD8RQYP6ZHY7ME": {
       "scan_policy": "action-first-temporal-v1",
       "status": "scanned",
-      "updated_at": 1794949142.5338385,
+      "updated_at": 1794987358.3758602,
       "evidence": {
         "scanned_seconds": 33.3670625,
         "scan_offset": 17.5856875,
@@ -3542,7 +3553,7 @@
     "clip_01M324YE1B48TW2MCDDB6AT0C4": {
       "scan_policy": "action-first-temporal-v1",
       "status": "scanned",
-      "updated_at": 1794949156.2450664,
+      "updated_at": 1794987383.9883494,
       "evidence": {
         "scanned_seconds": 34.0266875,
         "scan_offset": 31.0186875,
@@ -3587,7 +3598,7 @@
     "clip_01M3W2WHN85S6VF88HSHD18QHH": {
       "scan_policy": "action-first-temporal-v1",
       "status": "scanned",
-      "updated_at": 1794949165.295227,
+      "updated_at": 1794987404.0496247,
       "evidence": {
         "scanned_seconds": 35.0,
         "scan_offset": 14.212687500000001,
